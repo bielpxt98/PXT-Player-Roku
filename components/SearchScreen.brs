@@ -18,6 +18,7 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
+    m.maxResults = 60
     m.searchMode = "live"
     m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
     m.keyNodes = [] : m.itemNodes = []
@@ -65,8 +66,7 @@ sub show(mode as Dynamic)
     m.searchInput.text = "" : m.queryMirror.text = "Texto digitado: "
     m.focusZone = "keyboard" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
-    clearResultNodes()
-    m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = getEmptySearchMessage()
+    applyFilter()
 end sub
 
 sub hide()
@@ -137,7 +137,7 @@ end sub
 sub onSearchTextChanged()
     m.queryMirror.text = "Texto digitado: " + m.searchInput.text
     m.searchDebounceTimer.control = "stop"
-    applyFilter()
+    m.searchDebounceTimer.control = "start"
 end sub
 
 sub onSearchDebounceFire()
@@ -147,9 +147,6 @@ end sub
 sub applyFilter()
     query = LCase(m.searchInput.text.Trim())
     m.results = []
-    if query = "" then
-        clearResultNodes() : m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = getEmptySearchMessage() : return
-    end if
     if m.searchMode = "live" then addMatches("channel", m.channels, query)
     if m.searchMode = "movies" then addMatches("movie", m.movies, query)
     if m.searchMode = "series" then addMatches("series", m.series, query)
@@ -162,17 +159,26 @@ sub applyFilter()
 end sub
 
 sub addMatches(kind as String, items as Dynamic, query as String)
+    entries = []
     for each item in normalizeArray(items)
-        if m.results.Count() >= m.visibleItemCount then exit for
         name = getItemName(item)
         meta = getItemMeta(item)
-        if Instr(1, LCase(name + " " + meta), query) > 0 then m.results.Push({ type: kind, title: name, meta: meta, item: item })
+        if query = "" or Instr(1, LCase(name + " " + meta), query) > 0 then
+            entries.Push({ sortKey: LCase(name), type: kind, title: name, meta: meta, item: item })
+        end if
+    end for
+    entries.SortBy("sortKey")
+    for each entry in entries
+        if m.results.Count() >= m.maxResults then exit for
+        m.results.Push({ type: entry.type, title: entry.title, meta: entry.meta, item: entry.item })
     end for
 end sub
 
 sub renderResults()
     clearResultNodes()
     maxIndex = m.results.Count() - 1
+    visibleMax = m.visibleItemCount - 1
+    if maxIndex > visibleMax then maxIndex = visibleMax
     for i = 0 to maxIndex
         node = createCardResultNode(m.results[i], i)
         m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node)

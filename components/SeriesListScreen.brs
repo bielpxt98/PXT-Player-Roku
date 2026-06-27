@@ -192,15 +192,15 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     end if
     if key = "options" then
-        if m.series.Count() > 0 then m.top.seriesFavoriteToggled = m.series[m.selectedIndex]
+        if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then m.top.seriesFavoriteToggled = m.series[m.selectedIndex]
         return true
     end if
     if key = "OK" then
         if m.activePane = "search" then
             m.top.searchRequested = true
         else if m.activePane = "categories" then
-            if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
-        else if m.series.Count() > 0 then
+            if m.categories.Count() > 0 and m.selectedCategoryIndex >= 0 and m.selectedCategoryIndex < m.categories.Count() then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
+        else if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then
             print "OK opening selectedIndex="; m.selectedIndex : print "OK opening item="; getSeriesLogTitle(m.series[m.selectedIndex])
             m.top.seriesSelected = m.series[m.selectedIndex]
         end if
@@ -220,6 +220,11 @@ sub moveGrid(dx as Integer, dy as Integer)
 end sub
 
 sub updateCategoryWindow()
+    if m.categories.Count() = 0 then
+        m.selectedCategoryIndex = 0
+        m.firstVisibleCategoryIndex = 0
+        return
+    end if
     if m.selectedCategoryIndex < 0 then m.selectedCategoryIndex = 0
     if m.selectedCategoryIndex >= m.categories.Count() then m.selectedCategoryIndex = m.categories.Count() - 1
     if m.firstVisibleCategoryIndex < 0 then m.firstVisibleCategoryIndex = 0
@@ -228,6 +233,11 @@ sub updateCategoryWindow()
 end sub
 
 sub updateGridWindow()
+    if m.series.Count() = 0 then
+        m.selectedIndex = 0
+        m.firstVisibleRow = 0
+        return
+    end if
     if m.selectedIndex < 0 then m.selectedIndex = 0
     if m.selectedIndex >= m.series.Count() then m.selectedIndex = m.series.Count() - 1
     row = Int(m.selectedIndex / m.columns)
