@@ -13,8 +13,6 @@ sub Init()
     m.itemNodes = []
     m.focusIndex = 0
     m.firstVisibleIndex = 0
-    m.maxVisibleItems = 6
-    m.itemHeight = 92
 
     configureLayout()
 end sub
@@ -24,26 +22,59 @@ sub configureLayout()
     width = resolution.width
     height = resolution.height
 
+    m.safeX = Int(width * 0.06)
+    m.safeTop = Int(height * 0.07)
+    m.safeBottom = Int(height * 0.08)
+    m.contentWidth = width - (m.safeX * 2)
+    if m.contentWidth > 940 then m.contentWidth = 940
+    m.contentX = Int((width - m.contentWidth) / 2)
+
+    if height <= 720 then
+        m.itemHeight = 76
+        m.cardHeight = 66
+        m.logoSize = 44
+        m.logoInset = 11
+        m.titleY = m.safeTop
+        m.subtitleY = m.titleY + 58
+        m.listY = m.subtitleY + 54
+        m.footerGap = 42
+    else
+        m.itemHeight = 92
+        m.cardHeight = 78
+        m.logoSize = 52
+        m.logoInset = 13
+        m.titleY = m.safeTop
+        m.subtitleY = m.titleY + 74
+        m.listY = m.subtitleY + 70
+        m.footerGap = 56
+    end if
+
+    hintY = height - m.safeBottom - 28
+    if hintY < m.listY + m.cardHeight then hintY = m.listY + m.cardHeight + 12
+    availableListHeight = hintY - m.listY - m.footerGap
+    m.maxVisibleItems = Int(availableListHeight / m.itemHeight)
+    if m.maxVisibleItems < 1 then m.maxVisibleItems = 1
+
     m.background.width = width
     m.background.height = height
 
     m.title.width = width
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.08)]
+    m.title.translation = [0, m.titleY]
 
     m.subtitle.width = width
     m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, Int(height * 0.18)]
+    m.subtitle.translation = [0, m.subtitleY]
 
-    m.statusLabel.width = width
+    m.statusLabel.width = m.contentWidth
     m.statusLabel.font = "font:MediumSystemFont"
-    m.statusLabel.translation = [0, Int(height * 0.44)]
+    m.statusLabel.translation = [m.contentX, m.listY + Int(availableListHeight / 2)]
 
-    m.channelsGroup.translation = [Int((width - 860) / 2), Int(height * 0.25)]
+    m.channelsGroup.translation = [m.contentX, m.listY]
 
     m.hintLabel.width = width
     m.hintLabel.font = "font:SmallSystemFont"
-    m.hintLabel.translation = [0, Int(height * 0.91)]
+    m.hintLabel.translation = [0, hintY]
 end sub
 
 sub show(category as Dynamic)
@@ -53,8 +84,10 @@ sub show(category as Dynamic)
         m.subtitle.text = "Canais"
     end if
 
+    configureLayout()
+    ensureFocusIsVisible()
+    renderVisibleItems()
     m.top.visible = true
-    updateFocus()
     m.top.SetFocus(true)
 end sub
 
@@ -90,6 +123,8 @@ sub showMessage(message as String)
     clearChannelNodes()
     m.channels = []
     m.statusLabel.text = message
+    m.focusIndex = 0
+    m.firstVisibleIndex = 0
     m.statusLabel.color = "#FFCC66"
 end sub
 
@@ -101,11 +136,14 @@ end function
 
 sub renderVisibleItems()
     clearChannelNodes()
+    if m.channels.Count() = 0 then return
+
+    ensureFocusIsVisible()
     lastIndex = m.firstVisibleIndex + m.maxVisibleItems - 1
     if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
 
     for i = m.firstVisibleIndex to lastIndex
-        item = createChannelItem(m.channels[i], i - m.firstVisibleIndex)
+        item = createChannelItem(m.channels[i], i - m.firstVisibleIndex, i)
         m.channelsGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
@@ -113,44 +151,45 @@ sub renderVisibleItems()
     updateFocus()
 end sub
 
-function createChannelItem(channel as Object, visibleIndex as Integer) as Object
+function createChannelItem(channel as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
     item.translation = [0, visibleIndex * m.itemHeight]
+    item.id = "channelItem" + absoluteIndex.ToStr()
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
-    background.width = 860
-    background.height = 78
+    background.width = m.contentWidth
+    background.height = m.cardHeight
     background.color = "#111827"
     background.opacity = 0.86
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
     accent.width = 6
-    accent.height = 78
+    accent.height = m.cardHeight
     accent.color = "#009DFF"
     accent.opacity = 0.45
 
     logoBackground = CreateObject("roSGNode", "Rectangle")
     logoBackground.id = "logoBackground"
-    logoBackground.width = 58
-    logoBackground.height = 58
-    logoBackground.translation = [22, 10]
+    logoBackground.width = m.logoSize + 6
+    logoBackground.height = m.logoSize + 6
+    logoBackground.translation = [22, Int((m.cardHeight - (m.logoSize + 6)) / 2)]
     logoBackground.color = "#1F2937"
     logoBackground.opacity = 0.95
 
     logo = CreateObject("roSGNode", "Poster")
     logo.id = "channelLogo"
-    logo.width = 52
-    logo.height = 52
-    logo.translation = [25, 13]
+    logo.width = m.logoSize
+    logo.height = m.logoSize
+    logo.translation = [25, m.logoInset]
     logo.loadDisplayMode = "scaleToFit"
     logo.uri = getChannelLogo(channel)
 
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
-    label.width = 735
-    label.height = 78
+    label.width = m.contentWidth - 122
+    label.height = m.cardHeight
     label.translation = [100, 0]
     label.vertAlign = "center"
     label.color = "#F8FAFC"
@@ -206,7 +245,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         moveFocus(1)
         return true
     else if key = "OK" then
-        if m.channels.Count() > 0 then m.top.channelSelected = m.channels[m.focusIndex]
+        if m.channels.Count() > 0 and m.focusIndex >= 0 and m.focusIndex < m.channels.Count() then
+            m.top.channelSelected = m.channels[m.focusIndex]
+        end if
         return true
     end if
 
@@ -221,15 +262,36 @@ sub moveFocus(direction as Integer)
     if nextIndex >= m.channels.Count() then nextIndex = 0
     m.focusIndex = nextIndex
 
-    if m.focusIndex < m.firstVisibleIndex then
-        m.firstVisibleIndex = m.focusIndex
-        renderVisibleItems()
-    else if m.focusIndex >= m.firstVisibleIndex + m.maxVisibleItems then
-        m.firstVisibleIndex = m.focusIndex - m.maxVisibleItems + 1
+    oldFirstVisibleIndex = m.firstVisibleIndex
+    ensureFocusIsVisible()
+    if oldFirstVisibleIndex <> m.firstVisibleIndex then
         renderVisibleItems()
     else
         updateFocus()
     end if
+end sub
+
+sub ensureFocusIsVisible()
+    if m.channels.Count() = 0 then
+        m.focusIndex = 0
+        m.firstVisibleIndex = 0
+        return
+    end if
+
+    if m.focusIndex < 0 then m.focusIndex = 0
+    if m.focusIndex >= m.channels.Count() then m.focusIndex = m.channels.Count() - 1
+    if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
+
+    maxFirstIndex = m.channels.Count() - m.maxVisibleItems
+    if maxFirstIndex < 0 then maxFirstIndex = 0
+
+    if m.focusIndex < m.firstVisibleIndex then
+        m.firstVisibleIndex = m.focusIndex
+    else if m.focusIndex >= m.firstVisibleIndex + m.maxVisibleItems then
+        m.firstVisibleIndex = m.focusIndex - m.maxVisibleItems + 1
+    end if
+
+    if m.firstVisibleIndex > maxFirstIndex then m.firstVisibleIndex = maxFirstIndex
 end sub
 
 sub updateFocus()
