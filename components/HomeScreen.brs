@@ -5,14 +5,16 @@ sub Init()
     m.subtitle = m.top.FindNode("homeSubtitle")
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
+    m.seriesButton = m.top.FindNode("seriesButton")
     m.playlistButton = m.top.FindNode("playlistButton")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.playlistButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.playlistButton]
     m.focusIndex = 0
 
     m.liveTvButton.ObserveField("buttonSelected", "onLiveTvSelected")
     m.moviesButton.ObserveField("buttonSelected", "onMoviesSelected")
+    m.seriesButton.ObserveField("buttonSelected", "onSeriesSelected")
     m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
     configureLayout()
 end sub
@@ -34,11 +36,12 @@ sub configureLayout()
     m.subtitle.translation = [0, Int(height * 0.34)]
 
     m.liveTvButton.translation = [Int((width - 520) / 2), Int(height * 0.52)]
-    m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.64)]
-    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.76)]
+    m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.62)]
+    m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.72)]
+    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.82)]
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:MediumSystemFont"
-    m.connectionStatusLabel.translation = [0, Int(height * 0.84)]
+    m.connectionStatusLabel.translation = [0, Int(height * 0.92)]
 end sub
 
 sub show()
@@ -69,6 +72,10 @@ end sub
 
 sub onMoviesSelected()
     m.top.openMovieCategories = true
+end sub
+
+sub onSeriesSelected()
+    m.top.openSeriesCategories = true
 end sub
 
 sub onPlaylistSelected()
@@ -124,3 +131,10 @@ function getDisplayResolution() as Object
         height: displaySize.h
     }
 end function
+
+sub setSeriesCategoriesLoading(isLoading as Boolean)
+    if isLoading then
+        m.connectionStatusLabel.color = "#B8C3D6"
+        m.connectionStatusLabel.text = "Carregando categorias de séries..."
+    end if
+end sub

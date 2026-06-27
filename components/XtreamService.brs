@@ -29,6 +29,10 @@ sub executeRequest()
         m.top.result = getMovies()
     else if action = "getseries" then
         m.top.result = getSeries()
+    else if action = "getseriesinfo" then
+        m.top.result = getSeriesInfo()
+    else if action = "buildseriesstreamurl" then
+        m.top.result = buildSeriesStreamUrl()
     else
         m.top.result = buildFailure("Ação Xtream não suportada: " + m.top.action)
     end if
@@ -65,7 +69,17 @@ function getMovies() as Object
 end function
 
 function getSeries() as Object
-    return requestXtream("getSeries", "get_series")
+    categoryId = safeTrim(m.top.categoryId)
+    cacheKey = "getSeries"
+    if categoryId <> "" then cacheKey = cacheKey + ":" + categoryId
+    return requestXtream(cacheKey, "get_series")
+end function
+
+function getSeriesInfo() as Object
+    seriesId = safeTrim(m.top.seriesId)
+    cacheKey = "getSeriesInfo"
+    if seriesId <> "" then cacheKey = cacheKey + ":" + seriesId
+    return requestXtream(cacheKey, "get_series_info")
 end function
 
 
@@ -121,6 +135,32 @@ function buildMovieStreamUrl() as Object
     }
 end function
 
+function buildSeriesStreamUrl() as Object
+    credentials = getCredentials()
+    if not credentials.valid then
+        return buildFailure("Informe DNS, usuário e senha para reproduzir o episódio.")
+    end if
+
+    streamId = safeTrim(m.top.streamId)
+    if streamId = "" then
+        return buildFailure("Episódio sem identificador de reprodução.")
+    end if
+
+    extension = safeTrim(m.top.streamExtension)
+    if extension = "" then extension = "mp4"
+    if Left(extension, 1) = "." then extension = Mid(extension, 2)
+
+    return {
+        success: true,
+        connected: true,
+        request: "buildSeriesStreamUrl",
+        data: {
+            url: credentials.dns + "/series/" + escapePathValue(credentials.username) + "/" + escapePathValue(credentials.password) + "/" + escapePathValue(streamId) + "." + escapePathValue(extension)
+        },
+        message: "URL de reprodução montada com sucesso."
+    }
+end function
+
 function requestXtream(cacheKey as String, apiAction as String) as Object
     print "DEBUG XtreamService: início da requisição " + cacheKey
     credentials = getCredentials()
@@ -133,8 +173,11 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     end if
 
     url = buildPlayerApiUrl(credentials.dns, credentials.username, credentials.password, apiAction)
-    if (apiAction = "get_live_streams" or apiAction = "get_vod_streams") and safeTrim(m.top.categoryId) <> "" then
+    if (apiAction = "get_live_streams" or apiAction = "get_vod_streams" or apiAction = "get_series") and safeTrim(m.top.categoryId) <> "" then
         url = url + "&category_id=" + escapeQueryValue(m.top.categoryId)
+    end if
+    if apiAction = "get_series_info" and safeTrim(m.top.seriesId) <> "" then
+        url = url + "&series_id=" + escapeQueryValue(m.top.seriesId)
     end if
     httpResponse = sendHttpGet(url)
     if not httpResponse.success then
