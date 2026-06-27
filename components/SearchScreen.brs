@@ -18,7 +18,7 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
-    m.maxRenderedResults = 40
+    m.resultBatchSize = 20 : m.renderedResultLimit = 20
     m.searchMode = "live"
     m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
     m.keyNodes = [] : m.itemNodes = []
@@ -48,15 +48,10 @@ sub configureLayout()
     m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 34]
     m.keyGap = 8
     m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.keyH = 34
-    m.cardWidth = 144 : m.cardHeight = 166 : m.cardGap = 16 : m.cardRowGap = 14
-    if m.screenH <= 720 then m.cardWidth = 116 : m.cardHeight = 136 : m.cardGap = 12 : m.cardRowGap = 10 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10)
-    m.gridColumns = Int((m.contentWidth + m.cardGap) / (m.cardWidth + m.cardGap))
-    if m.gridColumns < 1 then m.gridColumns = 1
-    if m.gridColumns > 6 then m.gridColumns = 6
-    m.gridRows = 4
-    if m.screenH <= 720 then m.gridRows = 3
-    m.visibleItemCount = m.gridColumns * m.gridRows
-    if m.visibleItemCount > 24 then m.visibleItemCount = 24
+    m.cardGap = 16 : m.cardHeight = 196
+    m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
+    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
+    m.visibleItemCount = 7
 end sub
 
 sub show(mode as Dynamic)
@@ -154,7 +149,7 @@ sub applyFilter()
     if m.searchMode = "live" then addMatches("channel", m.channels, query)
     if m.searchMode = "movies" then addMatches("movie", m.movies, query)
     if m.searchMode = "series" then addMatches("series", m.series, query)
-    m.selectedIndex = 0 : m.firstVisibleIndex = 0
+    m.selectedIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.resultBatchSize
     if m.results.Count() = 0 then
         clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado. Tente outro nome."
     else
@@ -194,6 +189,8 @@ sub renderResults()
     if m.results.Count() = 0 then return
     updateResultWindow()
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
+    maxLoadedIndex = getLoadedResultCount() - 1
+    if lastIndex > maxLoadedIndex then lastIndex = maxLoadedIndex
     if lastIndex >= m.results.Count() then lastIndex = m.results.Count() - 1
     for i = m.firstVisibleIndex to lastIndex
         node = createCardResultNode(m.results[i], i - m.firstVisibleIndex)
@@ -202,9 +199,7 @@ sub renderResults()
 end sub
 
 function createCardResultNode(result as Object, visualIndex as Integer) as Object
-    col = visualIndex mod m.gridColumns
-    row = Int(visualIndex / m.gridColumns)
-    group = CreateObject("roSGNode", "Group") : group.translation = [col * (m.cardWidth + m.cardGap), row * (m.cardHeight + m.cardRowGap)]
+    group = CreateObject("roSGNode", "Group") : group.translation = [visualIndex * (m.cardWidth + m.cardGap), 0]
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.cardWidth : bg.height = m.cardHeight : bg.color = "#101827" : bg.opacity = 0.92
     imageBg = CreateObject("roSGNode", "Rectangle") : imageBg.width = m.cardWidth - 18 : imageBg.height = m.cardHeight - 70 : imageBg.translation = [9, 9] : imageBg.color = "#1C2940"
     poster = CreateObject("roSGNode", "Poster") : poster.id = "itemImage" : poster.width = m.cardWidth - 18 : poster.height = m.cardHeight - 70 : poster.translation = [9, 9] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getItemImage(result.item)
@@ -244,15 +239,7 @@ sub moveVertical(direction as Integer)
             moveZone(direction)
         end if
     else if m.focusZone = "results" and m.results.Count() > 0 then
-        nextIndex = m.selectedIndex + (direction * m.gridColumns)
-        if nextIndex >= 0 and nextIndex < m.results.Count() then
-            m.selectedIndex = nextIndex
-            updateResultWindow()
-            renderResults()
-            updateResultFocus()
-        else
-            moveZone(direction)
-        end if
+        moveZone(direction)
     else
         moveZone(direction)
     end if
@@ -295,8 +282,9 @@ sub moveHorizontal(direction as Integer)
         updateKeyboardFocus()
     else if m.focusZone = "results" and m.results.Count() > 0 then
         m.selectedIndex = m.selectedIndex + direction
-        if m.selectedIndex < 0 then m.selectedIndex = m.results.Count() - 1
-        if m.selectedIndex >= m.results.Count() then m.selectedIndex = 0
+        if m.selectedIndex < 0 then m.selectedIndex = 0
+        if m.selectedIndex >= getLoadedResultCount() then m.selectedIndex = getLoadedResultCount() - 1
+        maybeLoadMoreResults()
         updateResultWindow()
         renderResults()
         updateResultFocus()
@@ -381,20 +369,32 @@ sub updateResultFocus()
 end sub
 
 sub updateResultWindow()
-    if m.results.Count() = 0 then
+    loadedCount = getLoadedResultCount()
+    if loadedCount = 0 then
         m.selectedIndex = 0 : m.firstVisibleIndex = 0
         return
     end if
     if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= m.results.Count() then m.selectedIndex = m.results.Count() - 1
-    row = Int(m.selectedIndex / m.gridColumns)
-    firstRow = Int(m.firstVisibleIndex / m.gridColumns)
-    if row < firstRow then m.firstVisibleIndex = row * m.gridColumns
-    if row >= firstRow + m.gridRows then m.firstVisibleIndex = (row - m.gridRows + 1) * m.gridColumns
-    maxFirst = m.results.Count() - m.visibleItemCount
+    if m.selectedIndex >= loadedCount then m.selectedIndex = loadedCount - 1
+    if m.selectedIndex < m.firstVisibleIndex then m.firstVisibleIndex = m.selectedIndex
+    if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
+    maxFirst = loadedCount - m.visibleItemCount
     if maxFirst < 0 then maxFirst = 0
     if m.firstVisibleIndex > maxFirst then m.firstVisibleIndex = maxFirst
     if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
+end sub
+
+function getLoadedResultCount() as Integer
+    if m.results.Count() < m.renderedResultLimit then return m.results.Count()
+    return m.renderedResultLimit
+end function
+
+sub maybeLoadMoreResults()
+    if m.results.Count() <= m.renderedResultLimit then return
+    if m.selectedIndex >= m.renderedResultLimit - 4 then
+        m.renderedResultLimit = m.renderedResultLimit + m.resultBatchSize
+        if m.renderedResultLimit > m.results.Count() then m.renderedResultLimit = m.results.Count()
+    end if
 end sub
 
 sub openSelected()
