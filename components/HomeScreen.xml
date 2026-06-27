@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HomeScreen" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
+
+    <children>
+        <Poster
+            id="backgroundPoster"
+            uri="pkg:/images/background.jpg"
+            translation="[0, 0]"
+            loadDisplayMode="scaleToFill" />
+
+        <!-- Dark readability layer over the background image. -->
+        <Rectangle
+            id="readabilityOverlay"
+            color="#000000"
+            opacity="0.62"
+            translation="[0, 0]" />
+
+        <Poster
+            id="logoPoster"
+            uri="pkg:/images/logo.png"
+            width="236"
+            height="74"
+            translation="[72, 44]"
+            loadDisplayMode="scaleToFit" />
+
+        <Label
+            id="taglineLabel"
+            text="Entretenimento em uma experiência Roku moderna"
+            color="#CBD5E1"
+            translation="[74, 132]" />
+
+        <LayoutGroup
+            id="menuLayout"
+            layoutDirection="vert"
+            itemSpacings="[22]"
+            translation="[96, 258]">
+            <HomeButton id="liveButton" labelText="TV AO VIVO" />
+            <HomeButton id="moviesButton" labelText="FILMES" />
+            <HomeButton id="seriesButton" labelText="SÉRIES" />
+            <HomeButton id="settingsButton" labelText="CONFIGURAÇÕES" />
+        </LayoutGroup>
+
+        <Label
+            id="hintLabel"
+            text="Use ↑ ↓ no controle remoto e pressione OK para selecionar"
+            color="#94A3B8"
+            translation="[100, 650]" />
+    </children>
+</component>

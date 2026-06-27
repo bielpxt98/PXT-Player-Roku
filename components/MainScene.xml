@@ -3,16 +3,6 @@
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
-        <Rectangle
-            id="splashBackground"
-            color="#000000"
-            translation="[0, 0]" />
-
-        <Label
-            id="splashTitle"
-            text="PXT PLAYER"
-            color="#FFFFFF"
-            horizAlign="center"
-            vertAlign="center" />
+        <HomeScreen id="homeScreen" />
     </children>
 </component>
