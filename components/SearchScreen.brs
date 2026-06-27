@@ -18,11 +18,11 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
-    m.maxResults = 40
+    m.maxRenderedResults = 40
     m.searchMode = "live"
     m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
     m.keyNodes = [] : m.itemNodes = []
-    m.focusZone = "keyboard" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
+    m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     configureLayout()
 end sub
 
@@ -41,7 +41,7 @@ sub configureLayout()
     m.keyboardTop = m.screenH - 260
     if m.screenH <= 720 then m.keyboardTop = m.screenH - 210
     m.inputBackground.translation = [m.marginX, m.keyboardTop - 58] : m.inputBackground.width = m.contentWidth : m.inputBackground.height = 46
-    m.searchInput.translation = [m.marginX + 14, m.keyboardTop - 54] : m.searchInput.width = m.contentWidth - 28 : m.searchInput.height = 40 : m.searchInput.visible = false
+    m.searchInput.translation = [m.marginX + 14, m.keyboardTop - 54] : m.searchInput.width = 2 : m.searchInput.height = 2 : m.searchInput.visible = true
     m.queryMirror.translation = [m.marginX + 20, m.keyboardTop - 49] : m.queryMirror.width = m.contentWidth - 40 : m.queryMirror.height = 34 : m.queryMirror.font = "font:MediumBoldSystemFont"
     m.statusLabel.translation = [m.marginX, m.keyboardTop - 104] : m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont"
     m.keyboardGroup.translation = [m.marginX, m.keyboardTop]
@@ -52,9 +52,11 @@ sub configureLayout()
     if m.screenH <= 720 then m.cardWidth = 116 : m.cardHeight = 136 : m.cardGap = 12 : m.cardRowGap = 10 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10)
     m.gridColumns = Int((m.contentWidth + m.cardGap) / (m.cardWidth + m.cardGap))
     if m.gridColumns < 1 then m.gridColumns = 1
-    m.gridRows = 2
+    if m.gridColumns > 6 then m.gridColumns = 6
+    m.gridRows = 4
+    if m.screenH <= 720 then m.gridRows = 3
     m.visibleItemCount = m.gridColumns * m.gridRows
-    if m.visibleItemCount > 40 then m.visibleItemCount = 40
+    if m.visibleItemCount > 24 then m.visibleItemCount = 24
 end sub
 
 sub show(mode as Dynamic)
@@ -63,9 +65,10 @@ sub show(mode as Dynamic)
     configureLayout()
     configureSearchLabels()
     m.top.visible = true : m.top.SetFocus(true)
+    m.searchInput.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
     m.searchInput.text = "" : m.queryMirror.text = "Texto digitado: "
-    m.focusZone = "keyboard" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
+    m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
     applyFilter()
 end sub
@@ -160,17 +163,28 @@ sub applyFilter()
 end sub
 
 sub addMatches(kind as String, items as Dynamic, query as String)
-    entries = []
+    startsWithEntries = []
+    containsEntries = []
     for each item in normalizeArray(items)
         name = getItemName(item)
         meta = getItemMeta(item)
-        if query = "" or Instr(1, LCase(name + " " + meta), query) > 0 then
-            entries.Push({ sortKey: LCase(name), type: kind, title: name, meta: meta, item: item })
+        lowerName = LCase(name)
+        if query = "" then
+            startsWithEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
+        else if Left(lowerName, Len(query)) = query then
+            startsWithEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
+        else if Instr(1, lowerName, query) > 0 then
+            containsEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
         end if
     end for
-    entries.SortBy("sortKey")
+    startsWithEntries.SortBy("sortKey")
+    containsEntries.SortBy("sortKey")
+    appendSearchEntries(startsWithEntries)
+    appendSearchEntries(containsEntries)
+end sub
+
+sub appendSearchEntries(entries as Object)
     for each entry in entries
-        if m.results.Count() >= m.maxResults then exit for
         m.results.Push({ type: entry.type, title: entry.title, meta: entry.meta, item: entry.item })
     end for
 end sub
@@ -213,7 +227,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 sub moveVertical(direction as Integer)
-    if m.focusZone = "keyboard" then
+    if m.focusZone = "input" then
+        moveZone(direction)
+    else if m.focusZone = "keyboard" then
+        if direction < 0 and m.results.Count() > 0 then
+            m.focusZone = "results"
+            updateAllFocus()
+            return
+        end if
         nextRow = m.selectedKeyRow + direction
         if nextRow >= 0 and nextRow < m.keyRows.Count() then
             m.selectedKeyRow = nextRow
@@ -239,16 +260,30 @@ end sub
 
 sub moveZone(direction as Integer)
     if direction < 0 then
-        if m.focusZone = "keyboard" and m.results.Count() > 0 then
-            m.focusZone = "results"
+        if m.focusZone = "keyboard" then
+            if m.results.Count() > 0 then
+                m.focusZone = "results"
+            else
+                m.focusZone = "input"
+            end if
+        else if m.focusZone = "input" then
+            if m.results.Count() > 0 then
+                m.focusZone = "results"
+            else
+                m.focusZone = "keyboard"
+            end if
         else
             m.focusZone = "keyboard"
         end if
     else
         if m.focusZone = "results" then
             m.focusZone = "keyboard"
+        else if m.focusZone = "input" then
+            m.focusZone = "keyboard"
         else if m.results.Count() > 0 then
             m.focusZone = "results"
+        else
+            m.focusZone = "input"
         end if
     end if
     updateAllFocus()
@@ -277,6 +312,7 @@ end sub
 
 sub activateFocused()
     if m.focusZone = "results" then openSelected() : return
+    if m.focusZone = "input" then m.searchInput.SetFocus(true) : return
     keyLabel = m.keyRows[m.selectedKeyRow][m.selectedKeyCol]
     if keyLabel = "APAGAR" then
         t = m.searchInput.text : if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
@@ -311,7 +347,12 @@ end function
 
 sub updateAllFocus()
     updateKeyboardFocus() : updateResultFocus()
-    if m.focusZone = "keyboard" then m.inputBackground.color = "#081E33" else m.inputBackground.color = "#0B1220"
+    if m.focusZone = "input" then m.searchInput.SetFocus(true)
+    if m.focusZone = "input" then
+        m.inputBackground.color = "#063B66"
+    else
+        m.inputBackground.color = "#0B1220"
+    end if
 end sub
 
 sub updateKeyboardFocus()

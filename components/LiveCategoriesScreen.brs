@@ -7,12 +7,9 @@ sub Init()
     m.statusLabel = m.top.FindNode("statusLabel")
     m.categoriesPanel = m.top.FindNode("categoriesPanel")
     m.channelsPanel = m.top.FindNode("channelsPanel")
-    m.previewPanel = m.top.FindNode("previewPanel")
     m.categoriesTitle = m.top.FindNode("categoriesTitle")
     m.channelsTitle = m.top.FindNode("channelsTitle")
-    m.previewTitle = m.top.FindNode("previewTitle")
     m.emptyChannelsLabel = m.top.FindNode("emptyChannelsLabel")
-    m.emptyPreviewLabel = m.top.FindNode("emptyPreviewLabel")
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
@@ -82,11 +79,9 @@ sub configureLayout()
     m.subtitle.translation = [0, m.subtitleY]
 
     m.columnGap = 14
-    m.categoryPanelWidth = Int(m.contentWidth * 0.30)
-    m.channelPanelWidth = Int(m.contentWidth * 0.32)
-    m.previewPanelWidth = m.contentWidth - m.categoryPanelWidth - m.channelPanelWidth - (m.columnGap * 2)
+    m.categoryPanelWidth = Int(m.contentWidth * 0.36)
+    m.channelPanelWidth = m.contentWidth - m.categoryPanelWidth - m.columnGap
     m.channelPanelX = m.contentX + m.categoryPanelWidth + m.columnGap
-    m.previewPanelX = m.channelPanelX + m.channelPanelWidth + m.columnGap
 
     m.statusLabel.width = m.categoryPanelWidth
     m.statusLabel.font = "font:MediumSystemFont"
@@ -94,18 +89,13 @@ sub configureLayout()
 
     layoutPanel(m.categoriesPanel, m.contentX, m.listY, m.categoryPanelWidth, m.listHeight)
     layoutPanel(m.channelsPanel, m.channelPanelX, m.listY, m.channelPanelWidth, m.listHeight)
-    layoutPanel(m.previewPanel, m.previewPanelX, m.listY, m.previewPanelWidth, m.listHeight)
 
     setupColumnTitle(m.categoriesTitle, m.contentX, m.listY, m.categoryPanelWidth)
     setupColumnTitle(m.channelsTitle, m.channelPanelX, m.listY, m.channelPanelWidth)
-    setupColumnTitle(m.previewTitle, m.previewPanelX, m.listY, m.previewPanelWidth)
 
     m.emptyChannelsLabel.width = m.channelPanelWidth
     m.emptyChannelsLabel.font = "font:SmallSystemFont"
     m.emptyChannelsLabel.translation = [m.channelPanelX, m.listY + Int(m.listHeight / 2)]
-    m.emptyPreviewLabel.width = m.previewPanelWidth
-    m.emptyPreviewLabel.font = "font:SmallSystemFont"
-    m.emptyPreviewLabel.translation = [m.previewPanelX, m.listY + Int(m.listHeight / 2)]
 
     m.categoriesGroup.translation = [m.contentX + 14, m.listY + 54]
 
