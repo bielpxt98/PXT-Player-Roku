@@ -98,6 +98,7 @@ sub show(category as Dynamic)
 
     configureLayout()
     ensureFocusIsVisible()
+    logInitialSelection()
     renderVisibleItems()
     m.top.visible = true
     m.top.SetFocus(true)
@@ -105,6 +106,17 @@ end sub
 
 sub hide()
     m.top.visible = false
+end sub
+
+sub resetSelection()
+    m.selectedIndex = 0
+    m.firstVisibleIndex = 0
+    logInitialSelection()
+end sub
+
+sub logInitialSelection()
+    print "INIT selectedIndex="; m.selectedIndex
+    print "INIT firstVisibleIndex="; m.firstVisibleIndex
 end sub
 
 sub setLoading(isLoading as Boolean)
@@ -119,8 +131,7 @@ end sub
 
 sub setChannels(channels as Object)
     m.channels = normalizeChannels(channels)
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
+    resetSelection()
 
     if m.channels.Count() = 0 then
         showMessage("Nenhum canal foi encontrado nesta categoria.")
@@ -134,9 +145,8 @@ end sub
 sub showMessage(message as String)
     clearChannelNodes()
     m.channels = []
+    resetSelection()
     m.statusLabel.text = message
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
     m.statusLabel.color = "#FFCC66"
 end sub
 
@@ -151,8 +161,6 @@ sub renderVisibleItems()
     if m.channels.Count() = 0 then return
 
     ensureFocusIsVisible()
-    print "selectedIndex="; m.selectedIndex
-    print "firstVisibleIndex="; m.firstVisibleIndex
 
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
@@ -268,7 +276,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
-            print "opening item="; getChannelLogTitle(m.channels[m.selectedIndex])
+            print "OK opening selectedIndex="; m.selectedIndex
+            print "OK opening item="; getChannelLogTitle(m.channels[m.selectedIndex])
             m.top.channelSelected = m.channels[m.selectedIndex]
         end if
         return true

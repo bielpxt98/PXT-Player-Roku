@@ -73,6 +73,7 @@ sub onOpenLiveCategoriesRequested()
     m.loginScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
+    m.liveCategoriesScreen.callFunc("resetSelection")
     m.liveCategoriesScreen.callFunc("show")
 
     if not hasAccount(m.account) then
@@ -126,6 +127,7 @@ sub onLiveCategorySelected()
     m.liveChannelsLoading = true
     m.liveCategoriesScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("resetSelection")
     m.liveChannelsScreen.callFunc("show", category)
     m.liveChannelsScreen.callFunc("setLoading", true)
     loadLiveChannels(category)
