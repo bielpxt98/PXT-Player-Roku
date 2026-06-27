@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SeriesDetailScreen" extends="Group">
+    <interface>
+        <function name="show" />
+        <function name="hide" />
+        <function name="setLoading" />
+        <function name="setDetails" />
+        <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="playRequested" type="boolean" alwaysNotify="true" />
+        <field id="favoriteToggled" type="assocarray" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/SeriesDetailScreen.brs" />
+    <children>
+        <Rectangle id="background" color="#000000" translation="[0,0]" />
+        <Poster id="poster" loadDisplayMode="scaleToFit" />
+        <Label id="titleLabel" color="#FFFFFF" />
+        <Label id="ratingLabel" color="#FFD166" />
+        <Label id="metaLabel" color="#B8C3D6" />
+        <Label id="directorLabel" color="#E5E7EB" />
+        <Label id="castLabel" color="#E5E7EB" wrap="true" />
+        <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
+        <Label id="synopsisLabel" color="#D1D5DB" wrap="true" />
+        <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" />
+        <Group id="buttonsGroup">
+            <Label id="watchButton" text="▶ ASSISTIR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="favoriteButton" text="★ FAVORITAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+        </Group>
+    </children>
+</component>

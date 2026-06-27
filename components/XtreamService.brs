@@ -27,6 +27,8 @@ sub executeRequest()
         m.top.result = buildMovieStreamUrl()
     else if action = "getmovies" then
         m.top.result = getMovies()
+    else if action = "getmovieinfo" then
+        m.top.result = getMovieInfo()
     else if action = "getseries" then
         m.top.result = getSeries()
     else if action = "getseriesinfo" then
@@ -66,6 +68,13 @@ function getMovies() as Object
     cacheKey = "getMovies"
     if categoryId <> "" then cacheKey = cacheKey + ":" + categoryId
     return requestXtream(cacheKey, "get_vod_streams")
+end function
+
+function getMovieInfo() as Object
+    streamId = safeTrim(m.top.streamId)
+    cacheKey = "getMovieInfo"
+    if streamId <> "" then cacheKey = cacheKey + ":" + streamId
+    return requestXtream(cacheKey, "get_vod_info")
 end function
 
 function getSeries() as Object
@@ -178,6 +187,9 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     end if
     if apiAction = "get_series_info" and safeTrim(m.top.seriesId) <> "" then
         url = url + "&series_id=" + escapeQueryValue(m.top.seriesId)
+    end if
+    if apiAction = "get_vod_info" and safeTrim(m.top.streamId) <> "" then
+        url = url + "&vod_id=" + escapeQueryValue(m.top.streamId)
     end if
     httpResponse = sendHttpGet(url)
     if not httpResponse.success then
