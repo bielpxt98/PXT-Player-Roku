@@ -194,13 +194,13 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     httpResponse = sendHttpGet(url)
     if not httpResponse.success then
         print "DEBUG XtreamService: erro na requisição " + cacheKey + " - " + httpResponse.message
-        return httpResponse
+        return withRequestName(httpResponse, cacheKey)
     end if
 
     parsedResponse = validateJsonResponse(httpResponse.body, apiAction)
     if not parsedResponse.success then
         print "DEBUG XtreamService: erro na validação " + cacheKey + " - " + parsedResponse.message
-        return parsedResponse
+        return withRequestName(parsedResponse, cacheKey)
     end if
 
     print "DEBUG XtreamService: sucesso na requisição " + cacheKey
@@ -370,4 +370,19 @@ function buildFailure(message as String) as Object
         data: invalid,
         message: message
     }
+end function
+
+function withRequestName(result as Dynamic, requestName as String) as Object
+    if result = invalid or Type(result) <> "roAssociativeArray" then
+        return {
+            success: false,
+            connected: false,
+            request: requestName,
+            data: invalid,
+            message: "Não foi possível concluir a requisição Xtream."
+        }
+    end if
+
+    result.request = requestName
+    return result
 end function
