@@ -27,10 +27,14 @@ sub configureLayout()
     m.gridW = w - m.gridX - m.margin : m.gridH = m.panelH - 54
     m.categoryX = m.margin + 18 : m.categoryY = m.panelY + 72
     m.categoryW = m.leftW - 36 : m.categoryItemH = 52
-    m.posterW = 150 : m.posterH = 220 : m.posterGapX = 28 : m.posterGapY = 34
-    if h <= 720 then m.posterW = 120 : m.posterH = 176 : m.posterGapX = 20 : m.posterGapY = 24 : m.categoryItemH = 44
+    m.posterW = 150 : m.posterH = 220
+    m.posterGapX = 56 : m.posterGapY = 42
+    m.titleOffsetY = 10 : m.titleH = 42
+    if h <= 720 then m.posterW = 104 : m.posterH = 152 : m.posterGapX = 48 : m.posterGapY = 16 : m.titleOffsetY = 6 : m.titleH = 30 : m.categoryItemH = 44
+    m.itemH = m.posterH + m.titleOffsetY + m.titleH + m.posterGapY
     m.columns = Int((m.gridW + m.posterGapX) / (m.posterW + m.posterGapX)) : if m.columns < 1 then m.columns = 1
     if m.columns > 4 then m.columns = 4
+    if h <= 720 and m.columns > 3 then m.columns = 3
     m.rows = 3
     m.visibleItemCount = m.columns * m.rows
     if m.visibleItemCount > 12 then m.visibleItemCount = 12
@@ -134,10 +138,10 @@ end sub
 
 function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group") : col = visualIndex mod m.columns : row = Int(visualIndex / m.columns)
-    item.translation = [col * (m.posterW + m.posterGapX), row * (m.posterH + m.posterGapY)]
+    item.translation = [col * (m.posterW + m.posterGapX), row * m.itemH]
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#063B66" : bg.opacity = 0.0
     poster = CreateObject("roSGNode", "Poster") : poster.id = "poster" : poster.width = m.posterW : poster.height = m.posterH : poster.loadDisplayMode = "scaleToFill" : poster.uri = getSeriesCover(itemData)
-    label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [0, m.posterH + 6] : label.width = m.posterW : label.height = 28 : label.font = "font:SmallSystemFont" : label.color = "#DDE6F3" : label.text = getSeriesName(itemData) : label.horizAlign = "center"
+    label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [0, m.posterH + m.titleOffsetY] : label.width = m.posterW : label.height = m.titleH : label.font = "font:SmallSystemFont" : label.color = "#DDE6F3" : label.text = getSeriesName(itemData) : label.horizAlign = "center" : label.vertAlign = "top"
     item.AppendChild(bg) : item.AppendChild(poster) : item.AppendChild(label) : return item
 end function
 
