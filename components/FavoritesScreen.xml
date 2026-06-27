@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="FavoritesScreen" extends="Group">
+    <interface>
+        <function name="show" />
+        <function name="hide" />
+        <function name="setFavorites" />
+        <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="favoriteSelected" type="assocarray" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/FavoritesScreen.brs" />
+    <children>
+        <Rectangle id="background" color="#000000" translation="[0, 0]" />
+        <Label id="title" text="FAVORITOS" color="#FFFFFF" horizAlign="center" />
+        <Label id="subtitle" text="Itens salvos neste dispositivo" color="#B8C3D6" horizAlign="center" />
+        <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
+        <Group id="favoritesGroup" />
+        <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para abrir • Voltar para Home" color="#7D8CA3" horizAlign="center" />
+    </children>
+</component>

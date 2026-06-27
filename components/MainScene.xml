@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="MainScene" extends="Scene">
     <script type="text/brightscript" uri="pkg:/source/PlaylistStorage.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FavoritesStorage.brs" />
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
         <HomeScreen id="homeScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
+        <FavoritesScreen id="favoritesScreen" visible="false" />
         <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
         <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
         <LivePlayerScreen id="livePlayerScreen" visible="false" />

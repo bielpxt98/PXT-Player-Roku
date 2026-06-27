@@ -6,15 +6,17 @@ sub Init()
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
+    m.favoritesButton = m.top.FindNode("favoritesButton")
     m.playlistButton = m.top.FindNode("playlistButton")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.playlistButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.playlistButton]
     m.focusIndex = 0
 
     m.liveTvButton.ObserveField("buttonSelected", "onLiveTvSelected")
     m.moviesButton.ObserveField("buttonSelected", "onMoviesSelected")
     m.seriesButton.ObserveField("buttonSelected", "onSeriesSelected")
+    m.favoritesButton.ObserveField("buttonSelected", "onFavoritesSelected")
     m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
     configureLayout()
 end sub
@@ -35,10 +37,11 @@ sub configureLayout()
     m.subtitle.font = "font:MediumSystemFont"
     m.subtitle.translation = [0, Int(height * 0.34)]
 
-    m.liveTvButton.translation = [Int((width - 520) / 2), Int(height * 0.52)]
-    m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.62)]
-    m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.72)]
-    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.82)]
+    m.liveTvButton.translation = [Int((width - 520) / 2), Int(height * 0.46)]
+    m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.56)]
+    m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.66)]
+    m.favoritesButton.translation = [Int((width - 520) / 2), Int(height * 0.76)]
+    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.86)]
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:MediumSystemFont"
     m.connectionStatusLabel.translation = [0, Int(height * 0.92)]
@@ -76,6 +79,10 @@ end sub
 
 sub onSeriesSelected()
     m.top.openSeriesCategories = true
+end sub
+
+sub onFavoritesSelected()
+    m.top.openFavorites = true
 end sub
 
 sub onPlaylistSelected()

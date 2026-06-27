@@ -9,6 +9,7 @@
         <function name="resetSelection" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="seriesSelected" type="assocarray" alwaysNotify="true" />
+            <field id="seriesFavoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesListScreen.brs" />
     <children>
@@ -17,6 +18,6 @@
         <Label id="subtitle" text="Séries" color="#B8C3D6" horizAlign="center" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="seriesGroup" />
-        <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para selecionar • Voltar para categorias" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para selecionar • * favoritar • Voltar para categorias" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

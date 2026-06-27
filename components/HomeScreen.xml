@@ -11,6 +11,7 @@
         <field id="openLiveCategories" type="boolean" alwaysNotify="true" />
         <field id="openMovieCategories" type="boolean" alwaysNotify="true" />
         <field id="openSeriesCategories" type="boolean" alwaysNotify="true" />
+        <field id="openFavorites" type="boolean" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
@@ -20,6 +21,7 @@
         <Button id="liveTvButton" text="TV AO VIVO" minWidth="520" translation="[0, 0]" />
         <Button id="moviesButton" text="FILMES" minWidth="520" translation="[0, 0]" />
         <Button id="seriesButton" text="SÉRIES" minWidth="520" translation="[0, 0]" />
+        <Button id="favoritesButton" text="FAVORITOS" minWidth="520" translation="[0, 0]" />
         <Button id="playlistButton" text="LISTA DE REPRODUÇÃO" minWidth="520" translation="[0, 0]" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />
     </children>
