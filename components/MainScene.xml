@@ -4,6 +4,7 @@
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
+        <Poster id="backgroundImage" uri="pkg:/images/background.jpeg" width="1920" height="1080" />
         <HomeScreen id="homeScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
         <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
