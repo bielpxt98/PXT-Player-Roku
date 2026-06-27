@@ -10,6 +10,8 @@ sub Init()
     m.searchInput.ObserveField("text", "onSearchTextChanged")
     m.queryMirror = m.top.FindNode("queryMirror")
     m.statusLabel = m.top.FindNode("statusLabel")
+    m.searchDebounceTimer = m.top.FindNode("searchDebounceTimer")
+    m.searchDebounceTimer.ObserveField("fire", "onSearchDebounceFire")
     m.keyboardGroup = m.top.FindNode("keyboardGroup")
     m.resultsTitle = m.top.FindNode("resultsTitle")
     m.resultsGroup = m.top.FindNode("resultsGroup")
@@ -42,9 +44,12 @@ sub configureLayout()
     m.resultsGroup.translation = [m.marginX, 510]
     m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 54]
     m.keyW = Int((m.contentWidth - 9 * 10) / 10) : m.keyH = 42 : m.keyGap = 10
-    m.cardWidth = 154 : m.cardHeight = 190 : m.cardGap = 22
-    if m.screenH <= 720 then m.cardWidth = 124 : m.cardHeight = 152 : m.cardGap = 16 : m.keyH = 34
-    m.visibleItemCount = 10
+    m.cardWidth = 156 : m.cardHeight = 184 : m.cardGap = 18 : m.cardRowGap = 18
+    if m.screenH <= 720 then m.cardWidth = 128 : m.cardHeight = 148 : m.cardGap = 14 : m.cardRowGap = 14 : m.keyH = 34
+    m.gridColumns = Int((m.contentWidth + m.cardGap) / (m.cardWidth + m.cardGap))
+    if m.gridColumns < 1 then m.gridColumns = 1
+    m.gridRows = 2
+    m.visibleItemCount = m.gridColumns * m.gridRows
 end sub
 
 sub show(mode as Dynamic)
@@ -53,6 +58,7 @@ sub show(mode as Dynamic)
     configureLayout()
     configureSearchLabels()
     m.top.visible = true : m.top.SetFocus(true) : m.searchInput.SetFocus(true)
+    m.searchDebounceTimer.control = "stop"
     m.searchInput.text = "" : m.queryMirror.text = ""
     m.focusZone = "keyboard" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
@@ -127,6 +133,11 @@ end sub
 
 sub onSearchTextChanged()
     m.queryMirror.text = m.searchInput.text
+    m.searchDebounceTimer.control = "stop"
+    m.searchDebounceTimer.control = "start"
+end sub
+
+sub onSearchDebounceFire()
     applyFilter()
 end sub
 
@@ -149,7 +160,7 @@ end sub
 
 sub addMatches(kind as String, items as Dynamic, query as String)
     for each item in normalizeArray(items)
-        if m.results.Count() >= 10 then exit for
+        if m.results.Count() >= m.visibleItemCount then exit for
         name = getItemName(item)
         meta = getItemMeta(item)
         if Instr(1, LCase(name + " " + meta), query) > 0 then m.results.Push({ type: kind, title: name, meta: meta, item: item })
@@ -166,7 +177,9 @@ sub renderResults()
 end sub
 
 function createCardResultNode(result as Object, visualIndex as Integer) as Object
-    group = CreateObject("roSGNode", "Group") : group.translation = [visualIndex * (m.cardWidth + m.cardGap), 0]
+    col = visualIndex mod m.gridColumns
+    row = Int(visualIndex / m.gridColumns)
+    group = CreateObject("roSGNode", "Group") : group.translation = [col * (m.cardWidth + m.cardGap), row * (m.cardHeight + m.cardRowGap)]
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.cardWidth : bg.height = m.cardHeight : bg.color = "#101827" : bg.opacity = 0.92
     imageBg = CreateObject("roSGNode", "Rectangle") : imageBg.width = m.cardWidth - 18 : imageBg.height = m.cardHeight - 70 : imageBg.translation = [9, 9] : imageBg.color = "#1C2940"
     poster = CreateObject("roSGNode", "Poster") : poster.id = "itemImage" : poster.width = m.cardWidth - 18 : poster.height = m.cardHeight - 70 : poster.translation = [9, 9] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getItemImage(result.item)
@@ -179,13 +192,37 @@ end function
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then m.top.backRequested = true : return true
-    if key = "up" then moveZone(-1) : return true
-    if key = "down" then moveZone(1) : return true
+    if key = "up" then moveVertical(-1) : return true
+    if key = "down" then moveVertical(1) : return true
     if key = "left" then moveHorizontal(-1) : return true
     if key = "right" then moveHorizontal(1) : return true
     if key = "OK" then activateFocused() : return true
+    if handleRokuKeyboardKey(key) then return true
     return false
 end function
+
+sub moveVertical(direction as Integer)
+    if m.focusZone = "keyboard" then
+        nextRow = m.selectedKeyRow + direction
+        if nextRow >= 0 and nextRow < m.keyRows.Count() then
+            m.selectedKeyRow = nextRow
+            if m.selectedKeyCol >= m.keyRows[m.selectedKeyRow].Count() then m.selectedKeyCol = m.keyRows[m.selectedKeyRow].Count() - 1
+            updateKeyboardFocus()
+        else
+            moveZone(direction)
+        end if
+    else if m.focusZone = "results" and m.results.Count() > 0 then
+        nextIndex = m.selectedIndex + (direction * m.gridColumns)
+        if nextIndex >= 0 and nextIndex < m.results.Count() then
+            m.selectedIndex = nextIndex
+            updateResultFocus()
+        else
+            moveZone(direction)
+        end if
+    else
+        moveZone(direction)
+    end if
+end sub
 
 sub moveZone(direction as Integer)
     if direction < 0 then
@@ -206,7 +243,7 @@ end sub
 
 sub moveHorizontal(direction as Integer)
     if m.focusZone = "keyboard" then
-        moveKeyboardLinear(direction)
+        moveKeyboardHorizontal(direction)
         updateKeyboardFocus()
     else if m.focusZone = "results" and m.results.Count() > 0 then
         m.selectedIndex = m.selectedIndex + direction
@@ -216,28 +253,11 @@ sub moveHorizontal(direction as Integer)
     end if
 end sub
 
-sub moveKeyboardLinear(direction as Integer)
-    total = 0
-    current = 0
-    for r = 0 to m.keyRows.Count() - 1
-        for c = 0 to m.keyRows[r].Count() - 1
-            if r = m.selectedKeyRow and c = m.selectedKeyCol then current = total
-            total = total + 1
-        end for
-    end for
-    current = current + direction
-    if current < 0 then current = total - 1
-    if current >= total then current = 0
-    count = 0
-    for r = 0 to m.keyRows.Count() - 1
-        for c = 0 to m.keyRows[r].Count() - 1
-            if count = current then
-                m.selectedKeyRow = r : m.selectedKeyCol = c
-                return
-            end if
-            count = count + 1
-        end for
-    end for
+sub moveKeyboardHorizontal(direction as Integer)
+    m.selectedKeyCol = m.selectedKeyCol + direction
+    rowCount = m.keyRows[m.selectedKeyRow].Count()
+    if m.selectedKeyCol < 0 then m.selectedKeyCol = rowCount - 1
+    if m.selectedKeyCol >= rowCount then m.selectedKeyCol = 0
 end sub
 
 sub activateFocused()
@@ -249,6 +269,7 @@ sub activateFocused()
     else if keyLabel = "LIMPAR" then
         m.searchInput.text = ""
     else if keyLabel = "BUSCAR" then
+        m.searchDebounceTimer.control = "stop"
         applyFilter()
         if m.results.Count() > 0 then m.focusZone = "results"
     else if keyLabel = "ESPAÇO" then
@@ -258,6 +279,21 @@ sub activateFocused()
     end if
     updateAllFocus()
 end sub
+
+function handleRokuKeyboardKey(key as String) as Boolean
+    if Left(key, 4) = "lit_" then
+        m.searchInput.text = m.searchInput.text + Mid(key, 5)
+        updateAllFocus()
+        return true
+    end if
+    if key = "backspace" or key = "delete" then
+        t = m.searchInput.text
+        if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
+        updateAllFocus()
+        return true
+    end if
+    return false
+end function
 
 sub updateAllFocus()
     updateKeyboardFocus() : updateResultFocus()
