@@ -1045,7 +1045,6 @@ sub onSeriesSelected()
     m.seriesListScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("show", series)
     m.seriesDetailScreen.callFunc("setLoading", true)
-    startDetailTimeout("series")
     loadSeriesInfo(series)
 end sub
 
@@ -1061,8 +1060,10 @@ sub onSeriesDetailPlay()
     m.seriesSeasonsScreen.callFunc("show", m.selectedSeries)
     if m.selectedSeriesSeasons <> invalid and m.selectedSeriesSeasons.Count() > 0 then
         m.seriesSeasonsScreen.callFunc("setSeasons", m.selectedSeriesSeasons)
-    else
+    else if m.pendingDetailRequest = "series" then
         m.seriesSeasonsScreen.callFunc("setLoading", true)
+    else
+        m.seriesSeasonsScreen.callFunc("showMessage", "Temporadas indisponíveis para esta série. Volte e tente novamente.")
     end if
 end sub
 
@@ -1138,10 +1139,22 @@ sub loadSeries(category as Object)
 end sub
 
 sub loadSeriesInfo(series as Object)
+    if not hasAccount(m.account) then
+        showSeriesInfoFailure("Conecte uma lista Xtream para carregar as temporadas desta série.")
+        return
+    end if
+
+    seriesId = getSeriesId(series)
+    if seriesId = "" then
+        showSeriesInfoFailure("Não foi possível carregar temporadas: série sem identificador.")
+        return
+    end if
+
+    startDetailTimeout("series")
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeriesInfo"
     m.xtreamService.cacheEnabled = false
-    m.xtreamService.seriesId = getSeriesId(series)
+    m.xtreamService.seriesId = seriesId
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1454,12 +1467,18 @@ sub onSeriesInfoResult(result as Object)
         if seasons.Count() > 0 then
             if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("setSeasons", seasons)
         else
-            if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Esta série não possui episódios disponíveis.")
+            if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Esta série não possui temporadas ou episódios disponíveis.")
         end if
     else
-        if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setLoading", false)
-        if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Não foi possível carregar as temporadas desta série. Tente novamente mais tarde.")
+        showSeriesInfoFailure("Não foi possível carregar as temporadas desta série. Você pode voltar e tentar novamente.")
     end if
+end sub
+
+sub showSeriesInfoFailure(message as String)
+    stopDetailTimeout("series")
+    m.selectedSeriesSeasons = []
+    if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setLoading", false)
+    if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", message)
 end sub
 
 sub onMovieInfoResult(result as Object)
@@ -1515,17 +1534,21 @@ function normalizeSeriesCategories(data as Dynamic) as Object
 end function
 
 function normalizeSeriesSeasons(data as Dynamic) as Object
-    if data = invalid then return []
+    if data = invalid or Type(data) <> "roAssociativeArray" then return []
 
     episodesBySeason = invalid
-    if data.episodes <> invalid and Type(data.episodes) = "roAssociativeArray" then
+    if data.DoesExist("episodes") and data.episodes <> invalid and Type(data.episodes) = "roAssociativeArray" then
         episodesBySeason = data.episodes
     end if
 
     normalizedSeasons = []
-    if data.seasons <> invalid and Type(data.seasons) = "roArray" then
+    if data.DoesExist("seasons") and data.seasons <> invalid and Type(data.seasons) = "roArray" then
         for each season in data.seasons
-            normalizedSeason = season
+            if season <> invalid and Type(season) = "roAssociativeArray" then
+                normalizedSeason = season
+            else
+                normalizedSeason = {}
+            end if
             seasonNumber = getSeasonNumber(normalizedSeason)
             seasonEpisodes = getEpisodesForSeason(episodesBySeason, seasonNumber)
             if seasonEpisodes.Count() > 0 then
@@ -1581,28 +1604,28 @@ function safeText(value as Dynamic) as String
 end function
 
 function getSeasonEpisodes(season as Dynamic) as Object
-    if season <> invalid and season.episodes <> invalid and Type(season.episodes) = "roArray" then return sortEpisodes(season.episodes)
+    if season <> invalid and Type(season) = "roAssociativeArray" and season.DoesExist("episodes") and Type(season.episodes) = "roArray" then return sortEpisodes(season.episodes)
     return []
 end function
 
 function getSeriesId(series as Dynamic) as String
-    if series = invalid then return ""
-    if series.series_id <> invalid then return series.series_id.ToStr()
-    if series.id <> invalid then return series.id.ToStr()
+    if series = invalid or Type(series) <> "roAssociativeArray" then return ""
+    if series.DoesExist("series_id") and series.series_id <> invalid then return series.series_id.ToStr()
+    if series.DoesExist("id") and series.id <> invalid then return series.id.ToStr()
     return ""
 end function
 
 function getSeasonNumber(season as Dynamic) as String
-    if season = invalid then return ""
-    if season.season_number <> invalid then return season.season_number.ToStr()
-    if season.number <> invalid then return season.number.ToStr()
+    if season = invalid or Type(season) <> "roAssociativeArray" then return ""
+    if season.DoesExist("season_number") and season.season_number <> invalid then return season.season_number.ToStr()
+    if season.DoesExist("number") and season.number <> invalid then return season.number.ToStr()
     return ""
 end function
 
 function getEpisodeId(episode as Dynamic) as String
-    if episode = invalid then return ""
-    if episode.id <> invalid then return episode.id.ToStr()
-    if episode.episode_id <> invalid then return episode.episode_id.ToStr()
+    if episode = invalid or Type(episode) <> "roAssociativeArray" then return ""
+    if episode.DoesExist("id") and episode.id <> invalid then return episode.id.ToStr()
+    if episode.DoesExist("episode_id") and episode.episode_id <> invalid then return episode.episode_id.ToStr()
     return getStreamId(episode)
 end function
 
