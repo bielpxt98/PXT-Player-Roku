@@ -1,26 +1,20 @@
 ' Home screen for PXT Player.
 sub Init()
     m.background = m.top.FindNode("homeBackground")
+    m.overlay = m.top.FindNode("homeOverlay")
     m.title = m.top.FindNode("homeTitle")
     m.subtitle = m.top.FindNode("homeSubtitle")
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
     m.favoritesButton = m.top.FindNode("favoritesButton")
-    m.playlistButton = m.top.FindNode("playlistButton")
+    m.recentButton = m.top.FindNode("recentButton")
+    m.settingsFooterLabel = m.top.FindNode("settingsFooterLabel")
+    m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
-    m.continueWatchingLabel = m.top.FindNode("continueWatchingLabel")
-    m.lastMoviesLabel = m.top.FindNode("lastMoviesLabel")
-    m.lastSeriesLabel = m.top.FindNode("lastSeriesLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.playlistButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
     m.focusIndex = 0
-
-    m.liveTvButton.ObserveField("buttonSelected", "onLiveTvSelected")
-    m.moviesButton.ObserveField("buttonSelected", "onMoviesSelected")
-    m.seriesButton.ObserveField("buttonSelected", "onSeriesSelected")
-    m.favoritesButton.ObserveField("buttonSelected", "onFavoritesSelected")
-    m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
     configureLayout()
 end sub
 
@@ -31,36 +25,42 @@ sub configureLayout()
 
     m.background.width = width
     m.background.height = height
+    m.overlay.width = width
+    m.overlay.height = height
 
     m.title.width = width
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.22)]
+    m.title.translation = [0, Int(height * 0.18)]
 
     m.subtitle.width = width
     m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, Int(height * 0.34)]
+    m.subtitle.translation = [0, Int(height * 0.27)]
 
-    m.liveTvButton.translation = [Int((width - 520) / 2), Int(height * 0.46)]
-    m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.57)]
-    m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.68)]
-    m.favoritesButton.translation = [Int((width - 520) / 2), Int(height * 0.75)]
-    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.84)]
-    m.continueWatchingLabel.width = width - 144
-    m.continueWatchingLabel.font = "font:SmallSystemFont"
-    m.continueWatchingLabel.translation = [72, Int(height * 0.08)]
-    m.lastMoviesLabel.width = width - 144
-    m.lastMoviesLabel.font = "font:SmallSystemFont"
-    m.lastMoviesLabel.translation = [72, Int(height * 0.12)]
-    m.lastSeriesLabel.width = width - 144
-    m.lastSeriesLabel.font = "font:SmallSystemFont"
-    m.lastSeriesLabel.translation = [72, Int(height * 0.16)]
+    buttonWidth = 224
+    buttonGap = 30
+    totalWidth = (buttonWidth * m.buttons.Count()) + (buttonGap * (m.buttons.Count() - 1))
+    startX = Int((width - totalWidth) / 2)
+    buttonY = Int(height * 0.44)
+
+    for i = 0 to m.buttons.Count() - 1
+        m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), buttonY]
+    end for
+
+    footerY = Int(height * 0.86)
+    m.settingsFooterLabel.width = 240
+    m.settingsFooterLabel.font = "font:SmallSystemFont"
+    m.settingsFooterLabel.translation = [Int((width / 2) - 260), footerY]
+
+    m.accountFooterLabel.width = 160
+    m.accountFooterLabel.font = "font:SmallSystemFont"
+    m.accountFooterLabel.translation = [Int((width / 2) + 60), footerY]
+
     m.connectionStatusLabel.width = width
-    m.connectionStatusLabel.font = "font:MediumSystemFont"
-    m.connectionStatusLabel.translation = [0, Int(height * 0.98)]
+    m.connectionStatusLabel.font = "font:SmallSystemFont"
+    m.connectionStatusLabel.translation = [0, Int(height * 0.94)]
 end sub
 
 sub show()
-    updateHistorySections()
     m.top.visible = true
     m.focusIndex = 0
     updateFocus()
@@ -94,11 +94,23 @@ sub onSeriesSelected()
     m.top.openSeriesCategories = true
 end sub
 
-
 sub onFavoritesSelected()
     m.top.openFavorites = true
 end sub
 
+sub onRecentSelected()
+    history = LoadViewingHistory()
+    if history <> invalid and history.continueWatching <> invalid and history.continueWatching.Count() > 0 then
+        itemType = history.continueWatching[0].type
+        if itemType = "episode" then
+            m.top.openSeriesCategories = true
+        else
+            m.top.openMovieCategories = true
+        end if
+    else
+        m.top.openMovieCategories = true
+    end if
+end sub
 
 sub onPlaylistSelected()
     m.top.openPlaylist = true
@@ -118,14 +130,24 @@ sub setMovieCategoriesLoading(isLoading as Boolean)
     end if
 end sub
 
+sub setSeriesCategoriesLoading(isLoading as Boolean)
+    if isLoading then
+        m.connectionStatusLabel.color = "#B8C3D6"
+        m.connectionStatusLabel.text = "Carregando categorias de séries..."
+    end if
+end sub
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
-    if key = "up" then
+    if key = "left" then
         moveFocus(-1)
         return true
-    else if key = "down" then
+    else if key = "right" then
         moveFocus(1)
+        return true
+    else if key = "OK" then
+        selectFocusedButton()
         return true
     end if
 
@@ -142,8 +164,23 @@ end sub
 
 sub updateFocus()
     for i = 0 to m.buttons.Count() - 1
+        m.buttons[i].selected = (i = m.focusIndex)
         m.buttons[i].SetFocus(i = m.focusIndex)
     end for
+end sub
+
+sub selectFocusedButton()
+    if m.focusIndex = 0 then
+        onLiveTvSelected()
+    else if m.focusIndex = 1 then
+        onMoviesSelected()
+    else if m.focusIndex = 2 then
+        onSeriesSelected()
+    else if m.focusIndex = 3 then
+        onFavoritesSelected()
+    else if m.focusIndex = 4 then
+        onRecentSelected()
+    end if
 end sub
 
 function getDisplayResolution() as Object
@@ -154,33 +191,4 @@ function getDisplayResolution() as Object
         width: displaySize.w
         height: displaySize.h
     }
-end function
-
-sub setSeriesCategoriesLoading(isLoading as Boolean)
-    if isLoading then
-        m.connectionStatusLabel.color = "#B8C3D6"
-        m.connectionStatusLabel.text = "Carregando categorias de séries..."
-    end if
-end sub
-
-
-sub updateHistorySections()
-    history = LoadViewingHistory()
-    m.continueWatchingLabel.text = "Continuar assistindo: " + summarizeHistory(history.continueWatching)
-    m.lastMoviesLabel.text = "Últimos filmes assistidos: " + summarizeHistory(history.movies)
-    m.lastSeriesLabel.text = "Últimas séries assistidas: " + summarizeHistory(history.series)
-end sub
-
-function summarizeHistory(items as Object) as String
-    if items = invalid or items.Count() = 0 then return "nenhum item"
-    summary = ""
-    limit = items.Count()
-    if limit > 3 then limit = 3
-    for i = 0 to limit - 1
-        title = "Conteúdo"
-        if items[i].title <> invalid and items[i].title.ToStr().Trim() <> "" then title = items[i].title.ToStr()
-        if summary <> "" then summary = summary + " • "
-        summary = summary + title
-    end for
-    return summary
 end function

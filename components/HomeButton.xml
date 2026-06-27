@@ -2,66 +2,31 @@
 <component name="HomeButton" extends="Group">
     <interface>
         <field id="labelText" type="string" onChange="onLabelTextChanged" />
+        <field id="iconText" type="string" onChange="onIconTextChanged" />
+        <field id="accentColor" type="string" onChange="onAccentColorChanged" />
         <field id="selected" type="boolean" value="false" onChange="onSelectedChanged" />
     </interface>
 
     <script type="text/brightscript" uri="pkg:/components/HomeButton.brs" />
 
     <children>
-        <!-- The focus glow is a real SceneGraph layer, animated when the item receives focus. -->
-        <Rectangle
-            id="focusGlow"
-            width="400"
-            height="104"
-            color="#009DFF"
-            opacity="0"
-            translation="[-20, -9]" />
-
-        <Group id="buttonGroup" scaleRotateCenter="[180, 43]">
-            <Rectangle
-                id="buttonBackground"
-                width="360"
-                height="86"
-                color="#111827"
-                opacity="0.86" />
-
-            <Rectangle
-                id="buttonAccent"
-                width="6"
-                height="86"
-                color="#009DFF"
-                opacity="0.55" />
-
-            <Label
-                id="buttonLabel"
-                width="360"
-                height="86"
-                translation="[0, 0]"
-                horizAlign="center"
-                vertAlign="center"
-                color="#F8FAFC" />
+        <Rectangle id="focusGlow" width="244" height="168" color="#FFFFFF" opacity="0" translation="[-10, -10]" />
+        <Group id="buttonGroup" scaleRotateCenter="[112, 74]">
+            <Rectangle id="buttonShadow" width="224" height="148" color="#000000" opacity="0.38" translation="[7, 9]" />
+            <Rectangle id="buttonBackground" width="224" height="148" color="#111827" opacity="0.88" />
+            <Rectangle id="buttonAccent" width="224" height="5" color="#E50914" opacity="0.9" translation="[0, 0]" />
+            <Label id="buttonIcon" width="224" height="54" translation="[0, 25]" horizAlign="center" vertAlign="center" color="#FFFFFF" />
+            <Label id="buttonLabel" width="204" height="44" translation="[10, 88]" horizAlign="center" vertAlign="center" color="#F8FAFC" />
         </Group>
 
         <Animation id="focusInAnimation" duration="0.16" easeFunction="outQuad">
-            <Vector2DFieldInterpolator
-                key="[0.0, 1.0]"
-                keyValue="[[1.0, 1.0], [1.06, 1.06]]"
-                fieldToInterp="buttonGroup.scale" />
-            <FloatFieldInterpolator
-                key="[0.0, 1.0]"
-                keyValue="[0.0, 0.34]"
-                fieldToInterp="focusGlow.opacity" />
+            <Vector2DFieldInterpolator key="[0.0, 1.0]" keyValue="[[1.0, 1.0], [1.08, 1.08]]" fieldToInterp="buttonGroup.scale" />
+            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.0, 0.26]" fieldToInterp="focusGlow.opacity" />
         </Animation>
 
         <Animation id="focusOutAnimation" duration="0.14" easeFunction="outQuad">
-            <Vector2DFieldInterpolator
-                key="[0.0, 1.0]"
-                keyValue="[[1.06, 1.06], [1.0, 1.0]]"
-                fieldToInterp="buttonGroup.scale" />
-            <FloatFieldInterpolator
-                key="[0.0, 1.0]"
-                keyValue="[0.34, 0.0]"
-                fieldToInterp="focusGlow.opacity" />
+            <Vector2DFieldInterpolator key="[0.0, 1.0]" keyValue="[[1.08, 1.08], [1.0, 1.0]]" fieldToInterp="buttonGroup.scale" />
+            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.26, 0.0]" fieldToInterp="focusGlow.opacity" />
         </Animation>
     </children>
 </component>
