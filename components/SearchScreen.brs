@@ -4,6 +4,7 @@ sub Init()
     m.title = m.top.FindNode("title")
     m.subtitle = m.top.FindNode("subtitle")
     m.searchInput = m.top.FindNode("searchInput")
+    m.searchInput.ObserveField("text", "onSearchTextChanged")
     m.statusLabel = m.top.FindNode("statusLabel")
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
@@ -35,10 +36,20 @@ sub configureLayout()
     m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont" : m.statusLabel.translation = [m.marginX, 205]
     m.resultsGroup.translation = [m.marginX, 210]
     m.hintLabel.width = width : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, height - 58]
-    m.itemHeight = 52
-    if height <= 720 then m.itemHeight = 44
+    m.itemHeight = 182
+    m.cardWidth = 150
+    m.cardGap = 24
+    m.logoSize = 62
+    if height <= 720 then
+        m.itemHeight = 150
+        m.cardWidth = 122
+        m.cardGap = 18
+        m.logoSize = 48
+    end if
     m.visibleItemCount = Int((height - 285) / m.itemHeight)
-    if m.visibleItemCount < 4 then m.visibleItemCount = 4
+    if m.searchMode = "live" then m.visibleItemCount = Int((height - 285) / 76)
+    if m.searchMode = "movies" or m.searchMode = "series" then m.visibleItemCount = Int(m.contentWidth / (m.cardWidth + m.cardGap))
+    if m.visibleItemCount < 3 then m.visibleItemCount = 3
 end sub
 
 sub show(mode as Dynamic)
@@ -47,11 +58,11 @@ sub show(mode as Dynamic)
     configureLayout()
     m.top.visible = true
     m.top.SetFocus(true)
-    m.searchInput.SetFocus(false)
+    m.searchInput.SetFocus(true)
     configureSearchLabels()
     clearResultNodes()
     m.statusLabel.color = "#B8C3D6"
-    m.statusLabel.text = "Pressione OK para abrir o teclado nativo da Roku."
+    m.statusLabel.text = getEmptySearchMessage()
 end sub
 
 sub hide()
@@ -134,6 +145,10 @@ sub onSearchKeyboardButtonSelected()
     end if
 end sub
 
+sub onSearchTextChanged()
+    applyFilter()
+end sub
+
 sub applyFilter()
     query = LCase(m.searchInput.text.Trim())
     m.results = []
@@ -144,15 +159,15 @@ sub applyFilter()
         return
     end if
     if m.searchMode = "live" or m.searchMode = "all" then
-        addMatches("header", "Canais", invalid, query)
+        if m.searchMode = "all" then addMatches("header", "Canais", invalid, query)
         addMatches("channel", "", m.channels, query)
     end if
     if m.searchMode = "movies" or m.searchMode = "all" then
-        addMatches("header", "Filmes", invalid, query)
+        if m.searchMode = "all" then addMatches("header", "Filmes", invalid, query)
         addMatches("movie", "", m.movies, query)
     end if
     if m.searchMode = "series" or m.searchMode = "all" then
-        addMatches("header", "Séries", invalid, query)
+        if m.searchMode = "all" then addMatches("header", "Séries", invalid, query)
         addMatches("series", "", m.series, query)
     end if
     removeEmptyHeaders()
@@ -213,21 +228,45 @@ sub renderResults()
 end sub
 
 function createResultNode(result as Object, visualIndex as Integer, realIndex as Integer) as Object
+    if result.type = "movie" or result.type = "series" then return createPosterResultNode(result, visualIndex, realIndex)
+    return createListResultNode(result, visualIndex, realIndex)
+end function
+
+function createListResultNode(result as Object, visualIndex as Integer, realIndex as Integer) as Object
     group = CreateObject("roSGNode", "Group")
-    group.translation = [0, visualIndex * m.itemHeight]
+    rowHeight = 76
+    group.translation = [0, visualIndex * rowHeight]
     bg = CreateObject("roSGNode", "Rectangle")
-    bg.id = "itemBackground" : bg.width = m.contentWidth : bg.height = m.itemHeight - 6 : bg.color = "#111827" : bg.opacity = 0.86
+    bg.id = "itemBackground" : bg.width = m.contentWidth : bg.height = rowHeight - 10 : bg.color = "#111827" : bg.opacity = 0.9
+    logoBg = CreateObject("roSGNode", "Rectangle")
+    logoBg.id = "imageFallback" : logoBg.width = m.logoSize : logoBg.height = m.logoSize : logoBg.translation = [12, 4] : logoBg.color = "#1E293B" : logoBg.opacity = 1.0
+    logo = CreateObject("roSGNode", "Poster")
+    logo.id = "itemImage" : logo.width = m.logoSize : logo.height = m.logoSize : logo.translation = [12, 4] : logo.loadDisplayMode = "scaleToFit" : logo.uri = getItemImage(result.item)
     label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel" : label.width = m.contentWidth - 32 : label.height = m.itemHeight - 6 : label.translation = [16, 0] : label.vertAlign = "center"
+    label.id = "itemLabel" : label.width = m.contentWidth - m.logoSize - 44 : label.height = rowHeight - 10 : label.translation = [m.logoSize + 28, 0] : label.vertAlign = "center"
     if result.type = "header" then
-        bg.opacity = 0.0 : label.color = "#5CE08A" : label.font = "font:MediumBoldSystemFont" : label.text = result.title
+        bg.opacity = 0.0 : logo.visible = false : logoBg.visible = false : label.translation = [0, 0] : label.color = "#5CE08A" : label.font = "font:MediumBoldSystemFont" : label.text = result.title
     else
         label.color = "#F8FAFC" : label.font = "font:MediumSystemFont" : label.text = result.title
     end if
-    group.AppendChild(bg) : group.AppendChild(label)
+    group.AppendChild(bg) : group.AppendChild(logoBg) : group.AppendChild(logo) : group.AppendChild(label)
     return group
 end function
 
+function createPosterResultNode(result as Object, visualIndex as Integer, realIndex as Integer) as Object
+    group = CreateObject("roSGNode", "Group")
+    group.translation = [visualIndex * (m.cardWidth + m.cardGap), 0]
+    bg = CreateObject("roSGNode", "Rectangle")
+    bg.id = "itemBackground" : bg.width = m.cardWidth : bg.height = m.itemHeight - 10 : bg.color = "#111827" : bg.opacity = 0.9
+    posterBg = CreateObject("roSGNode", "Rectangle")
+    posterBg.id = "imageFallback" : posterBg.width = m.cardWidth - 18 : posterBg.height = m.itemHeight - 54 : posterBg.translation = [9, 9] : posterBg.color = "#1E293B" : posterBg.opacity = 1.0
+    poster = CreateObject("roSGNode", "Poster")
+    poster.id = "itemImage" : poster.width = m.cardWidth - 18 : poster.height = m.itemHeight - 54 : poster.translation = [9, 9] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getItemImage(result.item)
+    label = CreateObject("roSGNode", "Label")
+    label.id = "itemLabel" : label.width = m.cardWidth - 12 : label.height = 34 : label.translation = [6, m.itemHeight - 44] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#F8FAFC" : label.font = "font:SmallBoldSystemFont" : label.text = result.title
+    group.AppendChild(bg) : group.AppendChild(posterBg) : group.AppendChild(poster) : group.AppendChild(label)
+    return group
+end function
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then
@@ -305,6 +344,16 @@ end sub
 function normalizeArray(value as Dynamic) as Object
     if value <> invalid and Type(value) = "roArray" then return value
     return []
+end function
+
+function getItemImage(item as Dynamic) as String
+    if item = invalid then return ""
+    if item.stream_icon <> invalid and item.stream_icon.ToStr().Trim() <> "" then return item.stream_icon.ToStr()
+    if item.cover <> invalid and item.cover.ToStr().Trim() <> "" then return item.cover.ToStr()
+    if item.poster <> invalid and item.poster.ToStr().Trim() <> "" then return item.poster.ToStr()
+    if item.logo <> invalid and item.logo.ToStr().Trim() <> "" then return item.logo.ToStr()
+    if item.capa <> invalid and item.capa.ToStr().Trim() <> "" then return item.capa.ToStr()
+    return ""
 end function
 
 function getItemName(item as Dynamic) as String
