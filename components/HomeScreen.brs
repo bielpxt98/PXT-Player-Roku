@@ -3,6 +3,7 @@ sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.title = m.top.FindNode("homeTitle")
     m.subtitle = m.top.FindNode("homeSubtitle")
+    m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
     m.menuGroup = m.top.FindNode("homeMenuGroup")
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
@@ -34,6 +35,10 @@ sub configureLayout()
     m.subtitle.font = "font:MediumSystemFont"
     m.subtitle.translation = [0, Int(height * 0.29)]
 
+    m.connectionStatusLabel.width = width
+    m.connectionStatusLabel.font = "font:MediumSystemFont"
+    m.connectionStatusLabel.translation = [0, Int(height * 0.35)]
+
     m.menuGroup.translation = [Int((width - 420) / 2), Int(height * 0.43)]
 end sub
 
@@ -41,6 +46,18 @@ sub show()
     m.top.visible = true
     m.focusIndex = 0
     updateFocus()
+end sub
+
+sub updateConnectionStatus(status as Object)
+    if status = invalid then return
+
+    if status.connected = true then
+        m.connectionStatusLabel.color = "#5CE08A"
+    else
+        m.connectionStatusLabel.color = "#FFCC66"
+    end if
+
+    m.connectionStatusLabel.text = status.message
 end sub
 
 sub hide()
