@@ -1074,7 +1074,3 @@ function hasAccount(account as Dynamic) as Boolean
     return safeText(account.dns) <> "" and safeText(account.username) <> "" and safeText(account.password) <> ""
 end function
 
-function safeText(value as Dynamic) as String
-    if value = invalid then return ""
-    return value.Trim()
-end function
