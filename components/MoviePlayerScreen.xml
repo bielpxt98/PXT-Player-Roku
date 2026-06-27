@@ -3,6 +3,8 @@
     <interface>
         <function name="show" />
         <function name="play" />
+        <function name="setResumePosition" />
+        <function name="getPlaybackPosition" />
         <function name="hide" />
         <function name="showError" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />

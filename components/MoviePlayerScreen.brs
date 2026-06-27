@@ -11,6 +11,9 @@ sub Init()
     m.movie = invalid
     m.movieName = "Filme"
     m.isPlaying = false
+    m.resumePosition = 0
+    m.pendingStreamUrl = ""
+    m.resumeDialog = invalid
 
     configureLayout()
     m.video.ObserveField("state", "onVideoStateChanged")
@@ -54,6 +57,16 @@ sub play(streamUrl as String)
         return
     end if
 
+    if m.resumePosition > 30 then
+        m.pendingStreamUrl = streamUrl
+        showResumeDialog()
+        return
+    end if
+
+    startPlayback(streamUrl, 0)
+end sub
+
+sub startPlayback(streamUrl as String, startPosition as Integer)
     content = CreateObject("roSGNode", "ContentNode")
     content.url = streamUrl
     content.title = m.movieName
@@ -61,9 +74,48 @@ sub play(streamUrl as String)
     content.live = false
 
     m.video.content = content
+    if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
     showLoading("Carregando " + m.movieName + "...")
+end sub
+
+
+sub setResumePosition(position as Dynamic)
+    if position = invalid then
+        m.resumePosition = 0
+    else
+        m.resumePosition = Int(position)
+    end if
+end sub
+
+function getPlaybackPosition() as Integer
+    if m.video = invalid or m.video.position = invalid then return 0
+    return Int(m.video.position)
+end function
+
+sub showResumeDialog()
+    dialog = CreateObject("roSGNode", "StandardMessageDialog")
+    dialog.title = "Continuar de onde parou?"
+    dialog.message = "Escolha como deseja iniciar a reprodução."
+    dialog.buttons = ["Continuar", "Começar do início"]
+    dialog.ObserveField("buttonSelected", "onResumeDialogButtonSelected")
+    m.resumeDialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onResumeDialogButtonSelected()
+    if m.resumeDialog = invalid then return
+    selected = m.resumeDialog.buttonSelected
+    streamUrl = m.pendingStreamUrl
+    m.top.GetScene().dialog = invalid
+    m.resumeDialog = invalid
+    m.pendingStreamUrl = ""
+    if selected = 0 then
+        startPlayback(streamUrl, m.resumePosition)
+    else
+        startPlayback(streamUrl, 0)
+    end if
 end sub
 
 sub hide()

@@ -7,16 +7,21 @@ sub Init()
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
     m.favoritesButton = m.top.FindNode("favoritesButton")
+    m.searchButton = m.top.FindNode("searchButton")
     m.playlistButton = m.top.FindNode("playlistButton")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
+    m.continueWatchingLabel = m.top.FindNode("continueWatchingLabel")
+    m.lastMoviesLabel = m.top.FindNode("lastMoviesLabel")
+    m.lastSeriesLabel = m.top.FindNode("lastSeriesLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.playlistButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.searchButton, m.playlistButton]
     m.focusIndex = 0
 
     m.liveTvButton.ObserveField("buttonSelected", "onLiveTvSelected")
     m.moviesButton.ObserveField("buttonSelected", "onMoviesSelected")
     m.seriesButton.ObserveField("buttonSelected", "onSeriesSelected")
     m.favoritesButton.ObserveField("buttonSelected", "onFavoritesSelected")
+    m.searchButton.ObserveField("buttonSelected", "onSearchSelected")
     m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
     configureLayout()
 end sub
@@ -40,14 +45,25 @@ sub configureLayout()
     m.liveTvButton.translation = [Int((width - 520) / 2), Int(height * 0.46)]
     m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.57)]
     m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.68)]
-    m.favoritesButton.translation = [Int((width - 520) / 2), Int(height * 0.79)]
-    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.90)]
+    m.favoritesButton.translation = [Int((width - 520) / 2), Int(height * 0.75)]
+    m.searchButton.translation = [Int((width - 520) / 2), Int(height * 0.84)]
+    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.93)]
+    m.continueWatchingLabel.width = width - 144
+    m.continueWatchingLabel.font = "font:SmallSystemFont"
+    m.continueWatchingLabel.translation = [72, Int(height * 0.08)]
+    m.lastMoviesLabel.width = width - 144
+    m.lastMoviesLabel.font = "font:SmallSystemFont"
+    m.lastMoviesLabel.translation = [72, Int(height * 0.12)]
+    m.lastSeriesLabel.width = width - 144
+    m.lastSeriesLabel.font = "font:SmallSystemFont"
+    m.lastSeriesLabel.translation = [72, Int(height * 0.16)]
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:MediumSystemFont"
-    m.connectionStatusLabel.translation = [0, Int(height * 0.92)]
+    m.connectionStatusLabel.translation = [0, Int(height * 0.98)]
 end sub
 
 sub show()
+    updateHistorySections()
     m.top.visible = true
     m.focusIndex = 0
     updateFocus()
@@ -84,6 +100,10 @@ end sub
 
 sub onFavoritesSelected()
     m.top.openFavorites = true
+end sub
+
+sub onSearchSelected()
+    m.top.openSearch = true
 end sub
 
 sub onPlaylistSelected()
@@ -127,7 +147,9 @@ sub moveFocus(direction as Integer)
 end sub
 
 sub updateFocus()
-    m.buttons[m.focusIndex].SetFocus(true)
+    for i = 0 to m.buttons.Count() - 1
+        m.buttons[i].SetFocus(i = m.focusIndex)
+    end for
 end sub
 
 function getDisplayResolution() as Object
@@ -146,3 +168,25 @@ sub setSeriesCategoriesLoading(isLoading as Boolean)
         m.connectionStatusLabel.text = "Carregando categorias de séries..."
     end if
 end sub
+
+
+sub updateHistorySections()
+    history = LoadViewingHistory()
+    m.continueWatchingLabel.text = "Continuar assistindo: " + summarizeHistory(history.continueWatching)
+    m.lastMoviesLabel.text = "Últimos filmes assistidos: " + summarizeHistory(history.movies)
+    m.lastSeriesLabel.text = "Últimas séries assistidas: " + summarizeHistory(history.series)
+end sub
+
+function summarizeHistory(items as Object) as String
+    if items = invalid or items.Count() = 0 then return "nenhum item"
+    summary = ""
+    limit = items.Count()
+    if limit > 3 then limit = 3
+    for i = 0 to limit - 1
+        title = "Conteúdo"
+        if items[i].title <> invalid and items[i].title.ToStr().Trim() <> "" then title = items[i].title.ToStr()
+        if summary <> "" then summary = summary + " • "
+        summary = summary + title
+    end for
+    return summary
+end function

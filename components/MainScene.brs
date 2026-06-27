@@ -58,6 +58,7 @@ sub Init()
     m.homeScreen.ObserveField("openMovieCategories", "onOpenMovieCategoriesRequested")
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesCategoriesRequested")
     m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
+    m.homeScreen.ObserveField("openSearch", "onOpenSearchRequested")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
     m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
     m.searchScreen.ObserveField("movieSelected", "onSearchMovieSelected")
@@ -184,6 +185,7 @@ sub onSearchMovieSelected()
     m.openedFromSearch = true
     m.searchScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("show", movie)
+    m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
     buildMovieStreamUrl(movie)
 end sub
 
@@ -264,6 +266,7 @@ sub onFavoriteSelected()
     else if favorite.type = "movie" then
         m.selectedMovie = content
         m.moviePlayerScreen.callFunc("show", content)
+        m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", content))
         buildMovieStreamUrl(content)
     else if favorite.type = "series" then
         m.selectedSeries = content
@@ -274,6 +277,7 @@ sub onFavoriteSelected()
     else if favorite.type = "episode" then
         m.selectedEpisode = content
         m.seriesPlayerScreen.callFunc("show", content)
+        m.seriesPlayerScreen.callFunc("setResumePosition", GetHistoryPosition("episode", content))
         buildSeriesStreamUrl(content)
     end if
 end sub
@@ -418,10 +422,12 @@ sub onMovieSelected()
     m.selectedMovie = movie
     m.movieListScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("show", movie)
+    m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
     buildMovieStreamUrl(movie)
 end sub
 
 sub onMoviePlayerBack()
+    UpsertMovieHistory(m.selectedMovie, m.moviePlayerScreen.callFunc("getPlaybackPosition"))
     m.moviePlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
@@ -738,6 +744,7 @@ sub onSeriesEpisodesBack()
 end sub
 
 sub onSeriesPlayerBack()
+    UpsertSeriesHistory(m.selectedSeries, m.selectedSeason, m.selectedEpisode, m.seriesPlayerScreen.callFunc("getPlaybackPosition"))
     m.seriesPlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
@@ -802,6 +809,7 @@ sub onSeriesEpisodeSelected()
     m.selectedEpisode = episode
     m.seriesEpisodesScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("show", episode)
+    m.seriesPlayerScreen.callFunc("setResumePosition", GetHistoryPosition("episode", episode))
     buildSeriesStreamUrl(episode)
 end sub
 
@@ -1168,7 +1176,7 @@ function normalizeSeriesSeasons(data as Dynamic) as Object
         end for
     end if
 
-    return normalizedSeasons
+    return sortSeasons(normalizedSeasons)
 end function
 
 function getEpisodesForSeason(episodesBySeason as Dynamic, seasonNumber as Dynamic) as Object
@@ -1197,7 +1205,7 @@ function safeText(value as Dynamic) as String
 end function
 
 function getSeasonEpisodes(season as Dynamic) as Object
-    if season <> invalid and season.episodes <> invalid and Type(season.episodes) = "roArray" then return season.episodes
+    if season <> invalid and season.episodes <> invalid and Type(season.episodes) = "roArray" then return sortEpisodes(season.episodes)
     return []
 end function
 
@@ -1328,3 +1336,73 @@ function hasAccount(account as Dynamic) as Boolean
     return safeText(account.dns) <> "" and safeText(account.username) <> "" and safeText(account.password) <> ""
 end function
 
+
+
+function sortSeasons(items as Object) as Object
+    sorted = []
+    for each item in items
+        insertSorted(sorted, item, "season")
+    end for
+    return sorted
+end function
+
+function sortEpisodes(items as Object) as Object
+    sorted = []
+    for each item in items
+        insertSorted(sorted, item, "episode")
+    end for
+    return sorted
+end function
+
+sub insertSorted(sorted as Object, item as Object, kind as String)
+    insertAt = sorted.Count()
+    for i = 0 to sorted.Count() - 1
+        if compareNumberedItems(item, sorted[i], kind) < 0 then
+            insertAt = i
+            exit for
+        end if
+    end for
+    sorted.Insert(insertAt, item)
+end sub
+
+function compareNumberedItems(left as Dynamic, right as Dynamic, kind as String) as Integer
+    leftNumber = sortableNumber(left, kind)
+    rightNumber = sortableNumber(right, kind)
+    if leftNumber >= 0 and rightNumber >= 0 then
+        if leftNumber < rightNumber then return -1
+        if leftNumber > rightNumber then return 1
+    else if leftNumber >= 0 then
+        return -1
+    else if rightNumber >= 0 then
+        return 1
+    end if
+    leftName = LCase(sortableName(left, kind))
+    rightName = LCase(sortableName(right, kind))
+    if leftName < rightName then return -1
+    if leftName > rightName then return 1
+    return 0
+end function
+
+function sortableNumber(item as Dynamic, kind as String) as Integer
+    value = ""
+    if item <> invalid then
+        if kind = "season" then
+            if item.season_number <> invalid then value = item.season_number.ToStr()
+            if value = "" and item.number <> invalid then value = item.number.ToStr()
+        else
+            if item.episode_num <> invalid then value = item.episode_num.ToStr()
+            if value = "" and item.episode_number <> invalid then value = item.episode_number.ToStr()
+            if value = "" and item.num <> invalid then value = item.num.ToStr()
+        end if
+    end if
+    value = value.Trim()
+    if value = "" then return -1
+    return Val(value)
+end function
+
+function sortableName(item as Dynamic, kind as String) as String
+    if item = invalid then return ""
+    if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
+    if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
+    return ""
+end function
