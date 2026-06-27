@@ -1,113 +1,57 @@
-' Series list screen.
-' This screen displays series for one category and notifies MainScene when a
-' series is selected for playback.
 sub Init()
     m.background = m.top.FindNode("background")
-    m.title = m.top.FindNode("title")
+    m.searchBar = m.top.FindNode("searchBar")
+    m.searchLabel = m.top.FindNode("searchLabel")
+    m.leftPanel = m.top.FindNode("leftPanel")
+    m.divider = m.top.FindNode("divider")
+    m.categoriesTitle = m.top.FindNode("categoriesTitle")
     m.subtitle = m.top.FindNode("subtitle")
     m.statusLabel = m.top.FindNode("statusLabel")
+    m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.seriesGroup = m.top.FindNode("seriesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
-
-    m.series = []
-    m.allSeries = []
-    m.searchQuery = ""
-    m.keyboardDialog = invalid
-    m.itemNodes = []
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
-
+    m.categories = [] : m.series = [] : m.allSeries = []
+    m.categoryNodes = [] : m.itemNodes = []
+    m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
+    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "grid"
     configureLayout()
 end sub
 
 sub configureLayout()
-    resolution = getDisplayResolution()
-    width = resolution.width
-    height = resolution.height
-
-    ' Use the real display size, but keep fixed safe-area reservations so the
-    ' list never renders under the title or footer on different TV resolutions.
-    m.safeMarginX = 72
-    m.titleReservedHeight = 150
-    m.footerReservedHeight = 86
-    if height <= 720 then
-        m.safeMarginX = 48
-        m.titleReservedHeight = 124
-        m.footerReservedHeight = 70
-    end if
-
-    m.contentX = m.safeMarginX
-    m.contentWidth = width - (m.safeMarginX * 2)
-    if m.contentWidth < 360 then
-        m.contentX = 0
-        m.contentWidth = width
-    end if
-
-    m.titleY = 42
-    m.subtitleY = 100
-    if height <= 720 then
-        m.titleY = 28
-        m.subtitleY = 78
-    end if
-
-    m.listY = m.titleReservedHeight
-    m.footerY = height - m.footerReservedHeight + 18
-    m.listHeight = m.footerY - m.listY - 20
-    if m.listHeight < 96 then m.listHeight = 96
-
-    if height <= 720 then
-        m.itemHeight = 72
-        m.cardHeight = 62
-        m.coverSize = 42
-        m.coverInset = 10
-    else
-        m.itemHeight = 88
-        m.cardHeight = 76
-        m.coverSize = 52
-        m.coverInset = 12
-    end if
-
-    m.visibleItemCount = Int(m.listHeight / m.itemHeight)
-    if m.visibleItemCount < 1 then m.visibleItemCount = 1
-
-    m.background.width = width
-    m.background.height = height
-
-    m.title.width = width
-    m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, m.titleY]
-
-    m.subtitle.width = width
-    m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, m.subtitleY]
-
-    m.statusLabel.width = m.contentWidth
-    m.statusLabel.font = "font:MediumSystemFont"
-    m.statusLabel.translation = [m.contentX, m.listY + Int(m.listHeight / 2)]
-
-    m.seriesGroup.translation = [m.contentX, m.listY]
-
-    m.hintLabel.width = width
-    m.hintLabel.font = "font:SmallSystemFont"
-    m.hintLabel.translation = [0, m.footerY]
+    r = getDisplayResolution() : w = r.width : h = r.height
+    m.margin = 48 : if h <= 720 then m.margin = 32
+    m.searchH = 76 : m.footerH = 46
+    m.panelY = m.searchH : m.panelH = h - m.searchH - m.footerH
+    m.leftW = 310 : if w <= 1280 then m.leftW = 250
+    m.gridX = m.margin + m.leftW + 28 : m.gridY = m.panelY + 34
+    m.gridW = w - m.gridX - m.margin : m.gridH = m.panelH - 54
+    m.categoryX = m.margin + 18 : m.categoryY = m.panelY + 72
+    m.categoryW = m.leftW - 36 : m.categoryItemH = 52
+    m.posterW = 150 : m.posterH = 220 : m.posterGapX = 28 : m.posterGapY = 34
+    if h <= 720 then m.posterW = 120 : m.posterH = 176 : m.posterGapX = 20 : m.posterGapY = 24 : m.categoryItemH = 44
+    m.columns = Int((m.gridW + m.posterGapX) / (m.posterW + m.posterGapX)) : if m.columns < 1 then m.columns = 1
+    m.rows = Int(m.gridH / (m.posterH + m.posterGapY)) : if m.rows < 1 then m.rows = 1
+    m.visibleItemCount = m.columns * m.rows
+    m.visibleCategoryCount = Int((m.panelH - 90) / m.categoryItemH) : if m.visibleCategoryCount < 1 then m.visibleCategoryCount = 1
+    m.background.width = w : m.background.height = h
+    m.searchBar.width = w : m.searchBar.height = m.searchH
+    m.searchLabel.translation = [m.margin, 0] : m.searchLabel.width = w - (m.margin * 2) : m.searchLabel.height = m.searchH : m.searchLabel.font = "font:MediumSystemFont"
+    m.leftPanel.translation = [m.margin, m.panelY] : m.leftPanel.width = m.leftW : m.leftPanel.height = m.panelH
+    m.divider.translation = [m.margin + m.leftW, m.panelY] : m.divider.width = 2 : m.divider.height = m.panelH
+    m.categoriesTitle.translation = [m.margin + 18, m.panelY + 24] : m.categoriesTitle.font = "font:MediumBoldSystemFont"
+    m.subtitle.translation = [m.gridX, m.panelY + 22] : m.subtitle.width = m.gridW : m.subtitle.font = "font:SmallSystemFont"
+    m.statusLabel.translation = [m.gridX, m.gridY + Int(m.gridH / 2)] : m.statusLabel.width = m.gridW : m.statusLabel.font = "font:MediumSystemFont"
+    m.categoriesGroup.translation = [m.categoryX, m.categoryY]
+    m.seriesGroup.translation = [m.gridX, m.gridY]
+    m.hintLabel.translation = [0, h - 34] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
 end sub
 
 sub show(category as Dynamic)
-    if category <> invalid then
-        m.subtitle.text = "Séries • " + getCategoryName(category)
-    else
-        m.subtitle.text = "Séries"
-    end if
-
-    m.searchQuery = ""
-    applySearchFilter()
     configureLayout()
-    resetSelection()
-    updateVisibleWindow()
-    renderList()
-    updateFocus()
-    m.top.visible = true
-    m.top.SetFocus(true)
+    if category <> invalid then syncSelectedCategory(category)
+    resetGridSelection()
+    renderCategories() : renderGrid() : updateFocus()
+    m.top.visible = true : m.top.SetFocus(true)
 end sub
 
 sub hide()
@@ -115,186 +59,185 @@ sub hide()
 end sub
 
 sub resetSelection()
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
-    logInitialSelection()
+    m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0 : resetGridSelection()
 end sub
 
-sub logInitialSelection()
-    print "INIT selectedIndex="; m.selectedIndex
-    print "INIT firstVisibleIndex="; m.firstVisibleIndex
+sub resetGridSelection()
+    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "grid"
+end sub
+
+sub setCategories(categories as Object)
+    m.categories = normalizeArray(categories)
+    renderCategories() : updateFocus()
 end sub
 
 sub setLoading(isLoading as Boolean)
-    clearSeriesNodes()
-    if isLoading then
-        m.statusLabel.text = "Carregando séries..."
-        m.statusLabel.color = "#B8C3D6"
-    else
-        m.statusLabel.text = ""
-    end if
+    clearGridNodes()
+    if isLoading then m.statusLabel.text = "Carregando séries..." else m.statusLabel.text = ""
 end sub
 
-sub setSeries(series as Object)
-    m.allSeries = normalizeSeries(series)
-    applySearchFilter()
-
-    if m.allSeries.Count() = 0 then
-        showMessage("Nenhum série foi encontrado nesta categoria.")
-        return
-    end if
-
-    m.statusLabel.text = ""
-    updateVisibleWindow()
-    renderList()
-    updateFocus()
+sub setSeries(items as Object)
+    m.allSeries = normalizeArray(items) : m.series = m.allSeries
+    if m.series.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
+    m.statusLabel.text = "" : resetGridSelection() : renderGrid() : updateFocus()
 end sub
 
 sub showMessage(message as String)
-    clearSeriesNodes()
-    m.series = []
-    m.allSeries = []
-    resetSelection()
-    m.statusLabel.text = message
-    m.statusLabel.color = "#FFCC66"
+    clearGridNodes() : m.series = [] : m.allSeries = [] : resetGridSelection()
+    m.statusLabel.color = "#FFCC66" : m.statusLabel.text = message
 end sub
 
-function normalizeSeries(series as Dynamic) as Object
-    if series = invalid then return []
-    if Type(series) = "roArray" then return series
+function normalizeArray(items as Dynamic) as Object
+    if items = invalid then return []
+    if Type(items) = "roArray" then return items
     return []
 end function
 
-sub renderList()
-    clearSeriesNodes()
-
-    totalRows = m.series.Count() + 1
-    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= totalRows then lastIndex = totalRows - 1
-
-    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
-        realIndex = m.firstVisibleIndex + visualIndex
-        if realIndex = 0 then
-            item = createSearchItem(visualIndex)
-        else
-            item = createSeriesItem(m.series[realIndex - 1], visualIndex, realIndex - 1)
-        end if
-        m.seriesGroup.AppendChild(item)
-        m.itemNodes.Push(item)
+sub renderCategories()
+    clearCategoryNodes()
+    if m.categories.Count() = 0 then return
+    updateCategoryWindow()
+    lastIndex = m.firstVisibleCategoryIndex + m.visibleCategoryCount - 1
+    if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
+    for visualIndex = 0 to lastIndex - m.firstVisibleCategoryIndex
+        realIndex = m.firstVisibleCategoryIndex + visualIndex
+        node = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
+        m.categoriesGroup.AppendChild(node) : m.categoryNodes.Push(node)
     end for
 end sub
 
-function createSearchItem(visibleIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "searchItem"
+function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group") : item.translation = [0, visibleIndex * m.categoryItemH]
+    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.categoryW : bg.height = m.categoryItemH - 8 : bg.color = "#111827" : bg.opacity = 0.0
+    label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [14, 0] : label.width = m.categoryW - 24 : label.height = m.categoryItemH - 8 : label.vertAlign = "center" : label.font = "font:SmallSystemFont" : label.color = "#C9D4E5" : label.text = getCategoryName(category)
+    item.AppendChild(bg) : item.AppendChild(label) : return item
+end function
 
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.width = m.contentWidth
-    background.height = m.cardHeight
-    background.color = "#113B5C"
-    background.opacity = 0.92
+sub renderGrid()
+    clearGridNodes()
+    if m.series.Count() = 0 then return
+    updateGridWindow()
+    first = m.firstVisibleRow * m.columns : last = first + m.visibleItemCount - 1
+    if last >= m.series.Count() then last = m.series.Count() - 1
+    for i = first to last
+        visual = i - first : item = createPosterItem(m.series[i], visual, i)
+        m.seriesGroup.AppendChild(item) : m.itemNodes.Push(item)
+    end for
+end sub
 
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#5CE08A"
-    accent.opacity = 0.0
+function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group") : col = visualIndex mod m.columns : row = Int(visualIndex / m.columns)
+    item.translation = [col * (m.posterW + m.posterGapX), row * (m.posterH + m.posterGapY)]
+    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#009DFF" : bg.opacity = 0.0
+    poster = CreateObject("roSGNode", "Poster") : poster.id = "poster" : poster.width = m.posterW : poster.height = m.posterH : poster.loadDisplayMode = "scaleToFill" : poster.uri = getSeriesCover(itemData)
+    label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [0, m.posterH + 6] : label.width = m.posterW : label.height = 28 : label.font = "font:SmallSystemFont" : label.color = "#DDE6F3" : label.text = getSeriesName(itemData) : label.horizAlign = "center"
+    item.AppendChild(bg) : item.AppendChild(poster) : item.AppendChild(label) : return item
+end function
 
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.width = m.contentWidth - 32
-    label.height = m.cardHeight
-    label.translation = [16, 0]
-    label.vertAlign = "center"
-    label.color = "#F8FAFC"
-    label.font = "font:MediumBoldSystemFont"
-    if m.searchQuery <> "" then
-        label.text = "Buscar: " + m.searchQuery
-    else
-        label.text = "Buscar séries"
+function onKeyEvent(key as String, press as Boolean) as Boolean
+    if not press then return false
+    if key = "back" then m.top.backRequested = true : return true
+    if key = "left" then m.activePane = "categories" : updateFocus() : return true
+    if key = "right" then m.activePane = "grid" : updateFocus() : return true
+    if key = "up" then
+        if m.activePane = "categories" then
+            moveCategory(-1)
+        else
+            moveGrid(0, -1)
+        end if
+        return true
     end if
-
-    item.AppendChild(background)
-    item.AppendChild(accent)
-    item.AppendChild(label)
-    return item
+    if key = "down" then
+        if m.activePane = "categories" then
+            moveCategory(1)
+        else
+            moveGrid(0, 1)
+        end if
+        return true
+    end if
+    if key = "options" then
+        if m.series.Count() > 0 then m.top.seriesFavoriteToggled = m.series[m.selectedIndex]
+        return true
+    end if
+    if key = "OK" then
+        if m.activePane = "categories" then
+            if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
+        else if m.series.Count() > 0 then
+            print "OK opening selectedIndex="; m.selectedIndex : print "OK opening item="; getSeriesLogTitle(m.series[m.selectedIndex])
+            m.top.seriesSelected = m.series[m.selectedIndex]
+        end if
+        return true
+    end if
+    return false
 end function
 
-function createSeriesItem(series as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "seriesItem" + absoluteIndex.ToStr()
+sub moveCategory(direction as Integer)
+    if m.categories.Count() = 0 then return
+    m.selectedCategoryIndex = m.selectedCategoryIndex + direction : updateCategoryWindow() : renderCategories() : updateFocus()
+end sub
 
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.width = m.contentWidth
-    background.height = m.cardHeight
-    background.color = "#111827"
-    background.opacity = 0.86
+sub moveGrid(dx as Integer, dy as Integer)
+    if m.series.Count() = 0 then return
+    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx : updateGridWindow() : renderGrid() : updateFocus()
+end sub
 
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#009DFF"
-    accent.opacity = 0.0
+sub updateCategoryWindow()
+    if m.selectedCategoryIndex < 0 then m.selectedCategoryIndex = 0
+    if m.selectedCategoryIndex >= m.categories.Count() then m.selectedCategoryIndex = m.categories.Count() - 1
+    if m.firstVisibleCategoryIndex < 0 then m.firstVisibleCategoryIndex = 0
+    if m.selectedCategoryIndex < m.firstVisibleCategoryIndex then m.firstVisibleCategoryIndex = m.selectedCategoryIndex
+    if m.selectedCategoryIndex >= m.firstVisibleCategoryIndex + m.visibleCategoryCount then m.firstVisibleCategoryIndex = m.selectedCategoryIndex - m.visibleCategoryCount + 1
+end sub
 
-    coverBackground = CreateObject("roSGNode", "Rectangle")
-    coverBackground.id = "coverBackground"
-    coverBackground.width = m.coverSize + 6
-    coverBackground.height = m.coverSize + 6
-    coverBackground.translation = [22, Int((m.cardHeight - (m.coverSize + 6)) / 2)]
-    coverBackground.color = "#1F2937"
-    coverBackground.opacity = 0.95
+sub updateGridWindow()
+    if m.selectedIndex < 0 then m.selectedIndex = 0
+    if m.selectedIndex >= m.series.Count() then m.selectedIndex = m.series.Count() - 1
+    row = Int(m.selectedIndex / m.columns)
+    if row < m.firstVisibleRow then m.firstVisibleRow = row
+    if row >= m.firstVisibleRow + m.rows then m.firstVisibleRow = row - m.rows + 1
+    if m.firstVisibleRow < 0 then m.firstVisibleRow = 0
+end sub
 
-    cover = CreateObject("roSGNode", "Poster")
-    cover.id = "seriesCover"
-    cover.width = m.coverSize
-    cover.height = m.coverSize
-    cover.translation = [25, m.coverInset]
-    cover.loadDisplayMode = "scaleToFit"
-    cover.uri = getSeriesCover(series)
+sub updateFocus()
+    for i = 0 to m.categoryNodes.Count() - 1
+        realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
+        bg.opacity = 0.0 : label.color = "#C9D4E5"
+        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#123A5C" : label.color = "#FFFFFF"
+        if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
+    end for
+    first = m.firstVisibleRow * m.columns
+    for i = 0 to m.itemNodes.Count() - 1
+        realIndex = first + i : focus = m.itemNodes[i].FindNode("posterFocus") : label = m.itemNodes[i].FindNode("itemLabel")
+        focus.opacity = 0.0 : label.color = "#DDE6F3" : m.itemNodes[i].scale = [1.0, 1.0]
+        if realIndex = m.selectedIndex and m.activePane = "grid" then focus.opacity = 1.0 : label.color = "#FFFFFF" : m.itemNodes[i].scale = [1.06, 1.06]
+    end for
+end sub
 
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.width = m.contentWidth - 122
-    label.height = m.cardHeight
-    label.translation = [100, 0]
-    label.vertAlign = "center"
-    label.color = "#F8FAFC"
-    label.font = "font:MediumSystemFont"
-    label.text = getSeriesName(series)
+sub syncSelectedCategory(category as Dynamic)
+    id = getCategoryId(category)
+    for i = 0 to m.categories.Count() - 1
+        if getCategoryId(m.categories[i]) = id then m.selectedCategoryIndex = i : exit for
+    end for
+end sub
 
-    item.AppendChild(background)
-    item.AppendChild(accent)
-    item.AppendChild(coverBackground)
-    item.AppendChild(cover)
-    item.AppendChild(label)
-    return item
-end function
+sub clearCategoryNodes()
+    while m.categoriesGroup.GetChildCount() > 0
+        m.categoriesGroup.RemoveChildIndex(0)
+    end while
+    m.categoryNodes = []
+end sub
 
-function getSeriesName(series as Dynamic) as String
-    if series = invalid then return "Série sem nome"
-    if series.name <> invalid and series.name.ToStr().Trim() <> "" then return series.name.ToStr()
-    if series.title <> invalid and series.title.ToStr().Trim() <> "" then return series.title.ToStr()
-    return "Série sem nome"
-end function
+sub clearGridNodes()
+    while m.seriesGroup.GetChildCount() > 0
+        m.seriesGroup.RemoveChildIndex(0)
+    end while
+    m.itemNodes = []
+end sub
 
-function getSeriesLogTitle(series as Dynamic) as String
-    if series = invalid then return ""
-    if series.title <> invalid and series.title.ToStr().Trim() <> "" then return series.title.ToStr()
-    return getSeriesName(series)
-end function
-
-function getSeriesCover(series as Dynamic) as String
-    if series = invalid then return ""
-    if series.stream_icon <> invalid and series.stream_icon.ToStr().Trim() <> "" then return series.stream_icon.ToStr()
-    if series.cover <> invalid and series.cover.ToStr().Trim() <> "" then return series.cover.ToStr()
-    if series.series_image <> invalid and series.series_image.ToStr().Trim() <> "" then return series.series_image.ToStr()
-    if series.logo <> invalid and series.logo.ToStr().Trim() <> "" then return series.logo.ToStr()
+function getCategoryId(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.category_id <> invalid then return category.category_id.ToStr()
+    if category.id <> invalid then return category.id.ToStr()
     return ""
 end function
 
@@ -305,191 +248,27 @@ function getCategoryName(category as Dynamic) as String
     return "Categoria"
 end function
 
-sub clearSeriesNodes()
-    while m.seriesGroup.GetChildCount() > 0
-        m.seriesGroup.RemoveChildIndex(0)
-    end while
-    m.itemNodes = []
-end sub
-
-function onKeyEvent(key as String, press as Boolean) as Boolean
-    if not press then return false
-
-    if key = "back" then
-        if m.searchQuery <> "" then
-            m.searchQuery = ""
-            applySearchFilter()
-        else
-            m.top.backRequested = true
-        end if
-        return true
-    else if key = "up" then
-        moveFocus(-1)
-        return true
-    else if key = "down" then
-        moveFocus(1)
-        return true
-    else if key = "replay" then
-        openSearchKeyboard()
-        return true
-    else if key = "options" then
-        if m.series.Count() > 0 and m.selectedIndex > 0 and m.selectedIndex <= m.series.Count() then
-            m.top.seriesFavoriteToggled = m.series[m.selectedIndex - 1]
-            m.statusLabel.color = "#5CE08A"
-            m.statusLabel.text = "Série atualizado nos favoritos."
-        end if
-        return true
-    else if key = "OK" then
-        if m.selectedIndex = 0 then
-            openSearchKeyboard()
-        else if m.series.Count() > 0 and m.selectedIndex <= m.series.Count() then
-            itemIndex = m.selectedIndex - 1
-            print "OK opening selectedIndex="; itemIndex
-            print "OK opening item="; getSeriesLogTitle(m.series[itemIndex])
-            m.top.seriesSelected = m.series[itemIndex]
-        end if
-        return true
-    end if
-
-    return false
+function getSeriesName(item as Dynamic) as String
+    if item = invalid then return "Série sem nome"
+    if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
+    if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
+    return "Série sem nome"
 end function
 
-sub moveFocus(direction as Integer)
-    handleUpDown(direction)
-end sub
+function getSeriesLogTitle(item as Dynamic) as String
+    return getSeriesName(item)
+end function
 
-sub handleUpDown(direction as Integer)
-    if m.series.Count() = 0 and m.selectedIndex = 0 then return
-
-    if direction > 0 then
-        m.selectedIndex = m.selectedIndex + 1
-    else if direction < 0 then
-        m.selectedIndex = m.selectedIndex - 1
-    else
-        return
-    end if
-
-    previousFirstVisibleIndex = m.firstVisibleIndex
-    updateVisibleWindow()
-
-    if m.firstVisibleIndex <> previousFirstVisibleIndex then
-        renderList()
-    end if
-
-    updateFocus()
-end sub
-
-sub updateVisibleWindow()
-    totalRows = m.series.Count() + 1
-
-    if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= totalRows then m.selectedIndex = totalRows - 1
-    if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
-
-    maxFirstIndex = totalRows - m.visibleItemCount
-    if maxFirstIndex < 0 then maxFirstIndex = 0
-
-    if m.selectedIndex < m.firstVisibleIndex then
-        m.firstVisibleIndex = m.selectedIndex
-    else if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then
-        m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
-    end if
-
-    if m.firstVisibleIndex > maxFirstIndex then m.firstVisibleIndex = maxFirstIndex
-end sub
-
-sub updateFocus()
-    selectedNode = invalid
-
-    ' Keep a single manual highlight: reset every visible item before
-    ' applying the selectedIndex state to exactly one realIndex.
-    for i = 0 to m.itemNodes.Count() - 1
-        realIndex = m.firstVisibleIndex + i
-        background = m.itemNodes[i].FindNode("itemBackground")
-        accent = m.itemNodes[i].FindNode("itemAccent")
-        label = m.itemNodes[i].FindNode("itemLabel")
-        coverBackground = m.itemNodes[i].FindNode("coverBackground")
-
-        m.itemNodes[i].scale = [1.0, 1.0]
-        background.color = "#111827"
-        background.opacity = 0.86
-        accent.opacity = 0.0
-        label.color = "#F8FAFC"
-        if coverBackground <> invalid then coverBackground.color = "#1F2937"
-
-        if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
-    end for
-
-    if selectedNode <> invalid then
-        background = selectedNode.FindNode("itemBackground")
-        accent = selectedNode.FindNode("itemAccent")
-        label = selectedNode.FindNode("itemLabel")
-        coverBackground = selectedNode.FindNode("coverBackground")
-
-        selectedNode.scale = [1.02, 1.02]
-        background.color = "#0B3A5E"
-        background.opacity = 1.0
-        accent.opacity = 0.0
-        label.color = "#FFFFFF"
-        if coverBackground <> invalid then coverBackground.color = "#0F4F7A"
-    end if
-end sub
-
-
-sub openSearchKeyboard()
-    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
-    dialog.title = "Buscar séries"
-    dialog.text = m.searchQuery
-    dialog.buttons = ["Buscar", "Limpar", "Cancelar"]
-    dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
-    m.keyboardDialog = dialog
-    m.top.GetScene().dialog = dialog
-end sub
-
-sub onSearchKeyboardButtonSelected()
-    if m.keyboardDialog = invalid then return
-    selectedButton = m.keyboardDialog.buttonSelected
-    if selectedButton = 0 then
-        m.searchQuery = m.keyboardDialog.text.Trim()
-        applySearchFilter()
-    else if selectedButton = 1 then
-        m.searchQuery = ""
-        applySearchFilter()
-    end if
-    m.top.GetScene().dialog = invalid
-    m.keyboardDialog = invalid
-end sub
-
-sub applySearchFilter()
-    query = LCase(m.searchQuery.Trim())
-    m.series = []
-    if query = "" then
-        for each item in m.allSeries
-            m.series.Push(item)
-        end for
-    else
-        for each item in m.allSeries
-            if Instr(1, LCase(getSeriesName(item)), query) > 0 then m.series.Push(item)
-        end for
-    end if
-    resetSelection()
-    if m.allSeries.Count() > 0 and m.series.Count() = 0 then
-        m.statusLabel.color = "#FFCC66"
-        m.statusLabel.text = "Nenhum resultado encontrado para esta busca."
-    else
-        m.statusLabel.text = ""
-    end if
-    updateVisibleWindow()
-    renderList()
-    updateFocus()
-end sub
+function getSeriesCover(item as Dynamic) as String
+    if item = invalid then return ""
+    if item.stream_icon <> invalid and item.stream_icon.ToStr().Trim() <> "" then return item.stream_icon.ToStr()
+    if item.cover <> invalid and item.cover.ToStr().Trim() <> "" then return item.cover.ToStr()
+    if item.series_image <> invalid and item.series_image.ToStr().Trim() <> "" then return item.series_image.ToStr()
+    if item.logo <> invalid and item.logo.ToStr().Trim() <> "" then return item.logo.ToStr()
+    return ""
+end function
 
 function getDisplayResolution() as Object
-    deviceInfo = CreateObject("roDeviceInfo")
-    displaySize = deviceInfo.GetDisplaySize()
-
-    return {
-        width: displaySize.w
-        height: displaySize.h
-    }
+    d = CreateObject("roDeviceInfo") : s = d.GetDisplaySize()
+    return { width: s.w, height: s.h }
 end function
