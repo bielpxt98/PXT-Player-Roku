@@ -243,26 +243,27 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 sub moveFocus(direction as Integer)
+    handleUpDown(direction)
+end sub
+
+sub handleUpDown(direction as Integer)
     if m.categories.Count() = 0 then return
 
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
-        if m.selectedIndex >= m.categories.Count() then m.selectedIndex = m.categories.Count() - 1
-
-        if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then
-            m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
-        end if
     else if direction < 0 then
         m.selectedIndex = m.selectedIndex - 1
-        if m.selectedIndex < 0 then m.selectedIndex = 0
-
-        if m.selectedIndex < m.firstVisibleIndex then
-            m.firstVisibleIndex = m.selectedIndex
-        end if
+    else
+        return
     end if
 
+    previousFirstVisibleIndex = m.firstVisibleIndex
     updateVisibleWindow()
-    renderList()
+
+    if m.firstVisibleIndex <> previousFirstVisibleIndex then
+        renderList()
+    end if
+
     updateFocus()
 end sub
 
@@ -298,6 +299,7 @@ sub updateFocus()
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
 
+        m.itemNodes[i].scale = [1.0, 1.0]
         background.color = "#111827"
         background.opacity = 0.86
         accent.opacity = 0.45
@@ -311,6 +313,7 @@ sub updateFocus()
         accent = selectedNode.FindNode("itemAccent")
         label = selectedNode.FindNode("itemLabel")
 
+        selectedNode.scale = [1.02, 1.02]
         background.color = "#0B3A5E"
         background.opacity = 1.0
         accent.opacity = 1.0
