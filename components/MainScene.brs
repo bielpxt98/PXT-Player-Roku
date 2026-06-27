@@ -197,6 +197,7 @@ end sub
 
 sub onSearchBack()
     if m.searchBackTarget = "live" then
+        m.liveChannelsScreen.callFunc("setAccount", m.account)
         m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
         m.liveChannelsScreen.callFunc("focusCategories")
         m.searchScreen.callFunc("hide")
@@ -426,6 +427,7 @@ sub onOpenLiveCategoriesRequested()
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
     m.liveChannelsScreen.callFunc("resetSelection")
+    m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", invalid)
     m.liveChannelsScreen.callFunc("focusCategories")
 
@@ -605,6 +607,7 @@ sub onLiveCategorySelected()
     m.livePlayerScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("resetSelection")
     m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
+    m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", category)
     m.liveChannelsScreen.callFunc("setLoading", true)
     loadLiveChannels(category)
@@ -619,6 +622,7 @@ sub onLiveChannelsCategorySelected()
     m.liveChannels = []
     m.liveChannelsLoading = true
     m.livePlayerScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", category)
     m.liveChannelsScreen.callFunc("setLoading", true)
     loadLiveChannels(category)
@@ -652,6 +656,7 @@ sub onLivePlayerBack()
         m.openedFromSearch = false
         showHome()
     else
+        m.liveChannelsScreen.callFunc("setAccount", m.account)
         m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
     end if
 end sub

@@ -16,6 +16,7 @@ sub Init()
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.channelsGroup = m.top.FindNode("channelsGroup")
     m.previewPanel = m.top.FindNode("previewPanel")
+    m.previewVideo = m.top.FindNode("previewVideo")
     m.previewLogo = m.top.FindNode("previewLogo")
     m.previewTitle = m.top.FindNode("previewTitle")
     m.previewSubtitle = m.top.FindNode("previewSubtitle")
@@ -25,7 +26,13 @@ sub Init()
     m.calendarPanel = m.top.FindNode("calendarPanel")
     m.calendarTitle = m.top.FindNode("calendarTitle")
     m.hintLabel = m.top.FindNode("hintLabel")
+    m.previewDelayTimer = m.top.FindNode("previewDelayTimer")
+    m.previewDelayTimer.ObserveField("fire", "onPreviewDelayFire")
+    m.previewVideo.ObserveField("state", "onPreviewVideoStateChanged")
 
+    m.account = invalid
+    m.pendingPreviewChannel = invalid
+    m.currentPreviewKey = ""
     m.categories = []
     m.categoryNodes = []
     m.categorySelectedIndex = 0
@@ -158,6 +165,9 @@ sub configureLayout()
     panelY = m.contentY + m.gap
 
     layoutPanel(m.previewPanel, rightX, panelY, rightW, previewH)
+    m.previewVideo.width = rightW
+    m.previewVideo.height = previewH
+    m.previewVideo.translation = [rightX, panelY]
     m.previewLogo.width = Int(rightW * 0.45)
     m.previewLogo.height = Int(previewH * 0.48)
     m.previewLogo.translation = [rightX + Int((rightW - m.previewLogo.width) / 2), panelY + 24]
@@ -243,7 +253,12 @@ sub focusCategories()
 end sub
 
 sub hide()
+    stopPreview()
     m.top.visible = false
+end sub
+
+sub setAccount(account as Object)
+    m.account = account
 end sub
 
 sub resetSelection()
@@ -263,6 +278,7 @@ sub setLoading(isLoading as Boolean)
         m.channels = []
         m.allChannel = []
         resetSelection()
+        stopPreview()
         updatePreview()
         m.statusLabel.text = "Carregando canais de TV ao vivo..."
         m.statusLabel.color = "#B8C3D6"
@@ -293,6 +309,7 @@ sub setCategories(categories as Object)
 end sub
 
 sub showMessage(message as String)
+    stopPreview()
     clearChannelNodes()
     m.channels = []
     m.allChannel = []
@@ -344,7 +361,7 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     accent.id = "itemAccent"
     accent.width = 6
     accent.height = m.cardHeight
-    accent.color = "#009DFF"
+    accent.color = "#063B66"
     accent.opacity = 0.0
 
     label = CreateObject("roSGNode", "Label")
@@ -437,7 +454,7 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     accent.id = "itemAccent"
     accent.width = 6
     accent.height = m.cardHeight
-    accent.color = "#009DFF"
+    accent.color = "#063B66"
     accent.opacity = 0.0
 
     logoBackground = CreateObject("roSGNode", "Rectangle")
@@ -568,6 +585,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             itemIndex = m.selectedIndex - 1
             print "OK opening selectedIndex="; itemIndex
             print "OK opening item="; getChannelLogTitle(m.channels[itemIndex])
+            stopPreview()
             m.top.channelSelected = m.channels[itemIndex]
         end if
         return true
@@ -689,10 +707,10 @@ sub updateFocus()
 
         selectedCategoryNode.scale = [1.02, 1.02]
         if m.focusColumn = "categories" then
-            background.color = "#0B3A5E"
+            background.color = "#061F36"
             label.color = "#FFFFFF"
         else
-            background.color = "#172338"
+            background.color = "#101A2C"
             label.color = "#B8C3D6"
         end if
         background.opacity = 1.0
@@ -726,9 +744,9 @@ sub updateFocus()
 
         selectedNode.scale = [1.02, 1.02]
         if m.focusColumn = "channels" then
-            background.color = "#0B3A5E"
+            background.color = "#061F36"
         else
-            background.color = "#172338"
+            background.color = "#101A2C"
         end if
         background.opacity = 1.0
         accent.opacity = 1.0
@@ -737,7 +755,7 @@ sub updateFocus()
         else
             label.color = "#B8C3D6"
         end if
-        if logoBackground <> invalid then logoBackground.color = "#0F4F7A"
+        if logoBackground <> invalid then logoBackground.color = "#063B66"
     end if
 
     updatePreview()
@@ -745,23 +763,119 @@ end sub
 
 sub updatePreview()
     if m.focusColumn <> "channels" or m.selectedIndex = 0 or m.channels.Count() = 0 or m.selectedIndex > m.channels.Count() then
+        stopPreview()
         m.previewLogo.uri = ""
+        m.previewLogo.visible = true
         m.previewTitle.text = "Preview do Canal"
+        m.previewTitle.visible = true
         m.previewSubtitle.text = "Selecione um canal"
+        m.previewSubtitle.visible = true
         return
     end if
 
     channel = m.channels[m.selectedIndex - 1]
+    previewKey = getStreamId(channel) + ":" + getChannelName(channel)
+    if previewKey = m.currentPreviewKey then return
+
+    stopPreview()
+    m.pendingPreviewChannel = channel
     m.previewTitle.text = getChannelName(channel)
-    logo = getChannelLogo(channel)
-    if logo <> "" then
-        m.previewLogo.uri = logo
-        m.previewSubtitle.text = "Preview do Canal"
-    else
-        m.previewLogo.uri = ""
-        m.previewSubtitle.text = "Preview não disponível"
+    m.previewTitle.visible = true
+    m.previewSubtitle.text = "Carregando preview..."
+    m.previewSubtitle.visible = true
+    m.previewLogo.uri = getChannelLogo(channel)
+    m.previewLogo.visible = true
+    m.currentPreviewKey = previewKey
+    m.previewDelayTimer.control = "start"
+end sub
+
+sub onPreviewDelayFire()
+    if m.pendingPreviewChannel = invalid or m.top.visible <> true then return
+    streamUrl = buildPreviewStreamUrl(m.pendingPreviewChannel)
+    if streamUrl = "" then
+        showPreviewUnavailable()
+        return
+    end if
+
+    content = CreateObject("roSGNode", "ContentNode")
+    content.url = streamUrl
+    content.title = getChannelName(m.pendingPreviewChannel)
+    content.streamFormat = getPreviewStreamFormat(streamUrl)
+    content.live = true
+
+    m.previewVideo.content = content
+    m.previewVideo.mute = true
+    m.previewVideo.visible = true
+    m.previewVideo.control = "play"
+end sub
+
+sub onPreviewVideoStateChanged()
+    state = LCase(m.previewVideo.state)
+    if state = "playing" then
+        m.previewLogo.visible = false
+        m.previewTitle.visible = false
+        m.previewSubtitle.visible = false
+    else if state = "error" or state = "finished" then
+        if m.top.visible = true then showPreviewUnavailable()
     end if
 end sub
+
+sub showPreviewUnavailable()
+    m.previewVideo.control = "stop"
+    m.previewVideo.content = invalid
+    m.previewVideo.visible = false
+    m.previewLogo.uri = ""
+    m.previewLogo.visible = true
+    m.previewTitle.text = getChannelName(m.pendingPreviewChannel)
+    m.previewTitle.visible = true
+    m.previewSubtitle.text = "Preview indisponível"
+    m.previewSubtitle.visible = true
+end sub
+
+sub stopPreview()
+    if m.previewDelayTimer <> invalid then m.previewDelayTimer.control = "stop"
+    if m.previewVideo <> invalid then
+        m.previewVideo.control = "stop"
+        m.previewVideo.content = invalid
+        m.previewVideo.visible = false
+    end if
+    m.pendingPreviewChannel = invalid
+    m.currentPreviewKey = ""
+end sub
+
+function buildPreviewStreamUrl(channel as Dynamic) as String
+    if channel = invalid then return ""
+    if channel.url <> invalid and channel.url.ToStr().Trim() <> "" then return channel.url.ToStr()
+    if channel.stream_url <> invalid and channel.stream_url.ToStr().Trim() <> "" then return channel.stream_url.ToStr()
+    if m.account = invalid or m.account.dns = invalid or m.account.username = invalid or m.account.password = invalid then return ""
+    streamId = getStreamId(channel)
+    if streamId = "" then return ""
+    extension = getStreamExtension(channel)
+    dns = m.account.dns.ToStr()
+    if Right(dns, 1) = "/" then dns = Left(dns, Len(dns) - 1)
+    return dns + "/live/" + m.account.username.ToStr() + "/" + m.account.password.ToStr() + "/" + streamId + "." + extension
+end function
+
+function getStreamId(channel as Dynamic) as String
+    if channel = invalid then return ""
+    if channel.stream_id <> invalid then return channel.stream_id.ToStr()
+    if channel.id <> invalid then return channel.id.ToStr()
+    return ""
+end function
+
+function getStreamExtension(channel as Dynamic) as String
+    if channel = invalid then return "ts"
+    if channel.container_extension <> invalid and channel.container_extension.ToStr().Trim() <> "" then return channel.container_extension.ToStr()
+    if channel.stream_type <> invalid and LCase(channel.stream_type.ToStr()) = "m3u8" then return "m3u8"
+    return "ts"
+end function
+
+function getPreviewStreamFormat(streamUrl as String) as String
+    lowerUrl = LCase(streamUrl)
+    if Instr(1, lowerUrl, ".m3u8") > 0 then return "hls"
+    if Instr(1, lowerUrl, ".mp4") > 0 then return "mp4"
+    return "mpegts"
+end function
 
 
 sub openSearchKeyboard()
