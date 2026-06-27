@@ -1,11 +1,11 @@
-' Home screen for PXT Player.
+' Playlist screen for PXT Player.
 sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.title = m.top.FindNode("homeTitle")
     m.subtitle = m.top.FindNode("homeSubtitle")
-    m.settingsButton = m.top.FindNode("settingsButton")
+    m.removeButton = m.top.FindNode("removeButton")
 
-    m.settingsButton.ObserveField("buttonSelected", "onSettingsSelected")
+    m.removeButton.ObserveField("buttonSelected", "onRemoveSelected")
     configureLayout()
 end sub
 
@@ -19,26 +19,26 @@ sub configureLayout()
 
     m.title.width = width
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.26)]
+    m.title.translation = [0, Int(height * 0.22)]
 
     m.subtitle.width = width
     m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, Int(height * 0.38)]
+    m.subtitle.translation = [0, Int(height * 0.34)]
 
-    m.settingsButton.translation = [Int((width - 360) / 2), Int(height * 0.58)]
+    m.removeButton.translation = [Int((width - 520) / 2), Int(height * 0.58)]
 end sub
 
 sub show()
     m.top.visible = true
-    m.settingsButton.SetFocus(true)
+    m.removeButton.SetFocus(true)
 end sub
 
 sub hide()
     m.top.visible = false
 end sub
 
-sub onSettingsSelected()
-    m.top.openSettings = true
+sub onRemoveSelected()
+    m.top.removePlaylist = true
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean

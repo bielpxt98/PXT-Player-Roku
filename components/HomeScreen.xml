@@ -3,13 +3,13 @@
     <interface>
         <function name="show" />
         <function name="hide" />
-        <field id="openSettings" type="boolean" alwaysNotify="true" />
+        <field id="removePlaylist" type="boolean" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
         <Rectangle id="homeBackground" color="#000000" translation="[0, 0]" />
-        <Label id="homeTitle" text="PXT PLAYER" color="#FFFFFF" horizAlign="center" />
-        <Label id="homeSubtitle" text="Sua central de IPTV para Roku" color="#B8C3D6" horizAlign="center" />
-        <Button id="settingsButton" text="CONFIGURAÇÕES" minWidth="360" translation="[0, 0]" />
+        <Label id="homeTitle" text="LISTA DE REPRODUÇÃO" color="#FFFFFF" horizAlign="center" />
+        <Label id="homeSubtitle" text="Lista salva. Integração Xtream será adicionada na próxima etapa." color="#B8C3D6" horizAlign="center" />
+        <Button id="removeButton" text="REMOVER LISTA DE REPRODUÇÃO" minWidth="520" translation="[0, 0]" />
     </children>
 </component>

@@ -1,5 +1,5 @@
 ' Main scene for the PXT Player application.
-' It coordinates feature screens while keeping login data in memory only.
+' It coordinates feature screens and persists playlist credentials locally.
 sub Init()
     m.homeScreen = m.top.FindNode("homeScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
@@ -7,11 +7,12 @@ sub Init()
 
     configureScene()
 
-    m.homeScreen.ObserveField("openSettings", "onOpenSettings")
+    m.homeScreen.ObserveField("removePlaylist", "onRemovePlaylistRequested")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
 
-    if hasSavedAccount() then
+    m.account = LoadSavedPlaylist()
+    if hasSavedPlaylist() then
         showHome()
     else
         showLogin()
@@ -24,9 +25,8 @@ sub configureScene()
     m.homeScreen.SetFocus(true)
 end sub
 
-function hasSavedAccount() as Boolean
-    ' Persistent account loading will be added with the Xtream/M3U integration.
-    return false
+function hasSavedPlaylist() as Boolean
+    return m.account <> invalid
 end function
 
 sub showHome()
@@ -39,16 +39,40 @@ sub showLogin()
     m.loginScreen.callFunc("show", m.account)
 end sub
 
-sub onOpenSettings()
-    showLogin()
+sub onRemovePlaylistRequested()
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = "Remover Lista de Reprodução"
+    dialog.message = "Deseja remover a Lista de Reprodução salva? Você precisará informar DNS, usuário e senha novamente."
+    dialog.buttons = ["REMOVER", "CANCELAR"]
+    dialog.ObserveField("buttonSelected", "onRemovePlaylistDialogSelected")
+    m.top.dialog = dialog
+end sub
+
+sub onRemovePlaylistDialogSelected()
+    dialog = m.top.dialog
+    if dialog = invalid then return
+
+    selectedIndex = dialog.buttonSelected
+    m.top.dialog = invalid
+
+    if selectedIndex = 0 then
+        DeleteSavedPlaylist()
+        m.account = invalid
+        showLogin()
+    else
+        showHome()
+    end if
 end sub
 
 sub onLoginSubmit()
     ' No validation or remote connection is performed in this step.
     m.account = m.loginScreen.submit
+    SavePlaylist(m.account)
     showHome()
 end sub
 
 sub onLoginBack()
-    showHome()
+    if hasSavedPlaylist() then
+        showHome()
+    end if
 end sub
