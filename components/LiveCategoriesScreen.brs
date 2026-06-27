@@ -180,7 +180,7 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     accent.width = 6
     accent.height = m.cardHeight
     accent.color = "#009DFF"
-    accent.opacity = 0.45
+    accent.opacity = 0.0
 
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
@@ -293,6 +293,8 @@ end sub
 sub updateFocus()
     selectedNode = invalid
 
+    ' Keep a single manual highlight: reset every visible item before
+    ' applying the selectedIndex state to exactly one realIndex.
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
         background = m.itemNodes[i].FindNode("itemBackground")
@@ -302,7 +304,7 @@ sub updateFocus()
         m.itemNodes[i].scale = [1.0, 1.0]
         background.color = "#111827"
         background.opacity = 0.86
-        accent.opacity = 0.45
+        accent.opacity = 0.0
         label.color = "#F8FAFC"
 
         if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
@@ -316,7 +318,7 @@ sub updateFocus()
         selectedNode.scale = [1.02, 1.02]
         background.color = "#0B3A5E"
         background.opacity = 1.0
-        accent.opacity = 1.0
+        accent.opacity = 0.0
         label.color = "#FFFFFF"
     end if
 end sub
