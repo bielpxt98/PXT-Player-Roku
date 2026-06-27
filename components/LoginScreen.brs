@@ -21,6 +21,10 @@ sub Init()
         m.top.FindNode("passwordFocus")
     ]
     m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.backButton]
+    m.textFieldMaxLengths = [200, 100, 100]
+    m.textFieldTitles = ["DNS", "USUÁRIO", "SENHA"]
+    m.activeTextFieldIndex = invalid
+    m.keyboardDialog = invalid
     m.focusIndex = 0
     m.isLoading = false
 
@@ -138,10 +142,52 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "back" then
         onBackSelected()
         return true
+    else if key = "OK" then
+        if m.focusIndex <= 2 then
+            openTextKeyboard(m.focusIndex)
+            return true
+        end if
     end if
 
     return false
 end function
+
+sub openTextKeyboard(fieldIndex as Integer)
+    m.activeTextFieldIndex = fieldIndex
+    input = m.focusableControls[fieldIndex]
+
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Editar " + m.textFieldTitles[fieldIndex]
+    dialog.text = input.text
+    dialog.buttons = ["OK", "Cancelar"]
+
+    if dialog.keyboard <> invalid and dialog.keyboard.textEditBox <> invalid then
+        dialog.keyboard.textEditBox.maxTextLength = m.textFieldMaxLengths[fieldIndex]
+        dialog.keyboard.textEditBox.leadingEllipsis = true
+        dialog.keyboard.textEditBox.clearOnDownKey = false
+        dialog.keyboard.textEditBox.secureMode = (fieldIndex = 2)
+    end if
+
+    dialog.ObserveField("buttonSelected", "onKeyboardDialogButtonSelected")
+    m.keyboardDialog = dialog
+    m.top.getScene().dialog = dialog
+end sub
+
+sub onKeyboardDialogButtonSelected()
+    if m.keyboardDialog = invalid or m.activeTextFieldIndex = invalid then return
+
+    selectedButton = m.keyboardDialog.buttonSelected
+    if selectedButton = 0 then
+        ' Use the complete final value from Roku's native text component so pasted
+        ' content from the Roku mobile app keeps the exact character order.
+        m.focusableControls[m.activeTextFieldIndex].text = m.keyboardDialog.text
+    end if
+
+    m.top.getScene().dialog = invalid
+    m.keyboardDialog = invalid
+    m.activeTextFieldIndex = invalid
+    updateFocus()
+end sub
 
 sub moveFocus(direction as Integer)
     nextIndex = m.focusIndex + direction

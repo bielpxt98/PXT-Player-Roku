@@ -17,15 +17,15 @@
         <Group id="formGroup">
             <Label id="dnsLabel" text="DNS" color="#FFFFFF" />
             <Rectangle id="dnsFocus" color="#147DFF" width="600" height="72" />
-            <TextEditBox id="dnsInput" hintText="http://exemplo.com" width="580" height="54" translation="[10, 9]" />
+            <TextEditBox id="dnsInput" hintText="http://exemplo.com" width="580" height="54" translation="[10, 9]" maxTextLength="200" clearOnDownKey="false" leadingEllipsis="true" />
 
             <Label id="userLabel" text="USUÁRIO" color="#FFFFFF" translation="[0, 104]" />
             <Rectangle id="userFocus" color="#147DFF" width="600" height="72" translation="[0, 134]" />
-            <TextEditBox id="userInput" hintText="Seu usuário" width="580" height="54" translation="[10, 143]" />
+            <TextEditBox id="userInput" hintText="Seu usuário" width="580" height="54" translation="[10, 143]" maxTextLength="100" clearOnDownKey="false" leadingEllipsis="true" />
 
             <Label id="passwordLabel" text="SENHA" color="#FFFFFF" translation="[0, 238]" />
             <Rectangle id="passwordFocus" color="#147DFF" width="600" height="72" translation="[0, 268]" />
-            <TextEditBox id="passwordInput" hintText="Sua senha" width="580" height="54" translation="[10, 277]" secureMode="true" />
+            <TextEditBox id="passwordInput" hintText="Sua senha" width="580" height="54" translation="[10, 277]" secureMode="true" maxTextLength="100" clearOnDownKey="false" leadingEllipsis="true" />
 
             <Button id="enterButton" text="ENTRAR" minWidth="280" translation="[0, 390]" />
             <Button id="backButton" text="VOLTAR" minWidth="280" translation="[320, 390]" />
