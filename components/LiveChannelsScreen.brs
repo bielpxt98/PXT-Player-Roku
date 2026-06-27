@@ -314,7 +314,12 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "back" then
-        m.top.backRequested = true
+        if m.searchQuery <> "" then
+            m.searchQuery = ""
+            applySearchFilter()
+        else
+            m.top.backRequested = true
+        end if
         return true
     else if key = "up" then
         moveFocus(-1)
