@@ -565,8 +565,14 @@ end sub
 sub onMovieListCategorySelected()
     category = m.movieListScreen.categorySelected
     if category = invalid then return
+    newCategoryId = getCategoryId(category)
     m.selectedMovieCategory = category
-    m.selectedMovieCategoryId = getCategoryId(category)
+    if newCategoryId = m.selectedMovieCategoryId and m.movies <> invalid and m.movies.Count() > 0 then
+        m.movieListScreen.callFunc("show", category)
+        m.movieListScreen.callFunc("setMovies", m.movies)
+        return
+    end if
+    m.selectedMovieCategoryId = newCategoryId
     m.movies = []
     m.moviesLoading = true
     m.movieListScreen.callFunc("show", category)
@@ -650,12 +656,18 @@ sub onLiveChannelsCategorySelected()
     category = m.liveChannelsScreen.categorySelected
     if category = invalid then return
 
+    newCategoryId = getCategoryId(category)
     m.selectedLiveCategory = category
-    m.selectedLiveCategoryId = getCategoryId(category)
-    m.liveChannels = []
-    m.liveChannelsLoading = true
     m.livePlayerScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("setAccount", m.account)
+    if newCategoryId = m.selectedLiveCategoryId and m.liveChannels <> invalid and m.liveChannels.Count() > 0 then
+        m.liveChannelsScreen.callFunc("show", category)
+        m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+        return
+    end if
+    m.selectedLiveCategoryId = newCategoryId
+    m.liveChannels = []
+    m.liveChannelsLoading = true
     m.liveChannelsScreen.callFunc("show", category)
     m.liveChannelsScreen.callFunc("setLoading", true)
     loadLiveChannels(category)
@@ -1010,8 +1022,14 @@ end sub
 sub onSeriesListCategorySelected()
     category = m.seriesListScreen.categorySelected
     if category = invalid then return
+    newCategoryId = getCategoryId(category)
     m.selectedSeriesCategory = category
-    m.selectedSeriesCategoryId = getCategoryId(category)
+    if newCategoryId = m.selectedSeriesCategoryId and m.series <> invalid and m.series.Count() > 0 then
+        m.seriesListScreen.callFunc("show", category)
+        m.seriesListScreen.callFunc("setSeries", m.series)
+        return
+    end if
+    m.selectedSeriesCategoryId = newCategoryId
     m.series = []
     m.seriesLoading = true
     m.seriesListScreen.callFunc("show", category)

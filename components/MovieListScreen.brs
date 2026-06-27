@@ -31,7 +31,7 @@ sub configureLayout()
     if h <= 720 then m.posterW = 120 : m.posterH = 176 : m.posterGapX = 20 : m.posterGapY = 24 : m.categoryItemH = 44
     m.columns = Int((m.gridW + m.posterGapX) / (m.posterW + m.posterGapX)) : if m.columns < 1 then m.columns = 1
     m.rows = Int(m.gridH / (m.posterH + m.posterGapY)) : if m.rows < 1 then m.rows = 1
-    m.visibleItemCount = m.columns * m.rows
+    m.visibleItemCount = m.columns * m.rows : if m.visibleItemCount > 40 then m.visibleItemCount = 40
     m.visibleCategoryCount = Int((m.panelH - 90) / m.categoryItemH) : if m.visibleCategoryCount < 1 then m.visibleCategoryCount = 1
     m.background.width = w : m.background.height = h
     m.searchBar.width = w : m.searchBar.height = m.searchH

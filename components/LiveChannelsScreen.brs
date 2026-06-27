@@ -15,24 +15,9 @@ sub Init()
     m.statusLabel = m.top.FindNode("statusLabel")
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.channelsGroup = m.top.FindNode("channelsGroup")
-    m.previewPanel = m.top.FindNode("previewPanel")
-    m.previewVideo = m.top.FindNode("previewVideo")
-    m.previewLogo = m.top.FindNode("previewLogo")
-    m.previewTitle = m.top.FindNode("previewTitle")
-    m.previewSubtitle = m.top.FindNode("previewSubtitle")
-    m.epgPanel = m.top.FindNode("epgPanel")
-    m.epgTitle = m.top.FindNode("epgTitle")
-    m.epgSubtitle = m.top.FindNode("epgSubtitle")
-    m.calendarPanel = m.top.FindNode("calendarPanel")
-    m.calendarTitle = m.top.FindNode("calendarTitle")
     m.hintLabel = m.top.FindNode("hintLabel")
-    m.previewDelayTimer = m.top.FindNode("previewDelayTimer")
-    m.previewDelayTimer.ObserveField("fire", "onPreviewDelayFire")
-    m.previewVideo.ObserveField("state", "onPreviewVideoStateChanged")
 
     m.account = invalid
-    m.pendingPreviewChannel = invalid
-    m.currentPreviewKey = ""
     m.categories = []
     m.categoryNodes = []
     m.categorySelectedIndex = 0
@@ -74,18 +59,12 @@ sub configureLayout()
     end if
     if m.contentHeight < 300 then m.contentHeight = height - m.contentY - m.footerReservedHeight
 
-    m.leftPanelWidth = Int(m.contentWidth * 0.26)
-    if m.leftPanelWidth < 240 then m.leftPanelWidth = 240
-    if m.leftPanelWidth > 360 then m.leftPanelWidth = 360
-    m.middlePanelWidth = Int(m.contentWidth * 0.32)
-    if m.middlePanelWidth < 280 then m.middlePanelWidth = 280
-    if m.middlePanelWidth > 430 then m.middlePanelWidth = 430
+    m.leftPanelWidth = Int(m.contentWidth * 0.32)
+    if m.leftPanelWidth < 260 then m.leftPanelWidth = 260
+    if m.leftPanelWidth > 430 then m.leftPanelWidth = 430
     m.dividerWidth = 2
-    m.gap = 14
     m.middlePanelX = m.contentX + m.leftPanelWidth + m.dividerWidth
-    m.rightPanelX = m.middlePanelX + m.middlePanelWidth + m.dividerWidth
-    m.rightPanelWidth = m.contentWidth - m.leftPanelWidth - m.middlePanelWidth - (m.dividerWidth * 2)
-
+    m.middlePanelWidth = m.contentWidth - m.leftPanelWidth - m.dividerWidth
     m.leftTitleHeight = 44
     m.listY = m.contentY + m.leftTitleHeight
     m.listHeight = m.contentHeight - m.leftTitleHeight
@@ -133,7 +112,7 @@ sub configureLayout()
     m.leftPanelBackground.height = m.contentHeight
     m.leftPanelBackground.translation = [m.contentX, m.contentY]
 
-    m.rightPanelBackground.width = m.middlePanelWidth + m.dividerWidth + m.rightPanelWidth
+    m.rightPanelBackground.width = m.middlePanelWidth
     m.rightPanelBackground.height = m.contentHeight
     m.rightPanelBackground.translation = [m.middlePanelX, m.contentY]
 
@@ -156,53 +135,14 @@ sub configureLayout()
     m.categoriesGroup.translation = [m.contentX + 14, m.listY]
     m.channelsGroup.translation = [m.middlePanelX + 14, m.listY]
 
-    rightX = m.rightPanelX + m.gap
-    rightW = m.rightPanelWidth - (m.gap * 2)
-    previewH = Int(m.contentHeight * 0.47)
-    epgH = Int(m.contentHeight * 0.30)
-    calendarH = m.contentHeight - previewH - epgH - (m.gap * 2)
-    panelY = m.contentY + m.gap
-
-    layoutPanel(m.previewPanel, rightX, panelY, rightW, previewH)
-    m.previewVideo.width = rightW
-    m.previewVideo.height = previewH
-    m.previewVideo.translation = [rightX, panelY]
-    m.previewLogo.width = Int(rightW * 0.45)
-    m.previewLogo.height = Int(previewH * 0.48)
-    m.previewLogo.translation = [rightX + Int((rightW - m.previewLogo.width) / 2), panelY + 24]
-    centerLabel(m.previewTitle, rightX, panelY + Int(previewH * 0.48), rightW, Int(previewH * 0.25), "font:LargeBoldSystemFont")
-    m.previewSubtitle.width = rightW
-    m.previewSubtitle.font = "font:SmallSystemFont"
-    m.previewSubtitle.translation = [rightX, panelY + Int(previewH * 0.76)]
-
-    epgY = panelY + previewH + m.gap
-    layoutPanel(m.epgPanel, rightX, epgY, rightW, epgH)
-    centerLabel(m.epgTitle, rightX, epgY, rightW, epgH, "font:MediumBoldSystemFont")
-    m.epgSubtitle.width = rightW
-    m.epgSubtitle.font = "font:SmallSystemFont"
-    m.epgSubtitle.translation = [rightX, epgY + Int(epgH / 2) + 34]
-
-    calendarY = epgY + epgH + m.gap
-    layoutPanel(m.calendarPanel, rightX, calendarY, rightW, calendarH)
-    centerLabel(m.calendarTitle, rightX, calendarY, rightW, calendarH, "font:MediumBoldSystemFont")
-
     m.hintLabel.width = width
     m.hintLabel.font = "font:SmallSystemFont"
     m.hintLabel.translation = [0, height - m.footerReservedHeight + 12]
 end sub
 
-sub layoutPanel(panel as Object, x as Integer, y as Integer, w as Integer, h as Integer)
-    panel.width = w
-    panel.height = h
-    panel.translation = [x, y]
-end sub
 
-sub centerLabel(label as Object, x as Integer, y as Integer, w as Integer, h as Integer, fontName as String)
-    label.width = w
-    label.height = h
-    label.font = fontName
-    label.translation = [x, y]
-end sub
+
+
 
 sub updateHeaderClock()
     dateTime = CreateObject("roDateTime")
@@ -236,14 +176,14 @@ end sub
 
 sub selectCategory(category as Dynamic)
     if category = invalid or m.categories.Count() = 0 then
-        if m.categories.Count() > 0 then m.categorySelectedIndex = 1 else m.categorySelectedIndex = 0
+        m.categorySelectedIndex = 0
         updateCategoryVisibleWindow()
         return
     end if
     categoryId = getCategoryId(category)
     for i = 0 to m.categories.Count() - 1
         if getCategoryId(m.categories[i]) = categoryId then
-            m.categorySelectedIndex = i + 1
+            m.categorySelectedIndex = i
             updateCategoryVisibleWindow()
             return
         end if
@@ -256,7 +196,6 @@ sub focusCategories()
 end sub
 
 sub hide()
-    stopPreview()
     m.top.visible = false
 end sub
 
@@ -281,8 +220,6 @@ sub setLoading(isLoading as Boolean)
         m.channels = []
         m.allChannel = []
         resetSelection()
-        stopPreview()
-        updatePreview()
         m.statusLabel.text = "Carregando canais de TV ao vivo..."
         m.statusLabel.color = "#B8C3D6"
     else
@@ -300,6 +237,7 @@ sub setChannels(channels as Object)
     end if
 
     m.statusLabel.text = ""
+    m.focusColumn = "channels"
     updateVisibleWindow()
     renderList()
     updateFocus()
@@ -312,7 +250,6 @@ sub setCategories(categories as Object)
 end sub
 
 sub showMessage(message as String)
-    stopPreview()
     clearChannelNodes()
     m.channels = []
     m.allChannel = []
@@ -335,7 +272,7 @@ end function
 
 sub renderCategories()
     clearCategoryNodes()
-    totalRows = m.categories.Count() + 1
+    totalRows = m.categories.Count()
     if totalRows = 0 then return
 
     lastIndex = m.categoryFirstVisibleIndex + m.visibleItemCount - 1
@@ -343,233 +280,15 @@ sub renderCategories()
 
     for visualIndex = 0 to lastIndex - m.categoryFirstVisibleIndex
         realIndex = m.categoryFirstVisibleIndex + visualIndex
-        if realIndex = 0 then
-            item = createCategorySearchItem(visualIndex)
-        else
-            item = createCategoryItem(m.categories[realIndex - 1], visualIndex, realIndex - 1)
-        end if
+        item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
         m.categoriesGroup.AppendChild(item)
         m.categoryNodes.Push(item)
     end for
 end sub
 
-function createCategorySearchItem(visibleIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "categorySearchItem"
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.width = m.leftPanelWidth - 28
-    background.height = m.cardHeight
-    background.color = "#113B5C"
-    background.opacity = 0.86
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#5CE08A"
-    accent.opacity = 0.0
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.width = m.leftPanelWidth - 58
-    label.height = m.cardHeight
-    label.translation = [18, 0]
-    label.vertAlign = "center"
-    label.color = "#F8FAFC"
-    label.font = "font:MediumBoldSystemFont"
-    label.text = "Buscar canais"
-    item.AppendChild(background)
-    item.AppendChild(accent)
-    item.AppendChild(label)
-    return item
-end function
 
-function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "categoryItem" + absoluteIndex.ToStr()
 
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.width = m.leftPanelWidth - 28
-    background.height = m.cardHeight
-    background.color = "#111827"
-    background.opacity = 0.86
 
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#063B66"
-    accent.opacity = 0.0
-
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.width = m.leftPanelWidth - 58
-    label.height = m.cardHeight
-    label.translation = [18, 0]
-    label.vertAlign = "center"
-    label.color = "#F8FAFC"
-    label.font = "font:MediumSystemFont"
-    label.text = getCategoryName(category)
-
-    item.AppendChild(background)
-    item.AppendChild(accent)
-    item.AppendChild(label)
-    return item
-end function
-
-sub renderList()
-    clearChannelNodes()
-
-    totalRows = m.channels.Count()
-    if totalRows = 0 then return
-    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= totalRows then lastIndex = totalRows - 1
-
-    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
-        realIndex = m.firstVisibleIndex + visualIndex
-        item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
-        m.channelsGroup.AppendChild(item)
-        m.itemNodes.Push(item)
-    end for
-end sub
-
-function createSearchItem(visibleIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "searchItem"
-
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.width = m.middlePanelWidth - 28
-    background.height = m.cardHeight
-    background.color = "#113B5C"
-    background.opacity = 0.92
-
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#5CE08A"
-    accent.opacity = 0.0
-
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.width = m.middlePanelWidth - 60
-    label.height = m.cardHeight
-    label.translation = [16, 0]
-    label.vertAlign = "center"
-    label.color = "#F8FAFC"
-    label.font = "font:MediumBoldSystemFont"
-    if m.searchQuery <> "" then
-        label.text = "Buscar: " + m.searchQuery
-    else
-        label.text = "Buscar canais"
-    end if
-
-    item.AppendChild(background)
-    item.AppendChild(accent)
-    item.AppendChild(label)
-    return item
-end function
-
-function createChannelItem(channel as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "channelItem" + absoluteIndex.ToStr()
-
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.width = m.middlePanelWidth - 28
-    background.height = m.cardHeight
-    background.color = "#111827"
-    background.opacity = 0.86
-
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#063B66"
-    accent.opacity = 0.0
-
-    logoBackground = CreateObject("roSGNode", "Rectangle")
-    logoBackground.id = "logoBackground"
-    logoBackground.width = m.logoSize + 6
-    logoBackground.height = m.logoSize + 6
-    logoBackground.translation = [22, Int((m.cardHeight - (m.logoSize + 6)) / 2)]
-    logoBackground.color = "#1F2937"
-    logoBackground.opacity = 0.95
-
-    logo = CreateObject("roSGNode", "Poster")
-    logo.id = "channelLogo"
-    logo.width = m.logoSize
-    logo.height = m.logoSize
-    logo.translation = [25, m.logoInset]
-    logo.loadDisplayMode = "scaleToFit"
-    logo.uri = getChannelLogo(channel)
-
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.width = m.middlePanelWidth - 112
-    label.height = m.cardHeight
-    label.translation = [100, 0]
-    label.vertAlign = "center"
-    label.color = "#F8FAFC"
-    label.font = "font:MediumSystemFont"
-    label.text = getChannelName(channel)
-
-    item.AppendChild(background)
-    item.AppendChild(accent)
-    item.AppendChild(logoBackground)
-    item.AppendChild(logo)
-    item.AppendChild(label)
-    return item
-end function
-
-function getChannelName(channel as Dynamic) as String
-    if channel = invalid then return "Canal sem nome"
-    if channel.name <> invalid and channel.name.ToStr().Trim() <> "" then return channel.name.ToStr()
-    if channel.title <> invalid and channel.title.ToStr().Trim() <> "" then return channel.title.ToStr()
-    return "Canal sem nome"
-end function
-
-function getChannelLogTitle(channel as Dynamic) as String
-    if channel = invalid then return ""
-    if channel.title <> invalid and channel.title.ToStr().Trim() <> "" then return channel.title.ToStr()
-    return getChannelName(channel)
-end function
-
-function getChannelLogo(channel as Dynamic) as String
-    if channel = invalid then return ""
-    if channel.stream_icon <> invalid and channel.stream_icon.ToStr().Trim() <> "" then return channel.stream_icon.ToStr()
-    if channel.tvg_logo <> invalid and channel.tvg_logo.ToStr().Trim() <> "" then return channel.tvg_logo.ToStr()
-    if channel.DoesExist("tvg-logo") and channel["tvg-logo"] <> invalid and channel["tvg-logo"].ToStr().Trim() <> "" then return channel["tvg-logo"].ToStr()
-    if channel.logo <> invalid and channel.logo.ToStr().Trim() <> "" then return channel.logo.ToStr()
-    if channel.icon <> invalid and channel.icon.ToStr().Trim() <> "" then return channel.icon.ToStr()
-    return ""
-end function
-
-function getCategoryName(category as Dynamic) as String
-    if category = invalid then return "Categoria"
-    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
-    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
-    return "Categoria"
-end function
-
-function getCategoryId(category as Dynamic) as String
-    if category = invalid then return ""
-    if category.category_id <> invalid then return category.category_id.ToStr()
-    if category.id <> invalid then return category.id.ToStr()
-    return ""
-end function
-
-sub clearChannelNodes()
-    while m.channelsGroup.GetChildCount() > 0
-        m.channelsGroup.RemoveChildIndex(0)
-    end while
-    m.itemNodes = []
-end sub
 
 sub clearCategoryNodes()
     while m.categoriesGroup.GetChildCount() > 0
@@ -598,9 +317,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
-    else if key = "replay" then
-        openSearchKeyboard()
-        return true
     else if key = "options" then
         if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
             m.top.channelFavoriteToggled = m.channels[m.selectedIndex]
@@ -610,10 +326,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.focusColumn = "categories" then
-            if m.categorySelectedIndex = 0 then
-                m.top.searchRequested = true
-            else if m.categories.Count() > 0 and m.categorySelectedIndex - 1 >= 0 and m.categorySelectedIndex - 1 < m.categories.Count() then
-                m.top.categorySelected = m.categories[m.categorySelectedIndex - 1]
+            if m.categories.Count() > 0 and m.categorySelectedIndex >= 0 and m.categorySelectedIndex < m.categories.Count() then
+                m.top.categorySelected = m.categories[m.categorySelectedIndex]
                 m.focusColumn = "channels"
                 resetSelection()
                 updateFocus()
@@ -622,8 +336,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             itemIndex = m.selectedIndex
             print "OK opening selectedIndex="; itemIndex
             print "OK opening item="; getChannelLogTitle(m.channels[itemIndex])
-            stopPreview()
-            m.top.channelSelected = m.channels[itemIndex]
+                    m.top.channelSelected = m.channels[itemIndex]
         end if
         return true
     end if
@@ -661,7 +374,7 @@ sub handleCategoryUpDown(direction as Integer)
 end sub
 
 sub updateCategoryVisibleWindow()
-    totalRows = m.categories.Count() + 1
+    totalRows = m.categories.Count()
     if totalRows = 0 then
         m.categorySelectedIndex = 0
         m.categoryFirstVisibleIndex = 0
@@ -801,129 +514,12 @@ sub updateFocus()
         if logoBackground <> invalid then logoBackground.color = "#063B66"
     end if
 
-    updatePreview()
 end sub
 
-sub updatePreview()
-    if m.focusColumn <> "channels" or m.channels.Count() = 0 or m.selectedIndex >= m.channels.Count() then
-        stopPreview()
-        m.previewLogo.uri = ""
-        m.previewLogo.visible = true
-        m.previewTitle.text = "Preview do Canal"
-        m.previewTitle.visible = true
-        m.previewSubtitle.text = "Selecione um canal"
-        m.previewSubtitle.visible = true
-        return
-    end if
-
-    channel = m.channels[m.selectedIndex]
-    previewKey = getStreamId(channel) + ":" + getChannelName(channel)
-    if previewKey = m.currentPreviewKey then return
-
-    stopPreview()
-    m.pendingPreviewChannel = channel
-    m.previewTitle.text = getChannelName(channel)
-    m.previewTitle.visible = true
-    m.previewSubtitle.text = "Carregando preview..."
-    m.previewSubtitle.visible = true
-    m.previewLogo.uri = getChannelLogo(channel)
-    m.previewLogo.visible = true
-    m.currentPreviewKey = previewKey
-    m.previewDelayTimer.control = "start"
-end sub
-
-sub onPreviewDelayFire()
-    if m.pendingPreviewChannel = invalid or m.top.visible <> true then return
-    streamUrl = buildPreviewStreamUrl(m.pendingPreviewChannel)
-    if streamUrl = "" then
-        showPreviewUnavailable()
-        return
-    end if
-
-    content = CreateObject("roSGNode", "ContentNode")
-    content.url = streamUrl
-    content.title = getChannelName(m.pendingPreviewChannel)
-    content.streamFormat = getPreviewStreamFormat(streamUrl)
-    content.live = true
-
-    m.previewVideo.content = content
-    m.previewVideo.mute = true
-    m.previewVideo.visible = true
-    m.previewVideo.control = "play"
-end sub
-
-sub onPreviewVideoStateChanged()
-    state = LCase(m.previewVideo.state)
-    if state = "playing" then
-        m.previewLogo.visible = false
-        m.previewTitle.visible = false
-        m.previewSubtitle.visible = false
-    else if state = "error" or state = "finished" then
-        if m.top.visible = true then showPreviewUnavailable()
-    end if
-end sub
-
-sub showPreviewUnavailable()
-    m.previewVideo.control = "stop"
-    m.previewVideo.content = invalid
-    m.previewVideo.visible = false
-    m.previewLogo.uri = ""
-    m.previewLogo.visible = true
-    m.previewTitle.text = getChannelName(m.pendingPreviewChannel)
-    m.previewTitle.visible = true
-    m.previewSubtitle.text = "Preview indisponível"
-    m.previewSubtitle.visible = true
-end sub
-
-sub stopPreview()
-    if m.previewDelayTimer <> invalid then m.previewDelayTimer.control = "stop"
-    if m.previewVideo <> invalid then
-        m.previewVideo.control = "stop"
-        m.previewVideo.content = invalid
-        m.previewVideo.visible = false
-    end if
-    m.pendingPreviewChannel = invalid
-    m.currentPreviewKey = ""
-end sub
-
-function buildPreviewStreamUrl(channel as Dynamic) as String
-    if channel = invalid then return ""
-    if channel.url <> invalid and channel.url.ToStr().Trim() <> "" then return channel.url.ToStr()
-    if channel.stream_url <> invalid and channel.stream_url.ToStr().Trim() <> "" then return channel.stream_url.ToStr()
-    if m.account = invalid or m.account.dns = invalid or m.account.username = invalid or m.account.password = invalid then return ""
-    streamId = getStreamId(channel)
-    if streamId = "" then return ""
-    extension = getStreamExtension(channel)
-    dns = m.account.dns.ToStr()
-    if Right(dns, 1) = "/" then dns = Left(dns, Len(dns) - 1)
-    return dns + "/live/" + m.account.username.ToStr() + "/" + m.account.password.ToStr() + "/" + streamId + "." + extension
-end function
-
-function getStreamId(channel as Dynamic) as String
-    if channel = invalid then return ""
-    if channel.stream_id <> invalid then return channel.stream_id.ToStr()
-    if channel.id <> invalid then return channel.id.ToStr()
-    return ""
-end function
-
-function getStreamExtension(channel as Dynamic) as String
-    if channel = invalid then return "ts"
-    if channel.container_extension <> invalid and channel.container_extension.ToStr().Trim() <> "" then return channel.container_extension.ToStr()
-    if channel.stream_type <> invalid and LCase(channel.stream_type.ToStr()) = "m3u8" then return "m3u8"
-    return "ts"
-end function
-
-function getPreviewStreamFormat(streamUrl as String) as String
-    lowerUrl = LCase(streamUrl)
-    if Instr(1, lowerUrl, ".m3u8") > 0 then return "hls"
-    if Instr(1, lowerUrl, ".mp4") > 0 then return "mp4"
-    return "mpegts"
-end function
 
 
-sub openSearchKeyboard()
-    m.top.searchRequested = true
-end sub
+
+
 
 sub applySearchFilter()
     query = LCase(m.searchQuery.Trim())
