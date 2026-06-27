@@ -81,6 +81,7 @@ sub Init()
     m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
     m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
     m.liveCategoriesScreen.ObserveField("searchRequested", "onLiveSearchRequested")
+    m.liveChannelsScreen.ObserveField("searchRequested", "onLiveSearchRequested")
     m.liveChannelsScreen.ObserveField("backRequested", "onLiveChannelsBack")
     m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
     m.liveChannelsScreen.ObserveField("categorySelected", "onLiveChannelsCategorySelected")
@@ -206,12 +207,8 @@ sub openSearch(mode as String, backTarget as String)
         return
     end if
 
-    m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
-    if needsSearchData(mode) then
-        m.searchScreen.callFunc("setLoading", true)
-        m.searchLoadStep = "channels"
-        loadSearchChannels()
-    end if
+    searchData = getSearchDataForMode(mode)
+    m.searchScreen.callFunc("setData", searchData)
 end sub
 
 sub onSearchBack()
@@ -247,6 +244,16 @@ sub onSeriesSearchRequested()
     m.seriesCategoriesScreen.callFunc("hide")
     openSearch("series", "series")
 end sub
+
+function getSearchDataForMode(mode as String) as Object
+    channels = m.searchChannels
+    movies = m.searchMovies
+    series = m.searchSeries
+    if mode = "live" and m.liveChannels <> invalid and m.liveChannels.Count() > 0 then channels = m.liveChannels
+    if mode = "movies" and m.movies <> invalid and m.movies.Count() > 0 then movies = m.movies
+    if mode = "series" and m.series <> invalid and m.series.Count() > 0 then series = m.series
+    return { channels: channels, movies: movies, series: series }
+end function
 
 function needsSearchData(mode as String) as Boolean
     if mode = "live" then return m.searchChannels.Count() = 0

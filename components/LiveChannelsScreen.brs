@@ -37,11 +37,10 @@ sub Init()
     m.categoryNodes = []
     m.categorySelectedIndex = 0
     m.categoryFirstVisibleIndex = 0
-    m.focusColumn = "channels"
+    m.focusColumn = "categories"
     m.channels = []
     m.allChannel = []
     m.searchQuery = ""
-    m.keyboardDialog = invalid
     m.itemNodes = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
@@ -226,7 +225,7 @@ sub show(category as Dynamic)
     end if
 
     m.searchQuery = ""
-    m.focusColumn = "channels"
+    m.focusColumn = "categories"
     selectCategory(category)
     configureLayout()
     applySearchFilter()
@@ -236,11 +235,15 @@ sub show(category as Dynamic)
 end sub
 
 sub selectCategory(category as Dynamic)
-    if category = invalid or m.categories.Count() = 0 then return
+    if category = invalid or m.categories.Count() = 0 then
+        if m.categories.Count() > 0 then m.categorySelectedIndex = 1 else m.categorySelectedIndex = 0
+        updateCategoryVisibleWindow()
+        return
+    end if
     categoryId = getCategoryId(category)
     for i = 0 to m.categories.Count() - 1
         if getCategoryId(m.categories[i]) = categoryId then
-            m.categorySelectedIndex = i
+            m.categorySelectedIndex = i + 1
             updateCategoryVisibleWindow()
             return
         end if
@@ -332,18 +335,54 @@ end function
 
 sub renderCategories()
     clearCategoryNodes()
-    if m.categories.Count() = 0 then return
+    totalRows = m.categories.Count() + 1
+    if totalRows = 0 then return
 
     lastIndex = m.categoryFirstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
+    if lastIndex >= totalRows then lastIndex = totalRows - 1
 
     for visualIndex = 0 to lastIndex - m.categoryFirstVisibleIndex
         realIndex = m.categoryFirstVisibleIndex + visualIndex
-        item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
+        if realIndex = 0 then
+            item = createCategorySearchItem(visualIndex)
+        else
+            item = createCategoryItem(m.categories[realIndex - 1], visualIndex, realIndex - 1)
+        end if
         m.categoriesGroup.AppendChild(item)
         m.categoryNodes.Push(item)
     end for
 end sub
+
+function createCategorySearchItem(visibleIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group")
+    item.translation = [0, visibleIndex * m.itemHeight]
+    item.id = "categorySearchItem"
+    background = CreateObject("roSGNode", "Rectangle")
+    background.id = "itemBackground"
+    background.width = m.leftPanelWidth - 28
+    background.height = m.cardHeight
+    background.color = "#113B5C"
+    background.opacity = 0.86
+    accent = CreateObject("roSGNode", "Rectangle")
+    accent.id = "itemAccent"
+    accent.width = 6
+    accent.height = m.cardHeight
+    accent.color = "#5CE08A"
+    accent.opacity = 0.0
+    label = CreateObject("roSGNode", "Label")
+    label.id = "itemLabel"
+    label.width = m.leftPanelWidth - 58
+    label.height = m.cardHeight
+    label.translation = [18, 0]
+    label.vertAlign = "center"
+    label.color = "#F8FAFC"
+    label.font = "font:MediumBoldSystemFont"
+    label.text = "Buscar canais"
+    item.AppendChild(background)
+    item.AppendChild(accent)
+    item.AppendChild(label)
+    return item
+end function
 
 function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
@@ -383,17 +422,14 @@ end function
 sub renderList()
     clearChannelNodes()
 
-    totalRows = m.channels.Count() + 1
+    totalRows = m.channels.Count()
+    if totalRows = 0 then return
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= totalRows then lastIndex = totalRows - 1
 
     for visualIndex = 0 to lastIndex - m.firstVisibleIndex
         realIndex = m.firstVisibleIndex + visualIndex
-        if realIndex = 0 then
-            item = createSearchItem(visualIndex)
-        else
-            item = createChannelItem(m.channels[realIndex - 1], visualIndex, realIndex - 1)
-        end if
+        item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
         m.channelsGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
@@ -566,23 +602,24 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         openSearchKeyboard()
         return true
     else if key = "options" then
-        if m.channels.Count() > 0 and m.selectedIndex > 0 and m.selectedIndex <= m.channels.Count() then
-            m.top.channelFavoriteToggled = m.channels[m.selectedIndex - 1]
+        if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
+            m.top.channelFavoriteToggled = m.channels[m.selectedIndex]
             m.statusLabel.color = "#5CE08A"
             m.statusLabel.text = "Canal atualizado nos favoritos."
         end if
         return true
     else if key = "OK" then
         if m.focusColumn = "categories" then
-            if m.categories.Count() > 0 and m.categorySelectedIndex >= 0 and m.categorySelectedIndex < m.categories.Count() then
-                m.top.categorySelected = m.categories[m.categorySelectedIndex]
+            if m.categorySelectedIndex = 0 then
+                m.top.searchRequested = true
+            else if m.categories.Count() > 0 and m.categorySelectedIndex - 1 >= 0 and m.categorySelectedIndex - 1 < m.categories.Count() then
+                m.top.categorySelected = m.categories[m.categorySelectedIndex - 1]
                 m.focusColumn = "channels"
+                resetSelection()
                 updateFocus()
             end if
-        else if m.selectedIndex = 0 then
-            openSearchKeyboard()
-        else if m.channels.Count() > 0 and m.selectedIndex <= m.channels.Count() then
-            itemIndex = m.selectedIndex - 1
+        else if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
+            itemIndex = m.selectedIndex
             print "OK opening selectedIndex="; itemIndex
             print "OK opening item="; getChannelLogTitle(m.channels[itemIndex])
             stopPreview()
@@ -624,14 +661,15 @@ sub handleCategoryUpDown(direction as Integer)
 end sub
 
 sub updateCategoryVisibleWindow()
-    if m.categories.Count() = 0 then
+    totalRows = m.categories.Count() + 1
+    if totalRows = 0 then
         m.categorySelectedIndex = 0
         m.categoryFirstVisibleIndex = 0
         return
     end if
     if m.categorySelectedIndex < 0 then m.categorySelectedIndex = 0
-    if m.categorySelectedIndex >= m.categories.Count() then m.categorySelectedIndex = m.categories.Count() - 1
-    maxFirstIndex = m.categories.Count() - m.visibleItemCount
+    if m.categorySelectedIndex >= totalRows then m.categorySelectedIndex = totalRows - 1
+    maxFirstIndex = totalRows - m.visibleItemCount
     if maxFirstIndex < 0 then maxFirstIndex = 0
     if m.categorySelectedIndex < m.categoryFirstVisibleIndex then
         m.categoryFirstVisibleIndex = m.categorySelectedIndex
@@ -642,7 +680,7 @@ sub updateCategoryVisibleWindow()
 end sub
 
 sub handleUpDown(direction as Integer)
-    if m.channels.Count() = 0 and m.selectedIndex = 0 then return
+    if m.channels.Count() = 0 then return
 
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
@@ -663,7 +701,12 @@ sub handleUpDown(direction as Integer)
 end sub
 
 sub updateVisibleWindow()
-    totalRows = m.channels.Count() + 1
+    totalRows = m.channels.Count()
+    if totalRows = 0 then
+        m.selectedIndex = 0
+        m.firstVisibleIndex = 0
+        return
+    end if
 
     if m.selectedIndex < 0 then m.selectedIndex = 0
     if m.selectedIndex >= totalRows then m.selectedIndex = totalRows - 1
@@ -762,7 +805,7 @@ sub updateFocus()
 end sub
 
 sub updatePreview()
-    if m.focusColumn <> "channels" or m.selectedIndex = 0 or m.channels.Count() = 0 or m.selectedIndex > m.channels.Count() then
+    if m.focusColumn <> "channels" or m.channels.Count() = 0 or m.selectedIndex >= m.channels.Count() then
         stopPreview()
         m.previewLogo.uri = ""
         m.previewLogo.visible = true
@@ -773,7 +816,7 @@ sub updatePreview()
         return
     end if
 
-    channel = m.channels[m.selectedIndex - 1]
+    channel = m.channels[m.selectedIndex]
     previewKey = getStreamId(channel) + ":" + getChannelName(channel)
     if previewKey = m.currentPreviewKey then return
 
@@ -879,27 +922,7 @@ end function
 
 
 sub openSearchKeyboard()
-    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
-    dialog.title = "Buscar canais"
-    dialog.text = m.searchQuery
-    dialog.buttons = ["Buscar", "Limpar", "Cancelar"]
-    dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
-    m.keyboardDialog = dialog
-    m.top.GetScene().dialog = dialog
-end sub
-
-sub onSearchKeyboardButtonSelected()
-    if m.keyboardDialog = invalid then return
-    selectedButton = m.keyboardDialog.buttonSelected
-    if selectedButton = 0 then
-        m.searchQuery = m.keyboardDialog.text.Trim()
-        applySearchFilter()
-    else if selectedButton = 1 then
-        m.searchQuery = ""
-        applySearchFilter()
-    end if
-    m.top.GetScene().dialog = invalid
-    m.keyboardDialog = invalid
+    m.top.searchRequested = true
 end sub
 
 sub applySearchFilter()
