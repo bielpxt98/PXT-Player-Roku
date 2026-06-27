@@ -10,5 +10,6 @@
         <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
         <LivePlayerScreen id="livePlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
+        <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
     </children>
 </component>

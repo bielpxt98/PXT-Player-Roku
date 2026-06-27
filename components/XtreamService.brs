@@ -91,6 +91,7 @@ function buildLiveStreamUrl() as Object
 end function
 
 function requestXtream(cacheKey as String, apiAction as String) as Object
+    print "DEBUG XtreamService: início da requisição " + cacheKey
     credentials = getCredentials()
     if not credentials.valid then
         return buildFailure("Informe DNS, usuário e senha para conectar.")
@@ -105,11 +106,18 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
         url = url + "&category_id=" + escapeQueryValue(m.top.categoryId)
     end if
     httpResponse = sendHttpGet(url)
-    if not httpResponse.success then return httpResponse
+    if not httpResponse.success then
+        print "DEBUG XtreamService: erro na requisição " + cacheKey + " - " + httpResponse.message
+        return httpResponse
+    end if
 
     parsedResponse = validateJsonResponse(httpResponse.body, apiAction)
-    if not parsedResponse.success then return parsedResponse
+    if not parsedResponse.success then
+        print "DEBUG XtreamService: erro na validação " + cacheKey + " - " + parsedResponse.message
+        return parsedResponse
+    end if
 
+    print "DEBUG XtreamService: sucesso na requisição " + cacheKey
     result = buildSuccess(cacheKey, parsedResponse.data)
     m.cache[cacheKey] = result
     return result
@@ -148,8 +156,9 @@ function sendHttpGet(url as String) as Object
 
     event = waitForHttpResponse(port, 15000)
     if event = invalid then
+        print "DEBUG XtreamService: timeout após 15 segundos sem resposta"
         transfer.AsyncCancel()
-        return buildFailure("Tempo esgotado ao conectar ao servidor Xtream.")
+        return buildFailure("Servidor não respondeu. Verifique DNS, usuário e senha.")
     end if
 
     response = event.GetString()

@@ -8,6 +8,7 @@ sub Init()
     m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
     m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
+    m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.account = LoadSavedPlaylist()
     m.pendingAccount = invalid
     m.liveCategories = []
@@ -29,6 +30,7 @@ sub Init()
     m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
     m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
+    m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
 
     if hasAccount(m.account) then
         updateConnectionStatus(true, "Conectado")
@@ -92,11 +94,14 @@ sub onLoginSubmit()
     end if
 
     m.pendingAccount = account
+    print "DEBUG Login: início da autenticação Xtream"
     m.loginScreen.callFunc("setLoading", true)
+    startLoginTimeout()
     connectXtream(account)
 end sub
 
 sub onLoginBack()
+    stopLoginTimeout()
     showHome()
 end sub
 
@@ -158,6 +163,7 @@ sub buildLiveStreamUrl(channel as Object)
 end sub
 
 sub connectXtream(account as Object)
+    print "DEBUG Login: enviando requisição de conexão Xtream"
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "connect"
     m.xtreamService.cacheEnabled = false
@@ -215,7 +221,16 @@ sub onXtreamConnectionResult()
         return
     end if
 
-    if result.success = true and result.connected = true then
+    stopLoginTimeout()
+    m.loginScreen.callFunc("setLoading", false)
+
+    if m.pendingAccount = invalid then
+        print "DEBUG Login: resposta ignorada porque não há login pendente"
+        return
+    end if
+
+    if isValidXtreamConnectionResult(result) then
+        print "DEBUG Login: autenticação Xtream concluída com sucesso"
         m.account = m.pendingAccount
         SavePlaylist(m.account)
         SavePlaylistConnectionStatus("Conectado")
@@ -227,14 +242,39 @@ sub onXtreamConnectionResult()
         m.liveChannelsLoading = false
         showHome()
     else
+        print "DEBUG Login: erro na autenticação Xtream - " + getResultMessage(result)
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
         m.liveCategories = []
         m.liveChannels = []
         m.liveCategoriesLoading = false
         m.liveChannelsLoading = false
-        m.loginScreen.callFunc("showError", "Não foi possível conectar ao servidor.")
+        m.loginScreen.callFunc("showError", getResultMessage(result))
     end if
+end sub
+
+sub startLoginTimeout()
+    if m.loginTimeoutTimer = invalid then return
+    m.loginTimeoutTimer.control = "stop"
+    m.loginTimeoutTimer.duration = 15
+    m.loginTimeoutTimer.control = "start"
+end sub
+
+sub stopLoginTimeout()
+    if m.loginTimeoutTimer = invalid then return
+    m.loginTimeoutTimer.control = "stop"
+end sub
+
+sub onLoginTimeout()
+    if m.pendingAccount = invalid then return
+
+    print "DEBUG Login: timeout ao aguardar resposta Xtream"
+    m.xtreamService.control = "STOP"
+    m.pendingAccount = invalid
+    m.liveCategoriesLoading = false
+    m.liveChannelsLoading = false
+    SavePlaylistConnectionStatus("Desconectado")
+    m.loginScreen.callFunc("showError", "Servidor não respondeu. Verifique DNS, usuário e senha.")
 end sub
 
 sub onLiveCategoriesResult(result as Object)
@@ -292,6 +332,24 @@ sub onLiveStreamUrlResult(result as Object)
         m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
     end if
 end sub
+
+function isValidXtreamConnectionResult(result as Dynamic) as Boolean
+    if result = invalid then return false
+    if result.success <> true or result.connected <> true then return false
+    if result.data = invalid then return false
+    if Type(result.data) <> "roAssociativeArray" then return false
+    userInfo = result.data.user_info
+    if userInfo = invalid then return false
+    if Type(userInfo) <> "roAssociativeArray" then return false
+    return true
+end function
+
+function getResultMessage(result as Dynamic) as String
+    if result <> invalid and result.message <> invalid and result.message.ToStr().Trim() <> "" then
+        return result.message.ToStr()
+    end if
+    return "Não foi possível conectar ao servidor."
+end function
 
 function getStreamId(channel as Dynamic) as String
     if channel = invalid then return ""
