@@ -1,6 +1,6 @@
 ' Live TV channel list screen.
-' This screen displays channels for one category and intentionally shows only a
-' playback placeholder when a channel is selected.
+' This screen displays channels for one category and notifies MainScene when a
+' channel is selected for live playback.
 sub Init()
     m.background = m.top.FindNode("background")
     m.title = m.top.FindNode("title")
@@ -206,7 +206,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         moveFocus(1)
         return true
     else if key = "OK" then
-        if m.channels.Count() > 0 then showMessage("Player será implementado na próxima etapa.")
+        if m.channels.Count() > 0 then m.top.channelSelected = m.channels[m.focusIndex]
         return true
     end if
 

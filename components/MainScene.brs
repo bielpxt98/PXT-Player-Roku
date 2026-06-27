@@ -6,6 +6,7 @@ sub Init()
     m.loginScreen = m.top.FindNode("loginScreen")
     m.liveCategoriesScreen = m.top.FindNode("liveCategoriesScreen")
     m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
+    m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
     m.account = LoadSavedPlaylist()
     m.pendingAccount = invalid
@@ -14,6 +15,7 @@ sub Init()
     m.liveChannels = []
     m.liveChannelsLoading = false
     m.selectedLiveCategory = invalid
+    m.selectedLiveChannel = invalid
 
     configureScene()
 
@@ -24,6 +26,8 @@ sub Init()
     m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
     m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
     m.liveChannelsScreen.ObserveField("backRequested", "onLiveChannelsBack")
+    m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
+    m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
 
     showHome()
@@ -39,6 +43,7 @@ sub showHome()
     m.loginScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
     m.homeScreen.callFunc("show")
 end sub
 
@@ -46,6 +51,7 @@ sub showLogin()
     m.homeScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
     m.loginScreen.callFunc("show", m.account)
 end sub
 
@@ -57,6 +63,7 @@ sub onOpenLiveCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("show")
 
     if m.liveCategoriesLoading then
@@ -90,6 +97,7 @@ end sub
 
 sub onLiveChannelsBack()
     m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("show")
 end sub
 
@@ -101,9 +109,43 @@ sub onLiveCategorySelected()
     m.liveChannels = []
     m.liveChannelsLoading = true
     m.liveCategoriesScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("show", category)
     m.liveChannelsScreen.callFunc("setLoading", true)
     loadLiveChannels(category)
+end sub
+
+
+sub onLiveChannelSelected()
+    channel = m.liveChannelsScreen.channelSelected
+    if channel = invalid then return
+
+    if not hasAccount(m.account) then
+        m.liveChannelsScreen.callFunc("showMessage", "Conecte uma lista Xtream para reproduzir canais de TV ao vivo.")
+        return
+    end if
+
+    m.selectedLiveChannel = channel
+    m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("show", channel)
+    buildLiveStreamUrl(channel)
+end sub
+
+sub onLivePlayerBack()
+    m.livePlayerScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
+end sub
+
+sub buildLiveStreamUrl(channel as Object)
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "buildLiveStreamUrl"
+    m.xtreamService.cacheEnabled = false
+    m.xtreamService.streamId = getStreamId(channel)
+    m.xtreamService.streamExtension = getStreamExtension(channel)
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
 end sub
 
 sub connectXtream(account as Object)
@@ -151,6 +193,9 @@ sub onXtreamConnectionResult()
 
     if result.request = "getLiveCategories" then
         onLiveCategoriesResult(result)
+        return
+    else if result.request = "buildLiveStreamUrl" then
+        onLiveStreamUrlResult(result)
         return
     else if Left(result.request, 14) = "getLiveStreams" then
         onLiveChannelsResult(result)
@@ -224,6 +269,31 @@ sub onLiveChannelsResult(result as Object)
         end if
     end if
 end sub
+
+
+sub onLiveStreamUrlResult(result as Object)
+    if m.livePlayerScreen.visible <> true then return
+
+    if result.success = true and result.data <> invalid and result.data.url <> invalid then
+        m.livePlayerScreen.callFunc("play", result.data.url)
+    else
+        m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
+    end if
+end sub
+
+function getStreamId(channel as Dynamic) as String
+    if channel = invalid then return ""
+    if channel.stream_id <> invalid then return channel.stream_id.ToStr()
+    if channel.id <> invalid then return channel.id.ToStr()
+    return ""
+end function
+
+function getStreamExtension(channel as Dynamic) as String
+    if channel = invalid then return "ts"
+    if channel.container_extension <> invalid and channel.container_extension.ToStr().Trim() <> "" then return channel.container_extension.ToStr()
+    if channel.stream_type <> invalid and LCase(channel.stream_type.ToStr()) = "m3u8" then return "m3u8"
+    return "ts"
+end function
 
 function normalizeLiveChannels(data as Dynamic) as Object
     if data = invalid then return []

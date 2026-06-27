@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="LivePlayerScreen" extends="Group">
+    <interface>
+        <function name="show" />
+        <function name="play" />
+        <function name="hide" />
+        <function name="showError" />
+        <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="channelName" type="string" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/LivePlayerScreen.brs" />
+    <children>
+        <Video id="video" translation="[0, 0]" />
+        <Group id="loadingGroup" visible="false">
+            <BusySpinner id="loadingSpinner" width="60" height="60" />
+            <Label id="loadingLabel" text="Carregando canal..." color="#FFFFFF" horizAlign="center" />
+        </Group>
+        <Group id="errorGroup" visible="false">
+            <Label id="errorTitle" text="Não foi possível reproduzir o canal" color="#FFFFFF" horizAlign="center" />
+            <Label id="errorMessage" text="Pressione Voltar e tente novamente." color="#B8C3D6" horizAlign="center" wrap="true" />
+        </Group>
+    </children>
+</component>

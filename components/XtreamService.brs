@@ -1,7 +1,7 @@
 ' Xtream API communication service.
 ' This Task owns only server communication and returns structured data for
 ' future screens. It intentionally does not load data into the interface,
-' implement playback, search, favorites, or Home behavior.
+' search, favorites, or Home behavior. Playback screens ask it to build Xtream URLs.
 sub Init()
     m.top.functionName = "executeRequest"
     m.cache = {}
@@ -21,6 +21,8 @@ sub executeRequest()
         m.top.result = getSeriesCategories()
     else if action = "getlivestreams" then
         m.top.result = getLiveStreams()
+    else if action = "buildlivestreamurl" then
+        m.top.result = buildLiveStreamUrl()
     else if action = "getmovies" then
         m.top.result = getMovies()
     else if action = "getseries" then
@@ -59,6 +61,33 @@ end function
 
 function getSeries() as Object
     return requestXtream("getSeries", "get_series")
+end function
+
+
+function buildLiveStreamUrl() as Object
+    credentials = getCredentials()
+    if not credentials.valid then
+        return buildFailure("Informe DNS, usuário e senha para reproduzir o canal.")
+    end if
+
+    streamId = safeTrim(m.top.streamId)
+    if streamId = "" then
+        return buildFailure("Canal sem identificador de reprodução.")
+    end if
+
+    extension = safeTrim(m.top.streamExtension)
+    if extension = "" then extension = "ts"
+    if Left(extension, 1) = "." then extension = Mid(extension, 2)
+
+    return {
+        success: true,
+        connected: true,
+        request: "buildLiveStreamUrl",
+        data: {
+            url: credentials.dns + "/live/" + escapePathValue(credentials.username) + "/" + escapePathValue(credentials.password) + "/" + escapePathValue(streamId) + "." + escapePathValue(extension)
+        },
+        message: "URL de reprodução montada com sucesso."
+    }
 end function
 
 function requestXtream(cacheKey as String, apiAction as String) as Object
@@ -175,6 +204,11 @@ function normalizeDns(dns as Dynamic) as String
 end function
 
 function escapeQueryValue(value as Dynamic) as String
+    transfer = CreateObject("roUrlTransfer")
+    return transfer.Escape(safeTrim(value))
+end function
+
+function escapePathValue(value as Dynamic) as String
     transfer = CreateObject("roUrlTransfer")
     return transfer.Escape(safeTrim(value))
 end function
