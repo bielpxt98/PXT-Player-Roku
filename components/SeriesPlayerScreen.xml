@@ -21,10 +21,5 @@
             <Label id="errorTitle" text="Não foi possível reproduzir o episódio" color="#FFFFFF" horizAlign="center" />
             <Label id="errorMessage" text="Pressione Voltar e tente novamente." color="#B8C3D6" horizAlign="center" wrap="true" />
         </Group>
-        <Group id="infoGroup" visible="false">
-            <Rectangle id="infoBackground" color="#000000" opacity="0.72" width="1920" height="112" />
-            <Label id="infoTitle" text="" color="#FFFFFF" />
-            <Label id="infoTime" text="00:00:00" color="#B8C3D6" />
-        </Group>
     </children>
 </component>
