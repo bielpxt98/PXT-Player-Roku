@@ -3,12 +3,14 @@ sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.title = m.top.FindNode("homeTitle")
     m.subtitle = m.top.FindNode("homeSubtitle")
+    m.liveTvButton = m.top.FindNode("liveTvButton")
     m.playlistButton = m.top.FindNode("playlistButton")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.playlistButton]
+    m.buttons = [m.liveTvButton, m.playlistButton]
     m.focusIndex = 0
 
+    m.liveTvButton.ObserveField("buttonSelected", "onLiveTvSelected")
     m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
     configureLayout()
 end sub
@@ -29,7 +31,8 @@ sub configureLayout()
     m.subtitle.font = "font:MediumSystemFont"
     m.subtitle.translation = [0, Int(height * 0.34)]
 
-    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.58)]
+    m.liveTvButton.translation = [Int((width - 520) / 2), Int(height * 0.52)]
+    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.64)]
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:MediumSystemFont"
     m.connectionStatusLabel.translation = [0, Int(height * 0.72)]
@@ -57,8 +60,19 @@ sub hide()
     m.top.visible = false
 end sub
 
+sub onLiveTvSelected()
+    m.top.openLiveCategories = true
+end sub
+
 sub onPlaylistSelected()
     m.top.openPlaylist = true
+end sub
+
+sub setLiveCategoriesLoading(isLoading as Boolean)
+    if isLoading then
+        m.connectionStatusLabel.color = "#B8C3D6"
+        m.connectionStatusLabel.text = "Carregando categorias de TV ao vivo..."
+    end if
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
