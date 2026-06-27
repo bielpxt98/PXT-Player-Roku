@@ -1,21 +1,105 @@
-' Xtream API connection service.
-' This task only validates the saved credentials against player_api.php.
-' Loading channels, movies, series and playback belong to later feature steps.
+' Xtream API communication service.
+' This Task owns only server communication and returns structured data for
+' future screens. It intentionally does not load data into the interface,
+' implement playback, search, favorites, or Home behavior.
 sub Init()
-    m.top.functionName = "testConnection"
+    m.top.functionName = "executeRequest"
+    m.cache = {}
 end sub
 
-sub testConnection()
-    dns = normalizeDns(m.top.dns)
-    username = m.top.username
-    password = m.top.password
+sub executeRequest()
+    action = LCase(m.top.action)
+    if action = "" then action = "connect"
 
-    if dns = "" or username = "" or password = "" then
-        m.top.result = buildFailure("Informe DNS, usuário e senha para conectar.")
-        return
+    if action = "connect" then
+        m.top.result = connect()
+    else if action = "getlivecategories" then
+        m.top.result = getLiveCategories()
+    else if action = "getmoviecategories" then
+        m.top.result = getMovieCategories()
+    else if action = "getseriescategories" then
+        m.top.result = getSeriesCategories()
+    else if action = "getlivestreams" then
+        m.top.result = getLiveStreams()
+    else if action = "getmovies" then
+        m.top.result = getMovies()
+    else if action = "getseries" then
+        m.top.result = getSeries()
+    else
+        m.top.result = buildFailure("Ação Xtream não suportada: " + m.top.action)
+    end if
+end sub
+
+function connect() as Object
+    return requestXtream("connect", "")
+end function
+
+function getLiveCategories() as Object
+    return requestXtream("getLiveCategories", "get_live_categories")
+end function
+
+function getMovieCategories() as Object
+    return requestXtream("getMovieCategories", "get_vod_categories")
+end function
+
+function getSeriesCategories() as Object
+    return requestXtream("getSeriesCategories", "get_series_categories")
+end function
+
+function getLiveStreams() as Object
+    return requestXtream("getLiveStreams", "get_live_streams")
+end function
+
+function getMovies() as Object
+    return requestXtream("getMovies", "get_vod_streams")
+end function
+
+function getSeries() as Object
+    return requestXtream("getSeries", "get_series")
+end function
+
+function requestXtream(cacheKey as String, apiAction as String) as Object
+    credentials = getCredentials()
+    if not credentials.valid then
+        return buildFailure("Informe DNS, usuário e senha para conectar.")
     end if
 
-    url = buildPlayerApiUrl(dns, username, password)
+    if shouldUseCache(cacheKey) then
+        return m.cache[cacheKey]
+    end if
+
+    url = buildPlayerApiUrl(credentials.dns, credentials.username, credentials.password, apiAction)
+    httpResponse = sendHttpGet(url)
+    if not httpResponse.success then return httpResponse
+
+    parsedResponse = validateJsonResponse(httpResponse.body, apiAction)
+    if not parsedResponse.success then return parsedResponse
+
+    result = buildSuccess(cacheKey, parsedResponse.data)
+    m.cache[cacheKey] = result
+    return result
+end function
+
+function getCredentials() as Object
+    dns = normalizeDns(m.top.dns)
+    username = safeTrim(m.top.username)
+    password = safeTrim(m.top.password)
+
+    return {
+        valid: dns <> "" and username <> "" and password <> "",
+        dns: dns,
+        username: username,
+        password: password
+    }
+end function
+
+function buildPlayerApiUrl(dns as String, username as String, password as String, apiAction as String) as String
+    url = dns + "/player_api.php?username=" + escapeQueryValue(username) + "&password=" + escapeQueryValue(password)
+    if apiAction <> "" then url = url + "&action=" + escapeQueryValue(apiAction)
+    return url
+end function
+
+function sendHttpGet(url as String) as Object
     transfer = CreateObject("roUrlTransfer")
     transfer.SetUrl(url)
     transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
@@ -24,42 +108,52 @@ sub testConnection()
     response = transfer.GetToString()
     statusCode = transfer.GetResponseCode()
 
-    if statusCode <> 200 or response = invalid or response = "" then
-        m.top.result = buildFailure("Não foi possível conectar ao servidor. Verifique sua internet e os dados da conta.")
-        return
+    if statusCode < 200 or statusCode > 299 then
+        return buildFailure("Não foi possível conectar ao servidor Xtream. Código HTTP: " + statusCode.ToStr())
     end if
 
+    if response = invalid or response = "" then
+        return buildFailure("O servidor Xtream respondeu sem dados.")
+    end if
+
+    return {
+        success: true,
+        body: response,
+        statusCode: statusCode
+    }
+end function
+
+function validateJsonResponse(response as String, apiAction as String) as Object
     parsedResponse = ParseJson(response)
     if parsedResponse = invalid then
-        m.top.result = buildFailure("O servidor respondeu em um formato inválido. Confira o DNS informado.")
-        return
+        return buildFailure("O servidor Xtream respondeu em um formato inválido.")
     end if
 
-    userInfo = parsedResponse.user_info
-    if userInfo = invalid then
-        m.top.result = buildFailure("Não foi possível validar a conta neste servidor.")
-        return
+    if apiAction = "" then
+        userInfo = parsedResponse.user_info
+        if userInfo = invalid then
+            return buildFailure("Não foi possível validar a conta neste servidor.")
+        end if
+
+        if not isSuccessfulUserInfo(userInfo) then
+            return buildFailure("Login inválido ou conta inativa. Verifique usuário e senha.")
+        end if
     end if
 
-    if isSuccessfulUserInfo(userInfo) then
-        m.top.result = {
-            success: true,
-            connected: true,
-            message: "Conectado ao servidor com sucesso."
-        }
-    else
-        m.top.result = buildFailure("Login inválido ou conta inativa. Verifique usuário e senha.")
-    end if
-end sub
+    return {
+        success: true,
+        data: parsedResponse
+    }
+end function
 
-function buildPlayerApiUrl(dns as String, username as String, password as String) as String
-    return dns + "/player_api.php?username=" + escapeQueryValue(username) + "&password=" + escapeQueryValue(password)
+function shouldUseCache(cacheKey as String) as Boolean
+    if m.top.cacheEnabled <> true then return false
+    if m.cache = invalid then m.cache = {}
+    return m.cache.DoesExist(cacheKey)
 end function
 
 function normalizeDns(dns as Dynamic) as String
-    if dns = invalid then return ""
-
-    normalized = dns.Trim()
+    normalized = safeTrim(dns)
     if normalized = "" then return ""
 
     lowerDns = LCase(normalized)
@@ -75,10 +169,13 @@ function normalizeDns(dns as Dynamic) as String
 end function
 
 function escapeQueryValue(value as Dynamic) as String
-    if value = invalid then return ""
-
     transfer = CreateObject("roUrlTransfer")
-    return transfer.Escape(value.Trim())
+    return transfer.Escape(safeTrim(value))
+end function
+
+function safeTrim(value as Dynamic) as String
+    if value = invalid then return ""
+    return value.Trim()
 end function
 
 function isSuccessfulUserInfo(userInfo as Object) as Boolean
@@ -96,10 +193,24 @@ function isSuccessfulUserInfo(userInfo as Object) as Boolean
     return status = "active"
 end function
 
+function buildSuccess(requestName as String, data as Dynamic) as Object
+    message = "Dados Xtream retornados com sucesso."
+    if requestName = "connect" then message = "Conectado ao servidor com sucesso."
+
+    return {
+        success: true,
+        connected: true,
+        request: requestName,
+        data: data,
+        message: message
+    }
+end function
+
 function buildFailure(message as String) as Object
     return {
         success: false,
         connected: false,
+        data: invalid,
         message: message
     }
 end function
