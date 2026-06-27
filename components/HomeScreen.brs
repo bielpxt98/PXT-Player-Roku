@@ -43,8 +43,29 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+
+    if key = "up" then
+        moveFocus(-1)
+        return true
+    else if key = "down" then
+        moveFocus(1)
+        return true
+    end if
+
     return false
 end function
+
+sub moveFocus(direction as Integer)
+    nextIndex = m.focusIndex + direction
+    if nextIndex < 0 then nextIndex = m.buttons.Count() - 1
+    if nextIndex >= m.buttons.Count() then nextIndex = 0
+    m.focusIndex = nextIndex
+    updateFocus()
+end sub
+
+sub updateFocus()
+    m.buttons[m.focusIndex].SetFocus(true)
+end sub
 
 function getDisplayResolution() as Object
     deviceInfo = CreateObject("roDeviceInfo")
