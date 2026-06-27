@@ -2,6 +2,8 @@
 ' It coordinates feature screens and authenticates playlist credentials through
 ' XtreamService, including live TV categories and channel lists.
 sub Init()
+    m.globalBackground = m.top.FindNode("globalBackground")
+    m.globalBackgroundOverlay = m.top.FindNode("globalBackgroundOverlay")
     m.homeScreen = m.top.FindNode("homeScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
@@ -128,6 +130,13 @@ end sub
 sub configureScene()
     m.top.backgroundColor = "#000000"
     m.top.backgroundURI = ""
+
+    resolution = getDisplayResolution()
+    m.globalBackground.width = resolution.width
+    m.globalBackground.height = resolution.height
+    m.globalBackgroundOverlay.width = resolution.width
+    m.globalBackgroundOverlay.height = resolution.height
+
     m.homeScreen.SetFocus(true)
 end sub
 

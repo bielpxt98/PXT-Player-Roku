@@ -11,7 +11,7 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/MovieDetailScreen.brs" />
     <children>
-        <Rectangle id="background" color="#000000" translation="[0,0]" />
+        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0,0]" />
         <Poster id="poster" loadDisplayMode="scaleToFit" />
         <Label id="titleLabel" color="#FFFFFF" />
         <Label id="ratingLabel" color="#FFD166" />
