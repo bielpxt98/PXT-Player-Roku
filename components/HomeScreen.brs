@@ -11,7 +11,7 @@ sub Init()
     m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton, m.playlistButton]
     m.focusIndex = 0
     m.focusArea = "cards"
     configureLayout()
@@ -38,7 +38,9 @@ sub configureLayout()
     buttonY = Int(height * 0.39)
 
     for i = 0 to m.buttons.Count() - 1
-        m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), buttonY]
+        row = Int(i / buttonsPerRow)
+        col = i mod buttonsPerRow
+        m.buttons[i].translation = [startX + (col * (buttonWidth + buttonGap)), buttonY + (row * rowGap)]
     end for
 
     footerY = Int(height * 0.74)
@@ -91,17 +93,7 @@ sub onFavoritesSelected()
 end sub
 
 sub onRecentSelected()
-    history = LoadViewingHistory()
-    if history <> invalid and history.continueWatching <> invalid and history.continueWatching.Count() > 0 then
-        itemType = history.continueWatching[0].type
-        if itemType = "episode" then
-            m.top.openSeriesCategories = true
-        else
-            m.top.openMovieCategories = true
-        end if
-    else
-        m.top.openMovieCategories = true
-    end if
+    m.top.openRecent = true
 end sub
 
 sub onPlaylistSelected()
@@ -196,6 +188,8 @@ sub selectFocusedButton()
         onFavoritesSelected()
     else if m.focusIndex = 4 then
         onRecentSelected()
+    else if m.focusIndex = 5 then
+        onPlaylistSelected()
     end if
 end sub
 

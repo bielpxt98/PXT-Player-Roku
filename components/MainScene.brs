@@ -5,6 +5,7 @@ sub Init()
     m.homeScreen = m.top.FindNode("homeScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
+    m.recentScreen = m.top.FindNode("recentScreen")
     m.searchScreen = m.top.FindNode("searchScreen")
     m.liveCategoriesScreen = m.top.FindNode("liveCategoriesScreen")
     m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
@@ -50,6 +51,8 @@ sub Init()
     m.searchMovies = []
     m.searchSeries = []
     m.searchLoadStep = ""
+    m.searchMode = "all"
+    m.searchBackTarget = "home"
 
     configureScene()
 
@@ -58,28 +61,33 @@ sub Init()
     m.homeScreen.ObserveField("openMovieCategories", "onOpenMovieCategoriesRequested")
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesCategoriesRequested")
     m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
+    m.homeScreen.ObserveField("openRecent", "onOpenRecentRequested")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
     m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
     m.searchScreen.ObserveField("movieSelected", "onSearchMovieSelected")
     m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
+    m.recentScreen.ObserveField("backRequested", "onRecentBack")
     m.favoritesScreen.ObserveField("backRequested", "onFavoritesBack")
     m.favoritesScreen.ObserveField("favoriteSelected", "onFavoriteSelected")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
     m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
+    m.liveCategoriesScreen.ObserveField("searchRequested", "onLiveSearchRequested")
     m.liveChannelsScreen.ObserveField("backRequested", "onLiveChannelsBack")
     m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
     m.liveChannelsScreen.ObserveField("channelFavoriteToggled", "onLiveChannelFavoriteToggled")
     m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
     m.movieCategoriesScreen.ObserveField("backRequested", "onMovieCategoriesBack")
     m.movieCategoriesScreen.ObserveField("categorySelected", "onMovieCategorySelected")
+    m.movieCategoriesScreen.ObserveField("searchRequested", "onMovieSearchRequested")
     m.movieListScreen.ObserveField("backRequested", "onMovieListBack")
     m.movieListScreen.ObserveField("movieSelected", "onMovieSelected")
     m.movieListScreen.ObserveField("movieFavoriteToggled", "onMovieFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
     m.seriesCategoriesScreen.ObserveField("backRequested", "onSeriesCategoriesBack")
     m.seriesCategoriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
+    m.seriesCategoriesScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
     m.seriesListScreen.ObserveField("backRequested", "onSeriesListBack")
     m.seriesListScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.seriesListScreen.ObserveField("seriesFavoriteToggled", "onSeriesFavoriteToggled")
@@ -110,6 +118,7 @@ end sub
 sub showHome()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
@@ -124,6 +133,7 @@ end sub
 sub showLogin()
     m.homeScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
@@ -137,10 +147,11 @@ end sub
 
 
 
-sub onOpenSearchRequested()
+sub openSearch(mode as String, backTarget as String)
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.recentScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -148,7 +159,9 @@ sub onOpenSearchRequested()
     m.movieListScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
-    m.searchScreen.callFunc("show")
+    m.searchMode = mode
+    m.searchBackTarget = backTarget
+    m.searchScreen.callFunc("show", mode)
 
     if not hasAccount(m.account) then
         m.searchScreen.callFunc("showMessage", "Conecte uma lista Xtream para buscar.")
@@ -156,7 +169,7 @@ sub onOpenSearchRequested()
     end if
 
     m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
-    if m.searchChannels.Count() = 0 or m.searchMovies.Count() = 0 or m.searchSeries.Count() = 0 then
+    if needsSearchData(mode) then
         m.searchScreen.callFunc("setLoading", true)
         m.searchLoadStep = "channels"
         loadSearchChannels()
@@ -164,8 +177,41 @@ sub onOpenSearchRequested()
 end sub
 
 sub onSearchBack()
-    showHome()
+    if m.searchBackTarget = "live" then
+        m.liveCategoriesScreen.callFunc("show")
+        m.searchScreen.callFunc("hide")
+    else if m.searchBackTarget = "movies" then
+        m.movieCategoriesScreen.callFunc("show")
+        m.searchScreen.callFunc("hide")
+    else if m.searchBackTarget = "series" then
+        m.seriesCategoriesScreen.callFunc("show")
+        m.searchScreen.callFunc("hide")
+    else
+        showHome()
+    end if
 end sub
+
+sub onLiveSearchRequested()
+    m.liveCategoriesScreen.callFunc("hide")
+    openSearch("live", "live")
+end sub
+
+sub onMovieSearchRequested()
+    m.movieCategoriesScreen.callFunc("hide")
+    openSearch("movies", "movies")
+end sub
+
+sub onSeriesSearchRequested()
+    m.seriesCategoriesScreen.callFunc("hide")
+    openSearch("series", "series")
+end sub
+
+function needsSearchData(mode as String) as Boolean
+    if mode = "live" then return m.searchChannels.Count() = 0
+    if mode = "movies" then return m.searchMovies.Count() = 0
+    if mode = "series" then return m.searchSeries.Count() = 0
+    return m.searchChannels.Count() = 0 or m.searchMovies.Count() = 0 or m.searchSeries.Count() = 0
+end function
 
 sub onSearchChannelSelected()
     channel = m.searchScreen.channelSelected
@@ -231,6 +277,26 @@ sub loadSearchSeries()
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
     m.xtreamService.control = "RUN"
+end sub
+
+sub onOpenRecentRequested()
+    m.homeScreen.callFunc("hide")
+    m.loginScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
+    m.liveCategoriesScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
+    m.movieCategoriesScreen.callFunc("hide")
+    m.movieListScreen.callFunc("hide")
+    m.moviePlayerScreen.callFunc("hide")
+    hideSeriesScreens()
+    m.recentScreen.callFunc("setHistory", LoadViewingHistory())
+    m.recentScreen.callFunc("show")
+end sub
+
+sub onRecentBack()
+    showHome()
 end sub
 
 sub onOpenFavoritesRequested()
@@ -305,6 +371,7 @@ sub onOpenLiveCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -332,6 +399,7 @@ sub onOpenMovieCategoriesRequested()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
@@ -689,6 +757,7 @@ sub onOpenSeriesCategoriesRequested()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
