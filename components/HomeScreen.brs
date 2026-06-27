@@ -7,21 +7,19 @@ sub Init()
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
     m.favoritesButton = m.top.FindNode("favoritesButton")
-    m.searchButton = m.top.FindNode("searchButton")
     m.playlistButton = m.top.FindNode("playlistButton")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
     m.continueWatchingLabel = m.top.FindNode("continueWatchingLabel")
     m.lastMoviesLabel = m.top.FindNode("lastMoviesLabel")
     m.lastSeriesLabel = m.top.FindNode("lastSeriesLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.searchButton, m.playlistButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.playlistButton]
     m.focusIndex = 0
 
     m.liveTvButton.ObserveField("buttonSelected", "onLiveTvSelected")
     m.moviesButton.ObserveField("buttonSelected", "onMoviesSelected")
     m.seriesButton.ObserveField("buttonSelected", "onSeriesSelected")
     m.favoritesButton.ObserveField("buttonSelected", "onFavoritesSelected")
-    m.searchButton.ObserveField("buttonSelected", "onSearchSelected")
     m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
     configureLayout()
 end sub
@@ -46,8 +44,7 @@ sub configureLayout()
     m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.57)]
     m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.68)]
     m.favoritesButton.translation = [Int((width - 520) / 2), Int(height * 0.75)]
-    m.searchButton.translation = [Int((width - 520) / 2), Int(height * 0.84)]
-    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.93)]
+    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.84)]
     m.continueWatchingLabel.width = width - 144
     m.continueWatchingLabel.font = "font:SmallSystemFont"
     m.continueWatchingLabel.translation = [72, Int(height * 0.08)]
@@ -102,9 +99,6 @@ sub onFavoritesSelected()
     m.top.openFavorites = true
 end sub
 
-sub onSearchSelected()
-    m.top.openSearch = true
-end sub
 
 sub onPlaylistSelected()
     m.top.openPlaylist = true
