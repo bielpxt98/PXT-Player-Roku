@@ -10,6 +10,9 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.series = []
+    m.allSeries = []
+    m.searchQuery = ""
+    m.keyboardDialog = invalid
     m.itemNodes = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
@@ -96,6 +99,8 @@ sub show(category as Dynamic)
         m.subtitle.text = "Séries"
     end if
 
+    m.searchQuery = ""
+    applySearchFilter()
     configureLayout()
     resetSelection()
     updateVisibleWindow()
@@ -131,10 +136,10 @@ sub setLoading(isLoading as Boolean)
 end sub
 
 sub setSeries(series as Object)
-    m.series = normalizeSeries(series)
-    resetSelection()
+    m.allSeries = normalizeSeries(series)
+    applySearchFilter()
 
-    if m.series.Count() = 0 then
+    if m.allSeries.Count() = 0 then
         showMessage("Nenhum série foi encontrado nesta categoria.")
         return
     end if
@@ -148,6 +153,7 @@ end sub
 sub showMessage(message as String)
     clearSeriesNodes()
     m.series = []
+    m.allSeries = []
     resetSelection()
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
@@ -161,18 +167,61 @@ end function
 
 sub renderList()
     clearSeriesNodes()
-    if m.series.Count() = 0 then return
 
+    totalRows = m.series.Count() + 1
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.series.Count() then lastIndex = m.series.Count() - 1
+    if lastIndex >= totalRows then lastIndex = totalRows - 1
 
     for visualIndex = 0 to lastIndex - m.firstVisibleIndex
         realIndex = m.firstVisibleIndex + visualIndex
-        item = createSeriesItem(m.series[realIndex], visualIndex, realIndex)
+        if realIndex = 0 then
+            item = createSearchItem(visualIndex)
+        else
+            item = createSeriesItem(m.series[realIndex - 1], visualIndex, realIndex - 1)
+        end if
         m.seriesGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
 end sub
+
+function createSearchItem(visibleIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group")
+    item.translation = [0, visibleIndex * m.itemHeight]
+    item.id = "searchItem"
+
+    background = CreateObject("roSGNode", "Rectangle")
+    background.id = "itemBackground"
+    background.width = m.contentWidth
+    background.height = m.cardHeight
+    background.color = "#113B5C"
+    background.opacity = 0.92
+
+    accent = CreateObject("roSGNode", "Rectangle")
+    accent.id = "itemAccent"
+    accent.width = 6
+    accent.height = m.cardHeight
+    accent.color = "#5CE08A"
+    accent.opacity = 0.0
+
+    label = CreateObject("roSGNode", "Label")
+    label.id = "itemLabel"
+    label.width = m.contentWidth - 32
+    label.height = m.cardHeight
+    label.translation = [16, 0]
+    label.vertAlign = "center"
+    label.color = "#F8FAFC"
+    label.font = "font:MediumBoldSystemFont"
+    if m.searchQuery <> "" then
+        label.text = "Buscar: " + m.searchQuery
+    else
+        label.text = "Buscar séries"
+    end if
+
+    item.AppendChild(background)
+    item.AppendChild(accent)
+    item.AppendChild(label)
+    return item
+end function
 
 function createSeriesItem(series as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
@@ -275,18 +324,24 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
+    else if key = "replay" then
+        openSearchKeyboard()
+        return true
     else if key = "options" then
-        if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then
-            m.top.seriesFavoriteToggled = m.series[m.selectedIndex]
+        if m.series.Count() > 0 and m.selectedIndex > 0 and m.selectedIndex <= m.series.Count() then
+            m.top.seriesFavoriteToggled = m.series[m.selectedIndex - 1]
             m.statusLabel.color = "#5CE08A"
             m.statusLabel.text = "Série atualizado nos favoritos."
         end if
         return true
     else if key = "OK" then
-        if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then
-            print "OK opening selectedIndex="; m.selectedIndex
-            print "OK opening item="; getSeriesLogTitle(m.series[m.selectedIndex])
-            m.top.seriesSelected = m.series[m.selectedIndex]
+        if m.selectedIndex = 0 then
+            openSearchKeyboard()
+        else if m.series.Count() > 0 and m.selectedIndex <= m.series.Count() then
+            itemIndex = m.selectedIndex - 1
+            print "OK opening selectedIndex="; itemIndex
+            print "OK opening item="; getSeriesLogTitle(m.series[itemIndex])
+            m.top.seriesSelected = m.series[itemIndex]
         end if
         return true
     end if
@@ -299,7 +354,7 @@ sub moveFocus(direction as Integer)
 end sub
 
 sub handleUpDown(direction as Integer)
-    if m.series.Count() = 0 then return
+    if m.series.Count() = 0 and m.selectedIndex = 0 then return
 
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
@@ -320,17 +375,13 @@ sub handleUpDown(direction as Integer)
 end sub
 
 sub updateVisibleWindow()
-    if m.series.Count() = 0 then
-        m.selectedIndex = 0
-        m.firstVisibleIndex = 0
-        return
-    end if
+    totalRows = m.series.Count() + 1
 
     if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= m.series.Count() then m.selectedIndex = m.series.Count() - 1
+    if m.selectedIndex >= totalRows then m.selectedIndex = totalRows - 1
     if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
 
-    maxFirstIndex = m.series.Count() - m.visibleItemCount
+    maxFirstIndex = totalRows - m.visibleItemCount
     if maxFirstIndex < 0 then maxFirstIndex = 0
 
     if m.selectedIndex < m.firstVisibleIndex then
@@ -359,7 +410,7 @@ sub updateFocus()
         background.opacity = 0.86
         accent.opacity = 0.0
         label.color = "#F8FAFC"
-        coverBackground.color = "#1F2937"
+        if coverBackground <> invalid then coverBackground.color = "#1F2937"
 
         if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
     end for
@@ -375,8 +426,57 @@ sub updateFocus()
         background.opacity = 1.0
         accent.opacity = 0.0
         label.color = "#FFFFFF"
-        coverBackground.color = "#0F4F7A"
+        if coverBackground <> invalid then coverBackground.color = "#0F4F7A"
     end if
+end sub
+
+
+sub openSearchKeyboard()
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Buscar séries"
+    dialog.text = m.searchQuery
+    dialog.buttons = ["Buscar", "Limpar", "Cancelar"]
+    dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
+    m.keyboardDialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onSearchKeyboardButtonSelected()
+    if m.keyboardDialog = invalid then return
+    selectedButton = m.keyboardDialog.buttonSelected
+    if selectedButton = 0 then
+        m.searchQuery = m.keyboardDialog.text.Trim()
+        applySearchFilter()
+    else if selectedButton = 1 then
+        m.searchQuery = ""
+        applySearchFilter()
+    end if
+    m.top.GetScene().dialog = invalid
+    m.keyboardDialog = invalid
+end sub
+
+sub applySearchFilter()
+    query = LCase(m.searchQuery.Trim())
+    m.series = []
+    if query = "" then
+        for each item in m.allSeries
+            m.series.Push(item)
+        end for
+    else
+        for each item in m.allSeries
+            if Instr(1, LCase(getSeriesName(item)), query) > 0 then m.series.Push(item)
+        end for
+    end if
+    resetSelection()
+    if m.allSeries.Count() > 0 and m.series.Count() = 0 then
+        m.statusLabel.color = "#FFCC66"
+        m.statusLabel.text = "Nenhum resultado encontrado para esta busca."
+    else
+        m.statusLabel.text = ""
+    end if
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
 end sub
 
 function getDisplayResolution() as Object

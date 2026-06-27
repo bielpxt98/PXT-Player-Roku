@@ -6,18 +6,16 @@ sub Init()
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
-    m.searchButton = m.top.FindNode("searchButton")
     m.favoritesButton = m.top.FindNode("favoritesButton")
     m.playlistButton = m.top.FindNode("playlistButton")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.searchButton, m.favoritesButton, m.playlistButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.playlistButton]
     m.focusIndex = 0
 
     m.liveTvButton.ObserveField("buttonSelected", "onLiveTvSelected")
     m.moviesButton.ObserveField("buttonSelected", "onMoviesSelected")
     m.seriesButton.ObserveField("buttonSelected", "onSeriesSelected")
-    m.searchButton.ObserveField("buttonSelected", "onSearchSelected")
     m.favoritesButton.ObserveField("buttonSelected", "onFavoritesSelected")
     m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
     configureLayout()
@@ -40,11 +38,10 @@ sub configureLayout()
     m.subtitle.translation = [0, Int(height * 0.34)]
 
     m.liveTvButton.translation = [Int((width - 520) / 2), Int(height * 0.46)]
-    m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.56)]
-    m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.66)]
-    m.searchButton.translation = [Int((width - 520) / 2), Int(height * 0.73)]
-    m.favoritesButton.translation = [Int((width - 520) / 2), Int(height * 0.81)]
-    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.89)]
+    m.moviesButton.translation = [Int((width - 520) / 2), Int(height * 0.57)]
+    m.seriesButton.translation = [Int((width - 520) / 2), Int(height * 0.68)]
+    m.favoritesButton.translation = [Int((width - 520) / 2), Int(height * 0.79)]
+    m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.90)]
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:MediumSystemFont"
     m.connectionStatusLabel.translation = [0, Int(height * 0.92)]
@@ -84,9 +81,6 @@ sub onSeriesSelected()
     m.top.openSeriesCategories = true
 end sub
 
-sub onSearchSelected()
-    m.top.openSearch = true
-end sub
 
 sub onFavoritesSelected()
     m.top.openFavorites = true

@@ -10,6 +10,9 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = []
+    m.allChannel = []
+    m.searchQuery = ""
+    m.keyboardDialog = invalid
     m.itemNodes = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
@@ -96,6 +99,8 @@ sub show(category as Dynamic)
         m.subtitle.text = "Canais"
     end if
 
+    m.searchQuery = ""
+    applySearchFilter()
     configureLayout()
     resetSelection()
     updateVisibleWindow()
@@ -131,10 +136,10 @@ sub setLoading(isLoading as Boolean)
 end sub
 
 sub setChannels(channels as Object)
-    m.channels = normalizeChannels(channels)
-    resetSelection()
+    m.allChannel = normalizeChannels(channels)
+    applySearchFilter()
 
-    if m.channels.Count() = 0 then
+    if m.allChannel.Count() = 0 then
         showMessage("Nenhum canal foi encontrado nesta categoria.")
         return
     end if
@@ -148,6 +153,7 @@ end sub
 sub showMessage(message as String)
     clearChannelNodes()
     m.channels = []
+    m.allChannel = []
     resetSelection()
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
@@ -161,18 +167,61 @@ end function
 
 sub renderList()
     clearChannelNodes()
-    if m.channels.Count() = 0 then return
 
+    totalRows = m.channels.Count() + 1
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
+    if lastIndex >= totalRows then lastIndex = totalRows - 1
 
     for visualIndex = 0 to lastIndex - m.firstVisibleIndex
         realIndex = m.firstVisibleIndex + visualIndex
-        item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
+        if realIndex = 0 then
+            item = createSearchItem(visualIndex)
+        else
+            item = createChannelItem(m.channels[realIndex - 1], visualIndex, realIndex - 1)
+        end if
         m.channelsGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
 end sub
+
+function createSearchItem(visibleIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group")
+    item.translation = [0, visibleIndex * m.itemHeight]
+    item.id = "searchItem"
+
+    background = CreateObject("roSGNode", "Rectangle")
+    background.id = "itemBackground"
+    background.width = m.contentWidth
+    background.height = m.cardHeight
+    background.color = "#113B5C"
+    background.opacity = 0.92
+
+    accent = CreateObject("roSGNode", "Rectangle")
+    accent.id = "itemAccent"
+    accent.width = 6
+    accent.height = m.cardHeight
+    accent.color = "#5CE08A"
+    accent.opacity = 0.0
+
+    label = CreateObject("roSGNode", "Label")
+    label.id = "itemLabel"
+    label.width = m.contentWidth - 32
+    label.height = m.cardHeight
+    label.translation = [16, 0]
+    label.vertAlign = "center"
+    label.color = "#F8FAFC"
+    label.font = "font:MediumBoldSystemFont"
+    if m.searchQuery <> "" then
+        label.text = "Buscar: " + m.searchQuery
+    else
+        label.text = "Buscar canais"
+    end if
+
+    item.AppendChild(background)
+    item.AppendChild(accent)
+    item.AppendChild(label)
+    return item
+end function
 
 function createChannelItem(channel as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
@@ -273,18 +322,24 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
+    else if key = "replay" then
+        openSearchKeyboard()
+        return true
     else if key = "options" then
-        if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
-            m.top.channelFavoriteToggled = m.channels[m.selectedIndex]
+        if m.channels.Count() > 0 and m.selectedIndex > 0 and m.selectedIndex <= m.channels.Count() then
+            m.top.channelFavoriteToggled = m.channels[m.selectedIndex - 1]
             m.statusLabel.color = "#5CE08A"
             m.statusLabel.text = "Canal atualizado nos favoritos."
         end if
         return true
     else if key = "OK" then
-        if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
-            print "OK opening selectedIndex="; m.selectedIndex
-            print "OK opening item="; getChannelLogTitle(m.channels[m.selectedIndex])
-            m.top.channelSelected = m.channels[m.selectedIndex]
+        if m.selectedIndex = 0 then
+            openSearchKeyboard()
+        else if m.channels.Count() > 0 and m.selectedIndex <= m.channels.Count() then
+            itemIndex = m.selectedIndex - 1
+            print "OK opening selectedIndex="; itemIndex
+            print "OK opening item="; getChannelLogTitle(m.channels[itemIndex])
+            m.top.channelSelected = m.channels[itemIndex]
         end if
         return true
     end if
@@ -297,7 +352,7 @@ sub moveFocus(direction as Integer)
 end sub
 
 sub handleUpDown(direction as Integer)
-    if m.channels.Count() = 0 then return
+    if m.channels.Count() = 0 and m.selectedIndex = 0 then return
 
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
@@ -318,17 +373,13 @@ sub handleUpDown(direction as Integer)
 end sub
 
 sub updateVisibleWindow()
-    if m.channels.Count() = 0 then
-        m.selectedIndex = 0
-        m.firstVisibleIndex = 0
-        return
-    end if
+    totalRows = m.channels.Count() + 1
 
     if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= m.channels.Count() then m.selectedIndex = m.channels.Count() - 1
+    if m.selectedIndex >= totalRows then m.selectedIndex = totalRows - 1
     if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
 
-    maxFirstIndex = m.channels.Count() - m.visibleItemCount
+    maxFirstIndex = totalRows - m.visibleItemCount
     if maxFirstIndex < 0 then maxFirstIndex = 0
 
     if m.selectedIndex < m.firstVisibleIndex then
@@ -357,7 +408,7 @@ sub updateFocus()
         background.opacity = 0.86
         accent.opacity = 0.0
         label.color = "#F8FAFC"
-        logoBackground.color = "#1F2937"
+        if logoBackground <> invalid then logoBackground.color = "#1F2937"
 
         if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
     end for
@@ -373,8 +424,57 @@ sub updateFocus()
         background.opacity = 1.0
         accent.opacity = 0.0
         label.color = "#FFFFFF"
-        logoBackground.color = "#0F4F7A"
+        if logoBackground <> invalid then logoBackground.color = "#0F4F7A"
     end if
+end sub
+
+
+sub openSearchKeyboard()
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Buscar canais"
+    dialog.text = m.searchQuery
+    dialog.buttons = ["Buscar", "Limpar", "Cancelar"]
+    dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
+    m.keyboardDialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onSearchKeyboardButtonSelected()
+    if m.keyboardDialog = invalid then return
+    selectedButton = m.keyboardDialog.buttonSelected
+    if selectedButton = 0 then
+        m.searchQuery = m.keyboardDialog.text.Trim()
+        applySearchFilter()
+    else if selectedButton = 1 then
+        m.searchQuery = ""
+        applySearchFilter()
+    end if
+    m.top.GetScene().dialog = invalid
+    m.keyboardDialog = invalid
+end sub
+
+sub applySearchFilter()
+    query = LCase(m.searchQuery.Trim())
+    m.channels = []
+    if query = "" then
+        for each item in m.allChannel
+            m.channels.Push(item)
+        end for
+    else
+        for each item in m.allChannel
+            if Instr(1, LCase(getChannelName(item)), query) > 0 then m.channels.Push(item)
+        end for
+    end if
+    resetSelection()
+    if m.allChannel.Count() > 0 and m.channels.Count() = 0 then
+        m.statusLabel.color = "#FFCC66"
+        m.statusLabel.text = "Nenhum resultado encontrado para esta busca."
+    else
+        m.statusLabel.text = ""
+    end if
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
 end sub
 
 function getDisplayResolution() as Object

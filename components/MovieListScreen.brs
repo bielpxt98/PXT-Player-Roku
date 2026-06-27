@@ -10,6 +10,9 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.movies = []
+    m.allMovie = []
+    m.searchQuery = ""
+    m.keyboardDialog = invalid
     m.itemNodes = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
@@ -96,6 +99,8 @@ sub show(category as Dynamic)
         m.subtitle.text = "Filmes"
     end if
 
+    m.searchQuery = ""
+    applySearchFilter()
     configureLayout()
     resetSelection()
     updateVisibleWindow()
@@ -131,10 +136,10 @@ sub setLoading(isLoading as Boolean)
 end sub
 
 sub setMovies(movies as Object)
-    m.movies = normalizeMovies(movies)
-    resetSelection()
+    m.allMovie = normalizeMovies(movies)
+    applySearchFilter()
 
-    if m.movies.Count() = 0 then
+    if m.allMovie.Count() = 0 then
         showMessage("Nenhum filme foi encontrado nesta categoria.")
         return
     end if
@@ -148,6 +153,7 @@ end sub
 sub showMessage(message as String)
     clearMovieNodes()
     m.movies = []
+    m.allMovie = []
     resetSelection()
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
@@ -161,18 +167,61 @@ end function
 
 sub renderList()
     clearMovieNodes()
-    if m.movies.Count() = 0 then return
 
+    totalRows = m.movies.Count() + 1
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.movies.Count() then lastIndex = m.movies.Count() - 1
+    if lastIndex >= totalRows then lastIndex = totalRows - 1
 
     for visualIndex = 0 to lastIndex - m.firstVisibleIndex
         realIndex = m.firstVisibleIndex + visualIndex
-        item = createMovieItem(m.movies[realIndex], visualIndex, realIndex)
+        if realIndex = 0 then
+            item = createSearchItem(visualIndex)
+        else
+            item = createMovieItem(m.movies[realIndex - 1], visualIndex, realIndex - 1)
+        end if
         m.moviesGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
 end sub
+
+function createSearchItem(visibleIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group")
+    item.translation = [0, visibleIndex * m.itemHeight]
+    item.id = "searchItem"
+
+    background = CreateObject("roSGNode", "Rectangle")
+    background.id = "itemBackground"
+    background.width = m.contentWidth
+    background.height = m.cardHeight
+    background.color = "#113B5C"
+    background.opacity = 0.92
+
+    accent = CreateObject("roSGNode", "Rectangle")
+    accent.id = "itemAccent"
+    accent.width = 6
+    accent.height = m.cardHeight
+    accent.color = "#5CE08A"
+    accent.opacity = 0.0
+
+    label = CreateObject("roSGNode", "Label")
+    label.id = "itemLabel"
+    label.width = m.contentWidth - 32
+    label.height = m.cardHeight
+    label.translation = [16, 0]
+    label.vertAlign = "center"
+    label.color = "#F8FAFC"
+    label.font = "font:MediumBoldSystemFont"
+    if m.searchQuery <> "" then
+        label.text = "Buscar: " + m.searchQuery
+    else
+        label.text = "Buscar filmes"
+    end if
+
+    item.AppendChild(background)
+    item.AppendChild(accent)
+    item.AppendChild(label)
+    return item
+end function
 
 function createMovieItem(movie as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
@@ -275,18 +324,24 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
+    else if key = "replay" then
+        openSearchKeyboard()
+        return true
     else if key = "options" then
-        if m.movies.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.movies.Count() then
-            m.top.movieFavoriteToggled = m.movies[m.selectedIndex]
+        if m.movies.Count() > 0 and m.selectedIndex > 0 and m.selectedIndex <= m.movies.Count() then
+            m.top.movieFavoriteToggled = m.movies[m.selectedIndex - 1]
             m.statusLabel.color = "#5CE08A"
             m.statusLabel.text = "Filme atualizado nos favoritos."
         end if
         return true
     else if key = "OK" then
-        if m.movies.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.movies.Count() then
-            print "OK opening selectedIndex="; m.selectedIndex
-            print "OK opening item="; getMovieLogTitle(m.movies[m.selectedIndex])
-            m.top.movieSelected = m.movies[m.selectedIndex]
+        if m.selectedIndex = 0 then
+            openSearchKeyboard()
+        else if m.movies.Count() > 0 and m.selectedIndex <= m.movies.Count() then
+            itemIndex = m.selectedIndex - 1
+            print "OK opening selectedIndex="; itemIndex
+            print "OK opening item="; getMovieLogTitle(m.movies[itemIndex])
+            m.top.movieSelected = m.movies[itemIndex]
         end if
         return true
     end if
@@ -299,7 +354,7 @@ sub moveFocus(direction as Integer)
 end sub
 
 sub handleUpDown(direction as Integer)
-    if m.movies.Count() = 0 then return
+    if m.movies.Count() = 0 and m.selectedIndex = 0 then return
 
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
@@ -320,17 +375,13 @@ sub handleUpDown(direction as Integer)
 end sub
 
 sub updateVisibleWindow()
-    if m.movies.Count() = 0 then
-        m.selectedIndex = 0
-        m.firstVisibleIndex = 0
-        return
-    end if
+    totalRows = m.movies.Count() + 1
 
     if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= m.movies.Count() then m.selectedIndex = m.movies.Count() - 1
+    if m.selectedIndex >= totalRows then m.selectedIndex = totalRows - 1
     if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
 
-    maxFirstIndex = m.movies.Count() - m.visibleItemCount
+    maxFirstIndex = totalRows - m.visibleItemCount
     if maxFirstIndex < 0 then maxFirstIndex = 0
 
     if m.selectedIndex < m.firstVisibleIndex then
@@ -359,7 +410,7 @@ sub updateFocus()
         background.opacity = 0.86
         accent.opacity = 0.0
         label.color = "#F8FAFC"
-        coverBackground.color = "#1F2937"
+        if coverBackground <> invalid then coverBackground.color = "#1F2937"
 
         if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
     end for
@@ -375,8 +426,57 @@ sub updateFocus()
         background.opacity = 1.0
         accent.opacity = 0.0
         label.color = "#FFFFFF"
-        coverBackground.color = "#0F4F7A"
+        if coverBackground <> invalid then coverBackground.color = "#0F4F7A"
     end if
+end sub
+
+
+sub openSearchKeyboard()
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Buscar filmes"
+    dialog.text = m.searchQuery
+    dialog.buttons = ["Buscar", "Limpar", "Cancelar"]
+    dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
+    m.keyboardDialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onSearchKeyboardButtonSelected()
+    if m.keyboardDialog = invalid then return
+    selectedButton = m.keyboardDialog.buttonSelected
+    if selectedButton = 0 then
+        m.searchQuery = m.keyboardDialog.text.Trim()
+        applySearchFilter()
+    else if selectedButton = 1 then
+        m.searchQuery = ""
+        applySearchFilter()
+    end if
+    m.top.GetScene().dialog = invalid
+    m.keyboardDialog = invalid
+end sub
+
+sub applySearchFilter()
+    query = LCase(m.searchQuery.Trim())
+    m.movies = []
+    if query = "" then
+        for each item in m.allMovie
+            m.movies.Push(item)
+        end for
+    else
+        for each item in m.allMovie
+            if Instr(1, LCase(getMovieName(item)), query) > 0 then m.movies.Push(item)
+        end for
+    end if
+    resetSelection()
+    if m.allMovie.Count() > 0 and m.movies.Count() = 0 then
+        m.statusLabel.color = "#FFCC66"
+        m.statusLabel.text = "Nenhum resultado encontrado para esta busca."
+    else
+        m.statusLabel.text = ""
+    end if
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
 end sub
 
 function getDisplayResolution() as Object
