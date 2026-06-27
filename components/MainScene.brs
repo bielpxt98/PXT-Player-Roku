@@ -16,6 +16,7 @@ sub Init()
     m.liveChannels = []
     m.liveChannelsLoading = false
     m.selectedLiveCategory = invalid
+    m.selectedLiveCategoryId = ""
     m.selectedLiveChannel = invalid
 
     configureScene()
@@ -120,6 +121,7 @@ sub onLiveCategorySelected()
     if category = invalid then return
 
     m.selectedLiveCategory = category
+    m.selectedLiveCategoryId = getCategoryId(category)
     m.liveChannels = []
     m.liveChannelsLoading = true
     m.liveCategoriesScreen.callFunc("hide")
@@ -302,6 +304,12 @@ sub onLiveCategoriesResult(result as Object)
 end sub
 
 sub onLiveChannelsResult(result as Object)
+    resultCategoryId = getLiveStreamsResultCategoryId(result)
+    if resultCategoryId <> "" and resultCategoryId <> m.selectedLiveCategoryId then
+        print "DEBUG LiveChannels: resposta ignorada para categoria fora do foco: " + resultCategoryId
+        return
+    end if
+
     m.liveChannelsLoading = false
 
     if result.success = true then
@@ -355,6 +363,15 @@ function getStreamId(channel as Dynamic) as String
     if channel = invalid then return ""
     if channel.stream_id <> invalid then return channel.stream_id.ToStr()
     if channel.id <> invalid then return channel.id.ToStr()
+    return ""
+end function
+
+function getLiveStreamsResultCategoryId(result as Dynamic) as String
+    if result = invalid or result.request = invalid then return ""
+
+    request = result.request.ToStr()
+    prefix = "getLiveStreams:"
+    if Left(request, Len(prefix)) = prefix then return Mid(request, Len(prefix) + 1)
     return ""
 end function
 
