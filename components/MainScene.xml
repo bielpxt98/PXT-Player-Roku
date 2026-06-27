@@ -9,6 +9,9 @@
         <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
         <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
         <LivePlayerScreen id="livePlayerScreen" visible="false" />
+        <MovieCategoriesScreen id="movieCategoriesScreen" visible="false" />
+        <MovieListScreen id="movieListScreen" visible="false" />
+        <MoviePlayerScreen id="moviePlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
     </children>

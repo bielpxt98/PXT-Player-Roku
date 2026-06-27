@@ -23,6 +23,8 @@ sub executeRequest()
         m.top.result = getLiveStreams()
     else if action = "buildlivestreamurl" then
         m.top.result = buildLiveStreamUrl()
+    else if action = "buildmoviestreamurl" then
+        m.top.result = buildMovieStreamUrl()
     else if action = "getmovies" then
         m.top.result = getMovies()
     else if action = "getseries" then
@@ -56,7 +58,10 @@ function getLiveStreams() as Object
 end function
 
 function getMovies() as Object
-    return requestXtream("getMovies", "get_vod_streams")
+    categoryId = safeTrim(m.top.categoryId)
+    cacheKey = "getMovies"
+    if categoryId <> "" then cacheKey = cacheKey + ":" + categoryId
+    return requestXtream(cacheKey, "get_vod_streams")
 end function
 
 function getSeries() as Object
@@ -90,6 +95,32 @@ function buildLiveStreamUrl() as Object
     }
 end function
 
+function buildMovieStreamUrl() as Object
+    credentials = getCredentials()
+    if not credentials.valid then
+        return buildFailure("Informe DNS, usuário e senha para reproduzir o filme.")
+    end if
+
+    streamId = safeTrim(m.top.streamId)
+    if streamId = "" then
+        return buildFailure("Filme sem identificador de reprodução.")
+    end if
+
+    extension = safeTrim(m.top.streamExtension)
+    if extension = "" then extension = "mp4"
+    if Left(extension, 1) = "." then extension = Mid(extension, 2)
+
+    return {
+        success: true,
+        connected: true,
+        request: "buildMovieStreamUrl",
+        data: {
+            url: credentials.dns + "/movie/" + escapePathValue(credentials.username) + "/" + escapePathValue(credentials.password) + "/" + escapePathValue(streamId) + "." + escapePathValue(extension)
+        },
+        message: "URL de reprodução montada com sucesso."
+    }
+end function
+
 function requestXtream(cacheKey as String, apiAction as String) as Object
     print "DEBUG XtreamService: início da requisição " + cacheKey
     credentials = getCredentials()
@@ -102,7 +133,7 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     end if
 
     url = buildPlayerApiUrl(credentials.dns, credentials.username, credentials.password, apiAction)
-    if apiAction = "get_live_streams" and safeTrim(m.top.categoryId) <> "" then
+    if (apiAction = "get_live_streams" or apiAction = "get_vod_streams") and safeTrim(m.top.categoryId) <> "" then
         url = url + "&category_id=" + escapeQueryValue(m.top.categoryId)
     end if
     httpResponse = sendHttpGet(url)
