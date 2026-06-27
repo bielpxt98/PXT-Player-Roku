@@ -1,68 +1,63 @@
-' Global search screen for live channels, movies, and series.
+' Premium in-app search screen for section-scoped live channels, movies, and series.
 sub Init()
-    m.background = m.top.FindNode("background")
+    m.backgroundImage = m.top.FindNode("backgroundImage")
+    m.overlay = m.top.FindNode("overlay")
+    m.topGradient = m.top.FindNode("topGradient")
     m.title = m.top.FindNode("title")
     m.subtitle = m.top.FindNode("subtitle")
+    m.inputBackground = m.top.FindNode("inputBackground")
     m.searchInput = m.top.FindNode("searchInput")
     m.searchInput.ObserveField("text", "onSearchTextChanged")
+    m.queryMirror = m.top.FindNode("queryMirror")
     m.statusLabel = m.top.FindNode("statusLabel")
+    m.keyboardGroup = m.top.FindNode("keyboardGroup")
+    m.resultsTitle = m.top.FindNode("resultsTitle")
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
-    m.channels = []
-    m.movies = []
-    m.series = []
-    m.results = []
-    m.searchMode = "all"
-    m.keyboardDialog = invalid
-    m.itemNodes = []
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
+    m.channels = [] : m.movies = [] : m.series = [] : m.results = []
+    m.searchMode = "live"
+    m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
+    m.keyNodes = [] : m.itemNodes = []
+    m.focusZone = "keyboard" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     configureLayout()
 end sub
 
 sub configureLayout()
     size = CreateObject("roDeviceInfo").GetDisplaySize()
-    width = size.w : height = size.h
-    m.marginX = 72
-    if height <= 720 then m.marginX = 48
-    m.contentWidth = width - (m.marginX * 2)
-    m.background.width = width : m.background.height = height
-    m.title.width = width : m.title.font = "font:LargeBoldSystemFont" : m.title.translation = [0, 30]
-    m.subtitle.width = width : m.subtitle.font = "font:MediumSystemFont" : m.subtitle.translation = [0, 84]
-    m.searchInput.translation = [m.marginX, 128]
-    m.searchInput.width = m.contentWidth
-    m.searchInput.height = 54
-    m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont" : m.statusLabel.translation = [m.marginX, 205]
-    m.resultsGroup.translation = [m.marginX, 210]
-    m.hintLabel.width = width : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, height - 58]
-    m.itemHeight = 182
-    m.cardWidth = 150
-    m.cardGap = 24
-    m.logoSize = 62
-    if height <= 720 then
-        m.itemHeight = 150
-        m.cardWidth = 122
-        m.cardGap = 18
-        m.logoSize = 48
-    end if
-    m.visibleItemCount = Int((height - 285) / m.itemHeight)
-    if m.searchMode = "live" then m.visibleItemCount = Int((height - 285) / 76)
-    if m.searchMode = "movies" or m.searchMode = "series" then m.visibleItemCount = Int(m.contentWidth / (m.cardWidth + m.cardGap))
-    if m.visibleItemCount < 3 then m.visibleItemCount = 3
+    m.screenW = size.w : m.screenH = size.h
+    m.marginX = 72 : if m.screenH <= 720 then m.marginX = 48
+    m.contentWidth = m.screenW - (m.marginX * 2)
+    m.backgroundImage.width = m.screenW : m.backgroundImage.height = m.screenH
+    m.overlay.width = m.screenW : m.overlay.height = m.screenH
+    m.topGradient.width = m.screenW : m.topGradient.height = 170
+    m.title.width = m.screenW : m.title.font = "font:LargeBoldSystemFont" : m.title.translation = [0, 28]
+    m.subtitle.width = m.screenW : m.subtitle.font = "font:MediumSystemFont" : m.subtitle.translation = [0, 82]
+    m.inputBackground.translation = [m.marginX, 124] : m.inputBackground.width = m.contentWidth : m.inputBackground.height = 70
+    m.searchInput.translation = [m.marginX + 14, 130] : m.searchInput.width = m.contentWidth - 28 : m.searchInput.height = 58
+    m.queryMirror.translation = [m.marginX + 28, 142] : m.queryMirror.width = m.contentWidth - 56 : m.queryMirror.height = 42 : m.queryMirror.font = "font:LargeBoldSystemFont"
+    m.statusLabel.translation = [m.marginX, 206] : m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont"
+    m.keyboardGroup.translation = [m.marginX, 240]
+    m.resultsTitle.translation = [m.marginX, 470] : m.resultsTitle.font = "font:MediumBoldSystemFont"
+    m.resultsGroup.translation = [m.marginX, 510]
+    m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 54]
+    m.keyW = Int((m.contentWidth - 9 * 10) / 10) : m.keyH = 42 : m.keyGap = 10
+    m.cardWidth = 154 : m.cardHeight = 190 : m.cardGap = 22
+    if m.screenH <= 720 then m.cardWidth = 124 : m.cardHeight = 152 : m.cardGap = 16 : m.keyH = 34
+    m.visibleItemCount = 10
 end sub
 
 sub show(mode as Dynamic)
-    if mode = invalid then mode = "all"
+    if mode = invalid or mode = "all" then mode = "live"
     m.searchMode = mode
     configureLayout()
-    m.top.visible = true
-    m.top.SetFocus(true)
-    m.searchInput.SetFocus(true)
     configureSearchLabels()
+    m.top.visible = true : m.top.SetFocus(true) : m.searchInput.SetFocus(true)
+    m.searchInput.text = "" : m.queryMirror.text = ""
+    m.focusZone = "keyboard" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
+    renderKeyboard()
     clearResultNodes()
-    m.statusLabel.color = "#B8C3D6"
-    m.statusLabel.text = getEmptySearchMessage()
+    m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = getEmptySearchMessage()
 end sub
 
 sub hide()
@@ -71,9 +66,7 @@ end sub
 
 sub setLoading(isLoading as Boolean)
     if isLoading then
-        clearResultNodes()
-        m.statusLabel.color = "#B8C3D6"
-        m.statusLabel.text = "Carregando conteúdo para busca..."
+        clearResultNodes() : m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando conteúdo para busca..."
     else
         m.statusLabel.text = ""
     end if
@@ -88,64 +81,52 @@ sub setData(data as Object)
 end sub
 
 sub showMessage(message as String)
-    clearResultNodes()
-    m.statusLabel.color = "#FFCC66"
-    m.statusLabel.text = message
+    clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = message
 end sub
-
-
 
 sub configureSearchLabels()
     m.title.text = getSearchTitle()
     m.searchInput.hintText = getSearchHint()
+    m.subtitle.text = "Digite pelo teclado do app ou pelo Roku Remote no celular"
 end sub
 
 function getSearchTitle() as String
-    if m.searchMode = "live" then return "BUSCAR CANAL"
     if m.searchMode = "movies" then return "BUSCAR FILME"
     if m.searchMode = "series" then return "BUSCAR SÉRIE"
-    return "BUSCA"
+    return "BUSCAR CANAL"
 end function
 
 function getSearchHint() as String
-    if m.searchMode = "live" then return "Buscar canal"
-    if m.searchMode = "movies" then return "Buscar filme"
-    if m.searchMode = "series" then return "Buscar série"
-    return "Buscar canais, filmes e séries"
+    if m.searchMode = "movies" then return "Digite o nome do filme"
+    if m.searchMode = "series" then return "Digite o nome da série"
+    return "Digite o nome do canal"
 end function
 
 function getEmptySearchMessage() as String
-    if m.searchMode = "live" then return "Digite um termo para buscar em todos os canais."
-    if m.searchMode = "movies" then return "Digite um termo para buscar em todos os filmes."
-    if m.searchMode = "series" then return "Digite um termo para buscar em todas as séries."
-    return "Digite um termo para buscar em TV ao vivo, filmes e séries."
+    if m.searchMode = "movies" then return "Digite para encontrar filmes na sua lista."
+    if m.searchMode = "series" then return "Digite para encontrar séries na sua lista."
+    return "Digite para encontrar canais ao vivo na sua lista."
 end function
 
-sub openSearchKeyboard()
-    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
-    dialog.title = getSearchTitle()
-    dialog.text = m.searchInput.text
-    dialog.buttons = ["Buscar", "Cancelar"]
-    dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
-    m.keyboardDialog = dialog
-    m.top.GetScene().dialog = dialog
-end sub
-
-sub onSearchKeyboardButtonSelected()
-    if m.keyboardDialog = invalid then return
-    selectedButton = m.keyboardDialog.buttonSelected
-    if selectedButton = 0 then
-        m.searchInput.text = m.keyboardDialog.text
-        m.top.GetScene().dialog = invalid
-        m.keyboardDialog = invalid
-        applyFilter()
-    else if selectedButton = 1 then
-        m.top.GetScene().dialog = invalid
-        m.keyboardDialog = invalid
-    end if
+sub renderKeyboard()
+    while m.keyboardGroup.GetChildCount() > 0 : m.keyboardGroup.RemoveChildIndex(0) : end while
+    m.keyNodes = []
+    for r = 0 to m.keyRows.Count() - 1
+        rowNodes = []
+        for c = 0 to m.keyRows[r].Count() - 1
+            keyLabel = m.keyRows[r][c]
+            g = CreateObject("roSGNode", "Group") : g.translation = [c * (m.keyW + m.keyGap), r * (m.keyH + m.keyGap)]
+            bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = m.keyW : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
+            lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = m.keyW : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
+            g.AppendChild(bg) : g.AppendChild(lb) : m.keyboardGroup.AppendChild(g) : rowNodes.Push(g)
+        end for
+        m.keyNodes.Push(rowNodes)
+    end for
+    updateKeyboardFocus()
 end sub
 
 sub onSearchTextChanged()
+    m.queryMirror.text = m.searchInput.text
     applyFilter()
 end sub
 
@@ -153,155 +134,158 @@ sub applyFilter()
     query = LCase(m.searchInput.text.Trim())
     m.results = []
     if query = "" then
-        clearResultNodes()
-        m.statusLabel.color = "#B8C3D6"
-        m.statusLabel.text = getEmptySearchMessage()
-        return
+        clearResultNodes() : m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = getEmptySearchMessage() : return
     end if
-    if m.searchMode = "live" or m.searchMode = "all" then
-        if m.searchMode = "all" then addMatches("header", "Canais", invalid, query)
-        addMatches("channel", "", m.channels, query)
-    end if
-    if m.searchMode = "movies" or m.searchMode = "all" then
-        if m.searchMode = "all" then addMatches("header", "Filmes", invalid, query)
-        addMatches("movie", "", m.movies, query)
-    end if
-    if m.searchMode = "series" or m.searchMode = "all" then
-        if m.searchMode = "all" then addMatches("header", "Séries", invalid, query)
-        addMatches("series", "", m.series, query)
-    end if
-    removeEmptyHeaders()
-    m.selectedIndex = firstSelectableIndex()
-    m.firstVisibleIndex = 0
+    if m.searchMode = "live" then addMatches("channel", m.channels, query)
+    if m.searchMode = "movies" then addMatches("movie", m.movies, query)
+    if m.searchMode = "series" then addMatches("series", m.series, query)
+    m.selectedIndex = 0 : m.firstVisibleIndex = 0
     if m.results.Count() = 0 then
-        clearResultNodes()
-        m.statusLabel.color = "#FFCC66"
-        m.statusLabel.text = "Nenhum resultado encontrado."
+        clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado. Tente outro nome."
     else
-        m.statusLabel.text = ""
-        renderResults()
-        updateFocus()
+        m.statusLabel.text = "" : renderResults() : updateResultFocus()
     end if
 end sub
 
-sub addMatches(kind as String, label as String, items as Dynamic, query as String)
-    if kind = "header" then
-        m.results.Push({ type: kind, title: label })
-        return
-    end if
+sub addMatches(kind as String, items as Dynamic, query as String)
     for each item in normalizeArray(items)
+        if m.results.Count() >= 10 then exit for
         name = getItemName(item)
-        if Instr(1, LCase(name), query) > 0 then m.results.Push({ type: kind, title: name, item: item })
+        meta = getItemMeta(item)
+        if Instr(1, LCase(name + " " + meta), query) > 0 then m.results.Push({ type: kind, title: name, meta: meta, item: item })
     end for
 end sub
-
-sub removeEmptyHeaders()
-    filtered = []
-    for i = 0 to m.results.Count() - 1
-        result = m.results[i]
-        if result.type <> "header" then
-            filtered.Push(result)
-        else if i + 1 < m.results.Count() and m.results[i + 1].type <> "header" then
-            filtered.Push(result)
-        end if
-    end for
-    m.results = filtered
-end sub
-
-function firstSelectableIndex() as Integer
-    for i = 0 to m.results.Count() - 1
-        if m.results[i].type <> "header" then return i
-    end for
-    return 0
-end function
 
 sub renderResults()
     clearResultNodes()
-    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.results.Count() then lastIndex = m.results.Count() - 1
-    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
-        realIndex = m.firstVisibleIndex + visualIndex
-        node = createResultNode(m.results[realIndex], visualIndex, realIndex)
-        m.resultsGroup.AppendChild(node)
-        m.itemNodes.Push(node)
+    maxIndex = m.results.Count() - 1
+    for i = 0 to maxIndex
+        node = createCardResultNode(m.results[i], i)
+        m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node)
     end for
 end sub
 
-function createResultNode(result as Object, visualIndex as Integer, realIndex as Integer) as Object
-    if result.type = "movie" or result.type = "series" then return createPosterResultNode(result, visualIndex, realIndex)
-    return createListResultNode(result, visualIndex, realIndex)
-end function
-
-function createListResultNode(result as Object, visualIndex as Integer, realIndex as Integer) as Object
-    group = CreateObject("roSGNode", "Group")
-    rowHeight = 76
-    group.translation = [0, visualIndex * rowHeight]
-    bg = CreateObject("roSGNode", "Rectangle")
-    bg.id = "itemBackground" : bg.width = m.contentWidth : bg.height = rowHeight - 10 : bg.color = "#111827" : bg.opacity = 0.9
-    logoBg = CreateObject("roSGNode", "Rectangle")
-    logoBg.id = "imageFallback" : logoBg.width = m.logoSize : logoBg.height = m.logoSize : logoBg.translation = [12, 4] : logoBg.color = "#1E293B" : logoBg.opacity = 1.0
-    logo = CreateObject("roSGNode", "Poster")
-    logo.id = "itemImage" : logo.width = m.logoSize : logo.height = m.logoSize : logo.translation = [12, 4] : logo.loadDisplayMode = "scaleToFit" : logo.uri = getItemImage(result.item)
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel" : label.width = m.contentWidth - m.logoSize - 44 : label.height = rowHeight - 10 : label.translation = [m.logoSize + 28, 0] : label.vertAlign = "center"
-    if result.type = "header" then
-        bg.opacity = 0.0 : logo.visible = false : logoBg.visible = false : label.translation = [0, 0] : label.color = "#5CE08A" : label.font = "font:MediumBoldSystemFont" : label.text = result.title
-    else
-        label.color = "#F8FAFC" : label.font = "font:MediumSystemFont" : label.text = result.title
-    end if
-    group.AppendChild(bg) : group.AppendChild(logoBg) : group.AppendChild(logo) : group.AppendChild(label)
+function createCardResultNode(result as Object, visualIndex as Integer) as Object
+    group = CreateObject("roSGNode", "Group") : group.translation = [visualIndex * (m.cardWidth + m.cardGap), 0]
+    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.cardWidth : bg.height = m.cardHeight : bg.color = "#101827" : bg.opacity = 0.92
+    imageBg = CreateObject("roSGNode", "Rectangle") : imageBg.width = m.cardWidth - 18 : imageBg.height = m.cardHeight - 70 : imageBg.translation = [9, 9] : imageBg.color = "#1C2940"
+    poster = CreateObject("roSGNode", "Poster") : poster.id = "itemImage" : poster.width = m.cardWidth - 18 : poster.height = m.cardHeight - 70 : poster.translation = [9, 9] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getItemImage(result.item)
+    title = CreateObject("roSGNode", "Label") : title.id = "itemLabel" : title.width = m.cardWidth - 12 : title.height = 30 : title.translation = [6, m.cardHeight - 58] : title.horizAlign = "center" : title.vertAlign = "center" : title.color = "#FFFFFF" : title.font = "font:SmallBoldSystemFont" : title.text = result.title
+    meta = CreateObject("roSGNode", "Label") : meta.id = "itemMeta" : meta.width = m.cardWidth - 12 : meta.height = 24 : meta.translation = [6, m.cardHeight - 28] : meta.horizAlign = "center" : meta.vertAlign = "center" : meta.color = "#9FB0C8" : meta.font = "font:TinySystemFont" : meta.text = result.meta
+    group.AppendChild(bg) : group.AppendChild(imageBg) : group.AppendChild(poster) : group.AppendChild(title) : group.AppendChild(meta)
     return group
 end function
 
-function createPosterResultNode(result as Object, visualIndex as Integer, realIndex as Integer) as Object
-    group = CreateObject("roSGNode", "Group")
-    group.translation = [visualIndex * (m.cardWidth + m.cardGap), 0]
-    bg = CreateObject("roSGNode", "Rectangle")
-    bg.id = "itemBackground" : bg.width = m.cardWidth : bg.height = m.itemHeight - 10 : bg.color = "#111827" : bg.opacity = 0.9
-    posterBg = CreateObject("roSGNode", "Rectangle")
-    posterBg.id = "imageFallback" : posterBg.width = m.cardWidth - 18 : posterBg.height = m.itemHeight - 54 : posterBg.translation = [9, 9] : posterBg.color = "#1E293B" : posterBg.opacity = 1.0
-    poster = CreateObject("roSGNode", "Poster")
-    poster.id = "itemImage" : poster.width = m.cardWidth - 18 : poster.height = m.itemHeight - 54 : poster.translation = [9, 9] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getItemImage(result.item)
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel" : label.width = m.cardWidth - 12 : label.height = 34 : label.translation = [6, m.itemHeight - 44] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#F8FAFC" : label.font = "font:SmallBoldSystemFont" : label.text = result.title
-    group.AppendChild(bg) : group.AppendChild(posterBg) : group.AppendChild(poster) : group.AppendChild(label)
-    return group
-end function
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "back" then
-        m.top.backRequested = true
-        return true
-    else if key = "up" then
-        moveSelection(-1)
-        return true
-    else if key = "down" then
-        moveSelection(1)
-        return true
-    else if key = "OK" then
-        if m.results.Count() = 0 then
-            openSearchKeyboard()
-        else
-            openSelected()
-        end if
-        return true
-    end if
+    if key = "back" then m.top.backRequested = true : return true
+    if key = "up" then moveZone(-1) : return true
+    if key = "down" then moveZone(1) : return true
+    if key = "left" then moveHorizontal(-1) : return true
+    if key = "right" then moveHorizontal(1) : return true
+    if key = "OK" then activateFocused() : return true
     return false
 end function
 
-sub moveSelection(direction as Integer)
-    if m.results.Count() = 0 then return
-    nextIndex = m.selectedIndex
-    for stepCount = 0 to m.results.Count() - 1
-        nextIndex = nextIndex + direction
-        if nextIndex < 0 then nextIndex = m.results.Count() - 1
-        if nextIndex >= m.results.Count() then nextIndex = 0
-        if m.results[nextIndex].type <> "header" then exit for
+sub moveZone(direction as Integer)
+    if direction < 0 then
+        if m.focusZone = "results" then
+            m.focusZone = "keyboard"
+        else
+            m.focusZone = "input"
+        end if
+    else
+        if m.focusZone = "input" then
+            m.focusZone = "keyboard"
+        else if m.results.Count() > 0 then
+            m.focusZone = "results"
+        end if
+    end if
+    updateAllFocus()
+end sub
+
+sub moveHorizontal(direction as Integer)
+    if m.focusZone = "keyboard" then
+        moveKeyboardLinear(direction)
+        updateKeyboardFocus()
+    else if m.focusZone = "results" and m.results.Count() > 0 then
+        m.selectedIndex = m.selectedIndex + direction
+        if m.selectedIndex < 0 then m.selectedIndex = m.results.Count() - 1
+        if m.selectedIndex >= m.results.Count() then m.selectedIndex = 0
+        updateResultFocus()
+    end if
+end sub
+
+sub moveKeyboardLinear(direction as Integer)
+    total = 0
+    current = 0
+    for r = 0 to m.keyRows.Count() - 1
+        for c = 0 to m.keyRows[r].Count() - 1
+            if r = m.selectedKeyRow and c = m.selectedKeyCol then current = total
+            total = total + 1
+        end for
     end for
-    m.selectedIndex = nextIndex
-    updateVisibleWindow()
-    renderResults()
-    updateFocus()
+    current = current + direction
+    if current < 0 then current = total - 1
+    if current >= total then current = 0
+    count = 0
+    for r = 0 to m.keyRows.Count() - 1
+        for c = 0 to m.keyRows[r].Count() - 1
+            if count = current then
+                m.selectedKeyRow = r : m.selectedKeyCol = c
+                return
+            end if
+            count = count + 1
+        end for
+    end for
+end sub
+
+sub activateFocused()
+    if m.focusZone = "input" then return
+    if m.focusZone = "results" then openSelected() : return
+    keyLabel = m.keyRows[m.selectedKeyRow][m.selectedKeyCol]
+    if keyLabel = "APAGAR" then
+        t = m.searchInput.text : if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
+    else if keyLabel = "LIMPAR" then
+        m.searchInput.text = ""
+    else if keyLabel = "BUSCAR" then
+        applyFilter()
+        if m.results.Count() > 0 then m.focusZone = "results"
+    else if keyLabel = "ESPAÇO" then
+        m.searchInput.text = m.searchInput.text + " "
+    else
+        m.searchInput.text = m.searchInput.text + keyLabel
+    end if
+    updateAllFocus()
+end sub
+
+sub updateAllFocus()
+    updateKeyboardFocus() : updateResultFocus()
+    if m.focusZone = "input" then m.inputBackground.color = "#12395A" else m.inputBackground.color = "#0B1220"
+end sub
+
+sub updateKeyboardFocus()
+    for r = 0 to m.keyNodes.Count() - 1
+        for c = 0 to m.keyNodes[r].Count() - 1
+            bg = m.keyNodes[r][c].FindNode("keyBackground") : lb = m.keyNodes[r][c].FindNode("keyLabel")
+            if m.focusZone = "keyboard" and r = m.selectedKeyRow and c = m.selectedKeyCol then
+                bg.color = "#1F8FFF" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
+            else
+                bg.color = "#101A2C" : bg.opacity = 0.92 : lb.color = "#EAF2FF"
+            end if
+        end for
+    end for
+end sub
+
+sub updateResultFocus()
+    for i = 0 to m.itemNodes.Count() - 1
+        bg = m.itemNodes[i].FindNode("itemBackground") : lb = m.itemNodes[i].FindNode("itemLabel")
+        if m.focusZone = "results" and i = m.selectedIndex then
+            bg.color = "#0F6CBD" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
+        else
+            bg.color = "#101827" : bg.opacity = 0.92 : lb.color = "#FFFFFF"
+        end if
+    end for
 end sub
 
 sub openSelected()
@@ -312,32 +296,8 @@ sub openSelected()
     if result.type = "series" then m.top.seriesSelected = result.item
 end sub
 
-sub updateVisibleWindow()
-    maxFirst = m.results.Count() - m.visibleItemCount
-    if maxFirst < 0 then maxFirst = 0
-    if m.selectedIndex < m.firstVisibleIndex then m.firstVisibleIndex = m.selectedIndex
-    if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
-    if m.firstVisibleIndex > maxFirst then m.firstVisibleIndex = maxFirst
-    if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
-end sub
-
-sub updateFocus()
-    for i = 0 to m.itemNodes.Count() - 1
-        realIndex = m.firstVisibleIndex + i
-        bg = m.itemNodes[i].FindNode("itemBackground")
-        label = m.itemNodes[i].FindNode("itemLabel")
-        if realIndex = m.selectedIndex and m.results[realIndex].type <> "header" then
-            bg.color = "#0B3A5E" : bg.opacity = 1.0 : label.color = "#FFFFFF"
-        else if m.results[realIndex].type <> "header" then
-            bg.color = "#111827" : bg.opacity = 0.86 : label.color = "#F8FAFC"
-        end if
-    end for
-end sub
-
 sub clearResultNodes()
-    while m.resultsGroup.GetChildCount() > 0
-        m.resultsGroup.RemoveChildIndex(0)
-    end while
+    while m.resultsGroup.GetChildCount() > 0 : m.resultsGroup.RemoveChildIndex(0) : end while
     m.itemNodes = []
 end sub
 
@@ -361,4 +321,24 @@ function getItemName(item as Dynamic) as String
     if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
     if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
     return "Sem nome"
+end function
+
+function getItemMeta(item as Dynamic) as String
+    parts = []
+    if item = invalid then return ""
+    if item.year <> invalid and item.year.ToStr().Trim() <> "" then parts.Push(item.year.ToStr())
+    if item.category_name <> invalid and item.category_name.ToStr().Trim() <> "" then parts.Push(item.category_name.ToStr())
+    if item.category <> invalid and item.category.ToStr().Trim() <> "" then parts.Push(item.category.ToStr())
+    if item.duration <> invalid and item.duration.ToStr().Trim() <> "" then parts.Push(item.duration.ToStr())
+    if parts.Count() = 0 and item.stream_type <> invalid then parts.Push(item.stream_type.ToStr())
+    return joinParts(parts, " • ")
+end function
+
+function joinParts(parts as Object, separator as String) as String
+    text = ""
+    for i = 0 to parts.Count() - 1
+        if i > 0 then text = text + separator
+        text = text + parts[i]
+    end for
+    return text
 end function
