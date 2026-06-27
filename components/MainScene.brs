@@ -81,6 +81,7 @@ sub Init()
     m.liveCategoriesScreen.ObserveField("searchRequested", "onLiveSearchRequested")
     m.liveChannelsScreen.ObserveField("backRequested", "onLiveChannelsBack")
     m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
+    m.liveChannelsScreen.ObserveField("categorySelected", "onLiveChannelsCategorySelected")
     m.liveChannelsScreen.ObserveField("channelFavoriteToggled", "onLiveChannelFavoriteToggled")
     m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
     m.movieCategoriesScreen.ObserveField("backRequested", "onMovieCategoriesBack")
@@ -592,9 +593,23 @@ sub onLiveCategorySelected()
     m.selectedLiveCategoryId = getCategoryId(category)
     m.liveChannels = []
     m.liveChannelsLoading = true
-    m.liveCategoriesScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("resetSelection")
+    m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
+    m.liveChannelsScreen.callFunc("show", category)
+    m.liveChannelsScreen.callFunc("setLoading", true)
+    loadLiveChannels(category)
+end sub
+
+sub onLiveChannelsCategorySelected()
+    category = m.liveChannelsScreen.categorySelected
+    if category = invalid then return
+
+    m.selectedLiveCategory = category
+    m.selectedLiveCategoryId = getCategoryId(category)
+    m.liveChannels = []
+    m.liveChannelsLoading = true
+    m.livePlayerScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("show", category)
     m.liveChannelsScreen.callFunc("setLoading", true)
     loadLiveChannels(category)

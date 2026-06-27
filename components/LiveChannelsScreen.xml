@@ -6,9 +6,11 @@
         <function name="setLoading" />
         <function name="setChannels" />
         <function name="showMessage" />
+        <function name="setCategories" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="channelSelected" type="assocarray" alwaysNotify="true" />
-            <field id="channelFavoriteToggled" type="assocarray" alwaysNotify="true" />
+        <field id="categorySelected" type="assocarray" alwaysNotify="true" />
+        <field id="channelFavoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/LiveChannelsScreen.brs" />
     <children>
@@ -21,9 +23,12 @@
         <Rectangle id="rightPanelBackground" color="#050A12" opacity="0.96" />
         <Rectangle id="divider" color="#1F324A" opacity="1" />
         <Label id="leftPanelTitle" text="Categorias" color="#B8C3D6" horizAlign="left" />
+        <Label id="middlePanelTitle" text="Canais" color="#B8C3D6" horizAlign="left" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
+        <Group id="categoriesGroup" />
         <Group id="channelsGroup" />
         <Rectangle id="previewPanel" color="#101C2E" opacity="1" />
+        <Poster id="previewLogo" loadDisplayMode="scaleToFit" />
         <Label id="previewTitle" text="Preview do Canal" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         <Label id="previewSubtitle" text="Selecione um canal para assistir" color="#7D8CA3" horizAlign="center" />
         <Rectangle id="epgPanel" color="#0C1524" opacity="1" />

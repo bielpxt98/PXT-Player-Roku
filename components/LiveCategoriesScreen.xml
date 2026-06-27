@@ -16,6 +16,14 @@
         <Label id="title" text="TV AO VIVO" color="#FFFFFF" horizAlign="center" />
         <Label id="subtitle" text="Categorias" color="#B8C3D6" horizAlign="center" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
+        <Rectangle id="categoriesPanel" color="#0B1626" opacity="0.96" />
+        <Rectangle id="channelsPanel" color="#0B1626" opacity="0.72" />
+        <Rectangle id="previewPanel" color="#101C2E" opacity="0.72" />
+        <Label id="categoriesTitle" text="CATEGORIAS" color="#B8C3D6" horizAlign="left" />
+        <Label id="channelsTitle" text="CANAIS" color="#B8C3D6" horizAlign="left" />
+        <Label id="previewTitle" text="PREVIEW" color="#B8C3D6" horizAlign="left" />
+        <Label id="emptyChannelsLabel" text="Selecione uma categoria" color="#7D8CA3" horizAlign="center" />
+        <Label id="emptyPreviewLabel" text="Selecione um canal" color="#7D8CA3" horizAlign="center" />
         <Group id="categoriesGroup" />
         <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para selecionar • Voltar para Home" color="#7D8CA3" horizAlign="center" />
     </children>
