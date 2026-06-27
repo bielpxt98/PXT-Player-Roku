@@ -16,10 +16,10 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesListScreen.brs" />
     <children>
-        <Rectangle id="background" color="#05070B" translation="[0, 0]" />
-        <Rectangle id="searchBar" color="#101722" opacity="0.96" />
+        <Rectangle id="background" color="#05070B" opacity="0.58" translation="[0, 0]" />
+        <Rectangle id="searchBar" color="#101722" opacity="0.82" />
         <Label id="searchLabel" text="Pesquisar" color="#DDE6F3" vertAlign="center" />
-        <Rectangle id="leftPanel" color="#0B111B" opacity="0.98" />
+        <Rectangle id="leftPanel" color="#0B111B" opacity="0.82" />
         <Rectangle id="divider" color="#1D2A3A" />
         <Label id="categoriesTitle" text="Categorias" color="#FFFFFF" />
         <Label id="subtitle" text="SÉRIES" color="#9FAEC4" horizAlign="right" />

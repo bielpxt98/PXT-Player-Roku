@@ -14,27 +14,27 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/LiveChannelsScreen.brs" />
     <children>
-        <Rectangle id="background" color="#000000" translation="[0, 0]" />
-        <Rectangle id="topBar" color="#07111F" opacity="0.96" />
+        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0, 0]" />
+        <Rectangle id="topBar" color="#07111F" opacity="0.82" />
         <Label id="currentCategoryLabel" text="Categoria Atual" color="#FFFFFF" horizAlign="left" vertAlign="center" />
         <Label id="dateLabel" text="" color="#B8C3D6" horizAlign="right" vertAlign="center" />
         <Label id="timeLabel" text="" color="#FFFFFF" horizAlign="right" vertAlign="center" />
-        <Rectangle id="leftPanelBackground" color="#0B1626" opacity="0.96" />
-        <Rectangle id="rightPanelBackground" color="#050A12" opacity="0.96" />
-        <Rectangle id="divider" color="#1F324A" opacity="1" />
+        <Rectangle id="leftPanelBackground" color="#0B1626" opacity="0.82" />
+        <Rectangle id="rightPanelBackground" color="#050A12" opacity="0.82" />
+        <Rectangle id="divider" color="#1F324A" opacity="0.88" />
         <Label id="leftPanelTitle" text="Categorias" color="#B8C3D6" horizAlign="left" />
         <Label id="middlePanelTitle" text="Canais" color="#B8C3D6" horizAlign="left" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="categoriesGroup" />
         <Group id="channelsGroup" />
-        <Rectangle id="previewPanel" color="#101C2E" opacity="1" />
+        <Rectangle id="previewPanel" color="#101C2E" opacity="0.88" />
         <Poster id="previewLogo" loadDisplayMode="scaleToFit" />
         <Label id="previewTitle" text="Preview do Canal" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         <Label id="previewSubtitle" text="Selecione um canal para assistir" color="#7D8CA3" horizAlign="center" />
-        <Rectangle id="epgPanel" color="#0C1524" opacity="1" />
+        <Rectangle id="epgPanel" color="#0C1524" opacity="0.88" />
         <Label id="epgTitle" text="Área do EPG" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         <Label id="epgSubtitle" text="Programação será exibida aqui" color="#7D8CA3" horizAlign="center" />
-        <Rectangle id="calendarPanel" color="#09111E" opacity="1" />
+        <Rectangle id="calendarPanel" color="#09111E" opacity="0.88" />
         <Label id="calendarTitle" text="Calendário próximos dias" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         <Label id="hintLabel" text="↑/↓ navegar • OK assistir • * favoritar • Replay buscar • Voltar categorias" color="#7D8CA3" horizAlign="center" />
     </children>

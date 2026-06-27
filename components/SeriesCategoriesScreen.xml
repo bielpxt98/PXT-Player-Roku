@@ -13,7 +13,7 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesCategoriesScreen.brs" />
     <children>
-        <Rectangle id="background" color="#000000" translation="[0, 0]" />
+        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0, 0]" />
         <Label id="title" text="SÉRIES" color="#FFFFFF" horizAlign="center" />
         <Label id="subtitle" text="Categorias" color="#B8C3D6" horizAlign="center" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
