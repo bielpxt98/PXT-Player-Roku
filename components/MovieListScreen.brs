@@ -141,19 +141,50 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "back" then m.top.backRequested = true : return true
-    if key = "left" then m.activePane = "categories" : updateFocus() : return true
-    if key = "right" then m.activePane = "grid" : updateFocus() : return true
+    if key = "back" then
+        if m.activePane = "grid" or m.activePane = "search" then
+            m.activePane = "categories" : updateFocus()
+        else
+            m.top.backRequested = true
+        end if
+        return true
+    end if
+    if key = "left" then
+        if m.activePane = "grid" then
+            if (m.selectedIndex mod m.columns) = 0 then
+                m.activePane = "categories" : updateFocus()
+            else
+                moveGrid(-1, 0)
+            end if
+        else if m.activePane = "search" then
+            m.activePane = "categories" : updateFocus()
+        end if
+        return true
+    end if
+    if key = "right" then
+        if m.activePane = "categories" or m.activePane = "search" then
+            if m.movies.Count() > 0 then m.activePane = "grid" : updateFocus()
+        else
+            if (m.selectedIndex mod m.columns) < m.columns - 1 and m.selectedIndex < m.movies.Count() - 1 then moveGrid(1, 0)
+        end if
+        return true
+    end if
     if key = "up" then
         if m.activePane = "categories" then
-            moveCategory(-1)
-        else
+            if m.selectedCategoryIndex = 0 then
+                m.activePane = "search" : updateFocus()
+            else
+                moveCategory(-1)
+            end if
+        else if m.activePane = "grid" then
             moveGrid(0, -1)
         end if
         return true
     end if
     if key = "down" then
-        if m.activePane = "categories" then
+        if m.activePane = "search" then
+            m.activePane = "categories" : updateFocus()
+        else if m.activePane = "categories" then
             moveCategory(1)
         else
             moveGrid(0, 1)
@@ -165,7 +196,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     end if
     if key = "OK" then
-        if m.activePane = "categories" then
+        if m.activePane = "search" then
+            m.top.searchRequested = true
+        else if m.activePane = "categories" then
             if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
         else if m.movies.Count() > 0 then
             print "OK opening selectedIndex="; m.selectedIndex : print "OK opening item="; getMovieLogTitle(m.movies[m.selectedIndex])
@@ -204,6 +237,11 @@ sub updateGridWindow()
 end sub
 
 sub updateFocus()
+    if m.activePane = "search" then
+        m.searchBar.color = "#123A5C" : m.searchLabel.color = "#FFFFFF"
+    else
+        m.searchBar.color = "#101722" : m.searchLabel.color = "#DDE6F3"
+    end if
     for i = 0 to m.categoryNodes.Count() - 1
         realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
         bg.opacity = 0.0 : label.color = "#C9D4E5"
