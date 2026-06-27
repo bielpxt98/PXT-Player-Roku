@@ -16,17 +16,17 @@
     <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
-        <Rectangle id="homeBackground" color="#000000" translation="[0, 0]" />
+        <Poster id="homeBackground" uri="pkg:/images/background.jpeg" translation="[0, 0]" loadDisplayMode="scaleToFill" />
+        <Rectangle id="homeOverlay" color="#000000" opacity="0.42" translation="[0, 0]" />
         <Label id="homeTitle" text="PXT PLAYER" color="#FFFFFF" horizAlign="center" />
-        <Label id="homeSubtitle" text="Selecione uma opção para continuar" color="#B8C3D6" horizAlign="center" />
-        <Button id="liveTvButton" text="TV AO VIVO" minWidth="520" translation="[0, 0]" />
-        <Button id="moviesButton" text="FILMES" minWidth="520" translation="[0, 0]" />
-        <Button id="seriesButton" text="SÉRIES" minWidth="520" translation="[0, 0]" />
-        <Button id="favoritesButton" text="FAVORITOS" minWidth="520" translation="[0, 0]" />
-        <Button id="playlistButton" text="LISTA DE REPRODUÇÃO" minWidth="520" translation="[0, 0]" />
-        <Label id="continueWatchingLabel" text="Continuar assistindo" color="#FFFFFF" horizAlign="left" />
-        <Label id="lastMoviesLabel" text="Últimos filmes assistidos" color="#B8C3D6" horizAlign="left" />
-        <Label id="lastSeriesLabel" text="Últimas séries assistidas" color="#B8C3D6" horizAlign="left" />
+        <Label id="homeSubtitle" text="Nova Home Premium" color="#D8E2F3" horizAlign="center" />
+        <HomeButton id="liveTvButton" labelText="TV AO VIVO" iconText="▶" accentColor="#E50914" />
+        <HomeButton id="moviesButton" labelText="FILMES" iconText="🎬" accentColor="#208CFF" />
+        <HomeButton id="seriesButton" labelText="SÉRIES" iconText="▣" accentColor="#8B5CF6" />
+        <HomeButton id="favoritesButton" labelText="FAVORITOS" iconText="★" accentColor="#FACC15" />
+        <HomeButton id="recentButton" labelText="ÚLTIMOS ASSISTIDOS" iconText="↺" accentColor="#94A3B8" />
+        <Label id="settingsFooterLabel" text="⚙  Configurações" color="#D8E2F3" horizAlign="center" />
+        <Label id="accountFooterLabel" text="◉  Conta" color="#D8E2F3" horizAlign="center" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />
     </children>
 </component>
