@@ -1,4 +1,4 @@
-' Home screen for PXT Player.
+' Playlist screen for PXT Player.
 sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.title = m.top.FindNode("homeTitle")
@@ -16,6 +16,7 @@ sub Init()
     ' TV ao vivo, filmes e séries are placeholders for now.
     m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
 
+    m.removeButton.ObserveField("buttonSelected", "onRemoveSelected")
     configureLayout()
 end sub
 
@@ -29,11 +30,11 @@ sub configureLayout()
 
     m.title.width = width
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.18)]
+    m.title.translation = [0, Int(height * 0.22)]
 
     m.subtitle.width = width
     m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, Int(height * 0.29)]
+    m.subtitle.translation = [0, Int(height * 0.34)]
 
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:MediumSystemFont"
@@ -44,8 +45,7 @@ end sub
 
 sub show()
     m.top.visible = true
-    m.focusIndex = 0
-    updateFocus()
+    m.removeButton.SetFocus(true)
 end sub
 
 sub updateConnectionStatus(status as Object)
@@ -64,8 +64,8 @@ sub hide()
     m.top.visible = false
 end sub
 
-sub onPlaylistSelected()
-    m.top.openLogin = true
+sub onRemoveSelected()
+    m.top.removePlaylist = true
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean

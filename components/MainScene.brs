@@ -9,7 +9,7 @@ sub Init()
 
     configureScene()
 
-    m.homeScreen.ObserveField("openLogin", "onOpenLogin")
+    m.homeScreen.ObserveField("removePlaylist", "onRemovePlaylistRequested")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
@@ -28,6 +28,10 @@ sub configureScene()
     m.homeScreen.SetFocus(true)
 end sub
 
+function hasSavedPlaylist() as Boolean
+    return m.account <> invalid
+end function
+
 sub showHome()
     m.loginScreen.callFunc("hide")
     m.homeScreen.callFunc("show")
@@ -38,8 +42,29 @@ sub showLogin()
     m.loginScreen.callFunc("show", m.account)
 end sub
 
-sub onOpenLogin()
-    showLogin()
+sub onRemovePlaylistRequested()
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = "Remover Lista de Reprodução"
+    dialog.message = "Deseja remover a Lista de Reprodução salva? Você precisará informar DNS, usuário e senha novamente."
+    dialog.buttons = ["REMOVER", "CANCELAR"]
+    dialog.ObserveField("buttonSelected", "onRemovePlaylistDialogSelected")
+    m.top.dialog = dialog
+end sub
+
+sub onRemovePlaylistDialogSelected()
+    dialog = m.top.dialog
+    if dialog = invalid then return
+
+    selectedIndex = dialog.buttonSelected
+    m.top.dialog = invalid
+
+    if selectedIndex = 0 then
+        DeleteSavedPlaylist()
+        m.account = invalid
+        showLogin()
+    else
+        showHome()
+    end if
 end sub
 
 sub onLoginSubmit()
@@ -51,7 +76,9 @@ sub onLoginSubmit()
 end sub
 
 sub onLoginBack()
-    showHome()
+    if hasSavedPlaylist() then
+        showHome()
+    end if
 end sub
 
 sub testXtreamConnection(account as Object)
