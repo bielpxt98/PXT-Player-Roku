@@ -12,21 +12,21 @@
     <children>
         <Rectangle id="focusGlow" width="192" height="134" color="#FFFFFF" opacity="0" translation="[-8, -8]" />
         <Group id="buttonGroup" scaleRotateCenter="[88, 59]">
-            <Rectangle id="buttonShadow" width="176" height="118" color="#000000" opacity="0.38" translation="[5, 7]" />
-            <Rectangle id="buttonBackground" width="176" height="118" color="#111827" opacity="0.88" />
-            <Rectangle id="buttonAccent" width="176" height="4" color="#E50914" opacity="0.9" translation="[0, 0]" />
+            <Rectangle id="buttonShadow" width="176" height="118" color="#000000" opacity="0.42" translation="[5, 7]" />
+            <Rectangle id="buttonBackground" width="176" height="118" color="#050A14" opacity="0.82" />
+            <Rectangle id="buttonAccent" width="176" height="118" color="#E50914" opacity="0.16" />
             <Label id="buttonIcon" width="176" height="42" translation="[0, 20]" horizAlign="center" vertAlign="center" color="#FFFFFF" />
-            <Label id="buttonLabel" width="160" height="34" translation="[8, 72]" horizAlign="center" vertAlign="center" color="#F8FAFC" />
+            <Label id="buttonLabel" width="160" height="38" translation="[8, 72]" horizAlign="center" vertAlign="center" color="#F8FAFC" />
         </Group>
 
         <Animation id="focusInAnimation" duration="0.16" easeFunction="outQuad">
             <Vector2DFieldInterpolator key="[0.0, 1.0]" keyValue="[[1.0, 1.0], [1.06, 1.06]]" fieldToInterp="buttonGroup.scale" />
-            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.0, 0.2]" fieldToInterp="focusGlow.opacity" />
+            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.0, 0.32]" fieldToInterp="focusGlow.opacity" />
         </Animation>
 
         <Animation id="focusOutAnimation" duration="0.14" easeFunction="outQuad">
             <Vector2DFieldInterpolator key="[0.0, 1.0]" keyValue="[[1.06, 1.06], [1.0, 1.0]]" fieldToInterp="buttonGroup.scale" />
-            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.2, 0.0]" fieldToInterp="focusGlow.opacity" />
+            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.32, 0.0]" fieldToInterp="focusGlow.opacity" />
         </Animation>
     </children>
 </component>

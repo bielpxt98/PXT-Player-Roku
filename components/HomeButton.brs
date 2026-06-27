@@ -42,14 +42,14 @@ sub onSelectedChanged()
     if m.top.selected then
         m.focusOutAnimation.control = "stop"
         m.focusInAnimation.control = "start"
-        m.buttonBackground.color = "#172033"
-        m.buttonBackground.opacity = 0.96
-        m.buttonAccent.opacity = 1.0
+        m.buttonBackground.color = "#0B1220"
+        m.buttonBackground.opacity = 0.94
+        m.buttonAccent.opacity = 0.28
     else
         m.focusInAnimation.control = "stop"
         m.focusOutAnimation.control = "start"
-        m.buttonBackground.color = "#111827"
-        m.buttonBackground.opacity = 0.88
-        m.buttonAccent.opacity = 0.9
+        m.buttonBackground.color = "#050A14"
+        m.buttonBackground.opacity = 0.82
+        m.buttonAccent.opacity = 0.16
     end if
 end sub

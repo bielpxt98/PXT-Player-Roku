@@ -5,6 +5,7 @@
         <function name="hide" />
         <function name="setHistory" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="historySelected" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/RecentScreen.brs" />
     <children>
