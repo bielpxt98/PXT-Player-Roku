@@ -10,7 +10,7 @@ sub Init()
 
     m.categories = []
     m.itemNodes = []
-    m.focusIndex = 0
+    m.selectedIndex = 0
     m.firstVisibleIndex = 0
 
     configureLayout()
@@ -21,34 +21,46 @@ sub configureLayout()
     width = resolution.width
     height = resolution.height
 
-    m.safeX = Int(width * 0.06)
-    m.safeTop = Int(height * 0.07)
-    m.safeBottom = Int(height * 0.08)
-    m.contentWidth = width - (m.safeX * 2)
-    if m.contentWidth > 860 then m.contentWidth = 860
-    m.contentX = Int((width - m.contentWidth) / 2)
-
+    ' Use the real display size, but keep fixed safe-area reservations so the
+    ' list never renders under the title or footer on different TV resolutions.
+    m.safeMarginX = 72
+    m.titleReservedHeight = 150
+    m.footerReservedHeight = 86
     if height <= 720 then
-        m.itemHeight = 58
-        m.cardHeight = 50
-        m.titleY = m.safeTop
-        m.subtitleY = m.titleY + 58
-        m.listY = m.subtitleY + 58
-        m.footerGap = 44
-    else
-        m.itemHeight = 70
-        m.cardHeight = 58
-        m.titleY = m.safeTop
-        m.subtitleY = m.titleY + 74
-        m.listY = m.subtitleY + 72
-        m.footerGap = 58
+        m.safeMarginX = 48
+        m.titleReservedHeight = 124
+        m.footerReservedHeight = 70
     end if
 
-    hintY = height - m.safeBottom - 28
-    if hintY < m.listY + m.cardHeight then hintY = m.listY + m.cardHeight + 12
-    availableListHeight = hintY - m.listY - m.footerGap
-    m.maxVisibleItems = Int(availableListHeight / m.itemHeight)
-    if m.maxVisibleItems < 1 then m.maxVisibleItems = 1
+    m.contentX = m.safeMarginX
+    m.contentWidth = width - (m.safeMarginX * 2)
+    if m.contentWidth < 320 then
+        m.contentX = 0
+        m.contentWidth = width
+    end if
+
+    m.titleY = 42
+    m.subtitleY = 100
+    if height <= 720 then
+        m.titleY = 28
+        m.subtitleY = 78
+    end if
+
+    m.listY = m.titleReservedHeight
+    m.footerY = height - m.footerReservedHeight + 18
+    m.listHeight = m.footerY - m.listY - 20
+    if m.listHeight < 80 then m.listHeight = 80
+
+    if height <= 720 then
+        m.itemHeight = 56
+        m.cardHeight = 48
+    else
+        m.itemHeight = 68
+        m.cardHeight = 58
+    end if
+
+    m.visibleItemCount = Int(m.listHeight / m.itemHeight)
+    if m.visibleItemCount < 1 then m.visibleItemCount = 1
 
     m.background.width = width
     m.background.height = height
@@ -63,13 +75,13 @@ sub configureLayout()
 
     m.statusLabel.width = m.contentWidth
     m.statusLabel.font = "font:MediumSystemFont"
-    m.statusLabel.translation = [m.contentX, m.listY + Int(availableListHeight / 2)]
+    m.statusLabel.translation = [m.contentX, m.listY + Int(m.listHeight / 2)]
 
     m.categoriesGroup.translation = [m.contentX, m.listY]
 
     m.hintLabel.width = width
     m.hintLabel.font = "font:SmallSystemFont"
-    m.hintLabel.translation = [0, hintY]
+    m.hintLabel.translation = [0, m.footerY]
 end sub
 
 sub show()
@@ -96,7 +108,7 @@ end sub
 
 sub setCategories(categories as Object)
     m.categories = normalizeCategories(categories)
-    m.focusIndex = 0
+    m.selectedIndex = 0
     m.firstVisibleIndex = 0
 
     if m.categories.Count() = 0 then
@@ -111,7 +123,7 @@ end sub
 sub showMessage(message as String)
     clearCategoryNodes()
     m.categories = []
-    m.focusIndex = 0
+    m.selectedIndex = 0
     m.firstVisibleIndex = 0
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
@@ -128,7 +140,7 @@ sub renderVisibleItems()
     if m.categories.Count() = 0 then return
 
     ensureFocusIsVisible()
-    lastIndex = m.firstVisibleIndex + m.maxVisibleItems - 1
+    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
 
     for i = m.firstVisibleIndex to lastIndex
@@ -202,8 +214,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         moveFocus(1)
         return true
     else if key = "OK" then
-        if m.categories.Count() > 0 and m.focusIndex >= 0 and m.focusIndex < m.categories.Count() then
-            m.top.categorySelected = m.categories[m.focusIndex]
+        if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
+            m.top.categorySelected = m.categories[m.selectedIndex]
         end if
         return true
     end if
@@ -214,10 +226,11 @@ end function
 sub moveFocus(direction as Integer)
     if m.categories.Count() = 0 then return
 
-    nextIndex = m.focusIndex + direction
-    if nextIndex < 0 then nextIndex = m.categories.Count() - 1
-    if nextIndex >= m.categories.Count() then nextIndex = 0
-    m.focusIndex = nextIndex
+    nextIndex = m.selectedIndex + direction
+    if nextIndex < 0 then nextIndex = 0
+    if nextIndex >= m.categories.Count() then nextIndex = m.categories.Count() - 1
+    if nextIndex = m.selectedIndex then return
+    m.selectedIndex = nextIndex
 
     oldFirstVisibleIndex = m.firstVisibleIndex
     ensureFocusIsVisible()
@@ -230,22 +243,22 @@ end sub
 
 sub ensureFocusIsVisible()
     if m.categories.Count() = 0 then
-        m.focusIndex = 0
+        m.selectedIndex = 0
         m.firstVisibleIndex = 0
         return
     end if
 
-    if m.focusIndex < 0 then m.focusIndex = 0
-    if m.focusIndex >= m.categories.Count() then m.focusIndex = m.categories.Count() - 1
+    if m.selectedIndex < 0 then m.selectedIndex = 0
+    if m.selectedIndex >= m.categories.Count() then m.selectedIndex = m.categories.Count() - 1
     if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
 
-    maxFirstIndex = m.categories.Count() - m.maxVisibleItems
+    maxFirstIndex = m.categories.Count() - m.visibleItemCount
     if maxFirstIndex < 0 then maxFirstIndex = 0
 
-    if m.focusIndex < m.firstVisibleIndex then
-        m.firstVisibleIndex = m.focusIndex
-    else if m.focusIndex >= m.firstVisibleIndex + m.maxVisibleItems then
-        m.firstVisibleIndex = m.focusIndex - m.maxVisibleItems + 1
+    if m.selectedIndex < m.firstVisibleIndex then
+        m.firstVisibleIndex = m.selectedIndex
+    else if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then
+        m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
     end if
 
     if m.firstVisibleIndex > maxFirstIndex then m.firstVisibleIndex = maxFirstIndex
@@ -253,7 +266,7 @@ end sub
 
 sub updateFocus()
     for i = 0 to m.itemNodes.Count() - 1
-        selected = (m.firstVisibleIndex + i) = m.focusIndex
+        selected = (m.firstVisibleIndex + i) = m.selectedIndex
         background = m.itemNodes[i].FindNode("itemBackground")
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
