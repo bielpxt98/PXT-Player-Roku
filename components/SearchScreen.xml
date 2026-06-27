@@ -13,12 +13,18 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SearchScreen.brs" />
     <children>
-        <Rectangle id="background" color="#000000" translation="[0, 0]" />
+        <Poster id="backgroundImage" uri="pkg:/images/background.jpeg" loadDisplayMode="scaleToFill" translation="[0, 0]" />
+        <Rectangle id="overlay" color="#02040A" opacity="0.82" translation="[0, 0]" />
+        <Rectangle id="topGradient" color="#000000" opacity="0.34" translation="[0, 0]" />
         <Label id="title" text="BUSCA" color="#FFFFFF" horizAlign="center" />
-        <Label id="subtitle" text="Digite no controle ou no app Roku Remote" color="#B8C3D6" horizAlign="center" />
-        <TextEditBox id="searchInput" hintText="Buscar canais, filmes e séries" text="" clearOnDownKey="false" />
+        <Label id="subtitle" text="Busca premium PXT Player" color="#B8C3D6" horizAlign="center" />
+        <Rectangle id="inputBackground" color="#0B1220" opacity="0.92" />
+        <TextEditBox id="searchInput" hintText="Digite no controle ou no app Roku Remote" text="" clearOnDownKey="false" />
+        <Label id="queryMirror" text="" color="#FFFFFF" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
+        <Group id="keyboardGroup" />
+        <Label id="resultsTitle" text="RESULTADOS" color="#D7E2F4" />
         <Group id="resultsGroup" />
-        <Label id="hintLabel" text="Digite para buscar • ↑/↓ navegar • OK abrir • Voltar para Home" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="←/→ navega • ↑/↓ alterna campo, teclado e resultados • OK seleciona • Voltar retorna" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
