@@ -8,7 +8,7 @@ sub Init()
     m.subtitle = m.top.FindNode("subtitle")
     m.statusLabel = m.top.FindNode("statusLabel")
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
-    m.moviesGroup = m.top.FindNode("moviesGroup")
+    m.moviesGrid = m.top.FindNode("moviesGrid")
     m.hintLabel = m.top.FindNode("hintLabel")
     m.categories = [] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.itemNodes = []
@@ -27,17 +27,19 @@ sub configureLayout()
     m.gridW = w - m.gridX - m.margin : m.gridH = m.panelH - 54
     m.categoryX = m.margin + 18 : m.categoryY = m.panelY + 72
     m.categoryW = m.leftW - 36 : m.categoryItemH = 52
-    m.posterW = 150 : m.posterH = 220
-    m.posterGapX = 56 : m.posterGapY = 42
+    m.posterW = 178 : m.posterH = 264
+    m.posterGapX = 56 : m.posterGapY = 54
     m.titleOffsetY = 10 : m.titleH = 42
-    if h <= 720 then m.posterW = 104 : m.posterH = 152 : m.posterGapX = 48 : m.posterGapY = 16 : m.titleOffsetY = 6 : m.titleH = 30 : m.categoryItemH = 44
-    m.itemH = m.posterH + m.titleOffsetY + m.titleH + m.posterGapY
+    if h <= 720 then m.posterW = 120 : m.posterH = 178 : m.posterGapX = 32 : m.posterGapY = 24 : m.titleOffsetY = 6 : m.titleH = 30 : m.categoryItemH = 44
     m.columns = Int((m.gridW + m.posterGapX) / (m.posterW + m.posterGapX)) : if m.columns < 1 then m.columns = 1
-    if m.columns > 4 then m.columns = 4
-    if h <= 720 and m.columns > 3 then m.columns = 3
+    if m.columns > 5 then m.columns = 5
+    if h <= 720 and m.columns > 4 then m.columns = 4
+    if m.columns > 1 then m.posterGapX = Int((m.gridW - (m.columns * m.posterW)) / (m.columns - 1))
+    if m.posterGapX < 24 then m.posterGapX = 24
+    m.itemH = m.posterH + m.titleOffsetY + m.titleH + m.posterGapY
     m.rows = 3
     m.visibleItemCount = m.columns * m.rows
-    if m.visibleItemCount > 12 then m.visibleItemCount = 12
+    if m.visibleItemCount > 15 then m.visibleItemCount = 15
     m.visibleCategoryCount = Int((m.panelH - 90) / m.categoryItemH) : if m.visibleCategoryCount < 1 then m.visibleCategoryCount = 1
     m.background.width = w : m.background.height = h
     m.searchBar.width = w : m.searchBar.height = m.searchH
@@ -48,7 +50,11 @@ sub configureLayout()
     m.subtitle.translation = [m.gridX, m.panelY + 22] : m.subtitle.width = m.gridW : m.subtitle.font = "font:SmallSystemFont"
     m.statusLabel.translation = [m.gridX, m.gridY + Int(m.gridH / 2)] : m.statusLabel.width = m.gridW : m.statusLabel.font = "font:MediumSystemFont"
     m.categoriesGroup.translation = [m.categoryX, m.categoryY]
-    m.moviesGroup.translation = [m.gridX, m.gridY]
+    m.moviesGrid.translation = [m.gridX, m.gridY]
+    m.moviesGrid.itemSize = [m.posterW, m.posterH]
+    m.moviesGrid.itemSpacing = [m.posterGapX, m.posterGapY]
+    m.moviesGrid.numColumns = m.columns
+    m.moviesGrid.numRows = m.rows
     m.hintLabel.translation = [0, h - 34] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
 end sub
 
@@ -75,6 +81,7 @@ end sub
 
 sub resetGridSelection()
     m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "grid"
+    resetGridFocusToFirstItem()
 end sub
 
 sub setCategories(categories as Object)
@@ -127,13 +134,18 @@ end function
 sub renderGrid()
     clearGridNodes()
     if m.movies.Count() = 0 then return
-    updateGridWindow()
-    first = m.firstVisibleRow * m.columns : last = first + m.visibleItemCount - 1
-    if last >= m.movies.Count() then last = m.movies.Count() - 1
-    for i = first to last
-        visual = i - first : item = createPosterItem(m.movies[i], visual, i)
-        m.moviesGroup.AppendChild(item) : m.itemNodes.Push(item)
+
+    content = CreateObject("roSGNode", "ContentNode")
+    for each movie in m.movies
+        node = content.CreateChild("ContentNode")
+        node.title = getMovieName(movie)
+        node.HDPosterUrl = getMovieCover(movie)
+        node.SDPosterUrl = getMovieCover(movie)
     end for
+
+    m.moviesGrid.content = content
+    m.moviesGrid.visible = true
+    resetGridFocusToFirstItem()
 end sub
 
 function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
@@ -222,7 +234,7 @@ end sub
 
 sub moveGrid(dx as Integer, dy as Integer)
     if m.movies.Count() = 0 then return
-    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx : updateGridWindow() : renderGrid() : updateFocus()
+    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx : updateGridWindow() : m.moviesGrid.jumpToItem = m.selectedIndex : updateFocus()
 end sub
 
 sub updateCategoryWindow()
@@ -254,12 +266,15 @@ sub updateFocus()
         if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#061F36" : label.color = "#FFFFFF"
         if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
-    first = m.firstVisibleRow * m.columns
-    for i = 0 to m.itemNodes.Count() - 1
-        realIndex = first + i : focus = m.itemNodes[i].FindNode("posterFocus") : label = m.itemNodes[i].FindNode("itemLabel")
-        focus.opacity = 0.0 : label.color = "#DDE6F3" : m.itemNodes[i].scale = [1.0, 1.0]
-        if realIndex = m.selectedIndex and m.activePane = "grid" then focus.opacity = 1.0 : label.color = "#FFFFFF" : m.itemNodes[i].scale = [1.06, 1.06]
-    end for
+    if m.activePane = "grid" and m.movies.Count() > 0 then m.moviesGrid.SetFocus(true) else m.top.SetFocus(true)
+end sub
+
+sub resetGridFocusToFirstItem()
+    m.selectedIndex = 0
+    m.firstVisibleRow = 0
+    if m.moviesGrid <> invalid then
+        m.moviesGrid.jumpToItem = 0
+    end if
 end sub
 
 sub syncSelectedCategory(category as Dynamic)
@@ -277,9 +292,8 @@ sub clearCategoryNodes()
 end sub
 
 sub clearGridNodes()
-    while m.moviesGroup.GetChildCount() > 0
-        m.moviesGroup.RemoveChildIndex(0)
-    end while
+    m.moviesGrid.content = invalid
+    m.moviesGrid.visible = false
     m.itemNodes = []
 end sub
 
