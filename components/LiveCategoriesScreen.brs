@@ -87,6 +87,7 @@ end sub
 sub show()
     configureLayout()
     ensureFocusIsVisible()
+    logInitialSelection()
     renderVisibleItems()
     m.top.visible = true
     m.top.SetFocus(true)
@@ -94,6 +95,17 @@ end sub
 
 sub hide()
     m.top.visible = false
+end sub
+
+sub resetSelection()
+    m.selectedIndex = 0
+    m.firstVisibleIndex = 0
+    logInitialSelection()
+end sub
+
+sub logInitialSelection()
+    print "INIT selectedIndex="; m.selectedIndex
+    print "INIT firstVisibleIndex="; m.firstVisibleIndex
 end sub
 
 sub setLoading(isLoading as Boolean)
@@ -108,8 +120,7 @@ end sub
 
 sub setCategories(categories as Object)
     m.categories = normalizeCategories(categories)
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
+    resetSelection()
 
     if m.categories.Count() = 0 then
         showMessage("Nenhuma categoria de TV ao vivo foi encontrada.")
@@ -123,8 +134,7 @@ end sub
 sub showMessage(message as String)
     clearCategoryNodes()
     m.categories = []
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
+    resetSelection()
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
 end sub
@@ -140,8 +150,6 @@ sub renderVisibleItems()
     if m.categories.Count() = 0 then return
 
     ensureFocusIsVisible()
-    print "selectedIndex="; m.selectedIndex
-    print "firstVisibleIndex="; m.firstVisibleIndex
 
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
@@ -225,7 +233,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
-            print "opening item="; getCategoryLogTitle(m.categories[m.selectedIndex])
+            print "OK opening selectedIndex="; m.selectedIndex
+            print "OK opening item="; getCategoryLogTitle(m.categories[m.selectedIndex])
             m.top.categorySelected = m.categories[m.selectedIndex]
         end if
         return true
