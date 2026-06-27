@@ -8,6 +8,7 @@
         <LoginScreen id="loginScreen" visible="false" />
         <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
         <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
+        <LivePlayerScreen id="livePlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
     </children>
 </component>
