@@ -37,6 +37,18 @@ sub show()
     updateFocus()
 end sub
 
+sub updateConnectionStatus(status as Object)
+    if status = invalid then return
+
+    if status.connected = true then
+        m.connectionStatusLabel.color = "#5CE08A"
+    else
+        m.connectionStatusLabel.color = "#FFCC66"
+    end if
+
+    m.connectionStatusLabel.text = status.message
+end sub
+
 sub hide()
     m.top.visible = false
 end sub
