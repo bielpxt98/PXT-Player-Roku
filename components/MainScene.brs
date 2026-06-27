@@ -5,6 +5,7 @@ sub Init()
     m.globalBackground = m.top.FindNode("globalBackground")
     m.globalBackgroundOverlay = m.top.FindNode("globalBackgroundOverlay")
     m.homeScreen = m.top.FindNode("homeScreen")
+    m.splashScreen = m.top.FindNode("splashScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
     m.recentScreen = m.top.FindNode("recentScreen")
@@ -25,6 +26,8 @@ sub Init()
     m.xtreamService = m.top.FindNode("xtreamService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
+    m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
+    m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
     m.account = LoadSavedPlaylist()
     m.pendingAccount = invalid
@@ -61,6 +64,12 @@ sub Init()
     m.searchLoadStep = ""
     m.searchMode = "all"
     m.searchBackTarget = "home"
+    m.splashMinimumElapsed = false
+    m.splashMaximumElapsed = false
+    m.bootstrapActive = false
+    m.bootstrapQueue = []
+    m.localFavoritesCache = []
+    m.localHistoryCache = []
 
     configureScene()
 
@@ -121,6 +130,8 @@ sub Init()
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
+    m.splashMinimumTimer.ObserveField("fire", "onSplashMinimumElapsed")
+    m.splashMaximumTimer.ObserveField("fire", "onSplashMaximumElapsed")
 
     if hasAccount(m.account) then
         updateConnectionStatus(true, "Conectado")
@@ -128,8 +139,79 @@ sub Init()
         updateConnectionStatus(false, "Nenhuma playlist conectada")
     end if
 
+    startSplashBootstrap()
+end sub
+
+sub startSplashBootstrap()
+    m.splashMinimumElapsed = false
+    m.splashMaximumElapsed = false
+    m.bootstrapActive = true
+    m.bootstrapQueue = []
+    m.localFavoritesCache = LoadFavorites()
+    m.localHistoryCache = LoadViewingHistory()
+
+    m.homeScreen.callFunc("hide")
+    m.splashScreen.callFunc("show")
+    m.splashMinimumTimer.control = "stop"
+    m.splashMaximumTimer.control = "stop"
+    m.splashMinimumTimer.duration = 4
+    m.splashMaximumTimer.duration = 6
+    m.splashMinimumTimer.control = "start"
+    m.splashMaximumTimer.control = "start"
+
+    if hasAccount(m.account) then
+        m.bootstrapQueue = ["getLiveCategories", "getMovieCategories", "getSeriesCategories"]
+        processNextBootstrapRequest()
+    else
+        m.bootstrapActive = false
+    end if
+end sub
+
+sub processNextBootstrapRequest()
+    if m.bootstrapQueue = invalid or m.bootstrapQueue.Count() = 0 then
+        m.bootstrapActive = false
+        finishSplashIfReady()
+        return
+    end if
+
+    nextAction = m.bootstrapQueue.Shift()
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = nextAction
+    m.xtreamService.cacheEnabled = true
+    m.xtreamService.categoryId = ""
+    m.xtreamService.streamId = ""
+    m.xtreamService.seriesId = ""
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
+end sub
+
+sub onSplashMinimumElapsed()
+    m.splashMinimumElapsed = true
+    finishSplashIfReady()
+end sub
+
+sub onSplashMaximumElapsed()
+    m.splashMaximumElapsed = true
+    m.bootstrapActive = false
+    finishSplashIfReady()
+end sub
+
+sub finishSplashIfReady()
+    if m.splashScreen = invalid or m.splashScreen.visible <> true then return
+    if m.splashMaximumElapsed <> true and (m.splashMinimumElapsed <> true or m.bootstrapActive = true) then return
+
+    m.splashMinimumTimer.control = "stop"
+    m.splashMaximumTimer.control = "stop"
+    m.splashScreen.callFunc("hide")
     showHome()
 end sub
+
+function onKeyEvent(key as String, press as Boolean) as Boolean
+    if m.splashScreen <> invalid and m.splashScreen.visible = true then return true
+    return false
+end function
 
 sub configureScene()
     m.top.backgroundColor = "#000000"
@@ -155,6 +237,7 @@ function getDisplayResolution() as Object
 end function
 
 sub showHome()
+    if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
@@ -301,7 +384,7 @@ end sub
 sub loadSearchChannels()
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveStreams"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.categoryId = ""
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
@@ -312,7 +395,7 @@ end sub
 sub loadSearchMovies()
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.categoryId = ""
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
@@ -323,7 +406,7 @@ end sub
 sub loadSearchSeries()
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeries"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.categoryId = ""
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
@@ -763,7 +846,7 @@ sub loadMovies(category as Object)
 
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.categoryId = getCategoryId(category)
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
@@ -780,7 +863,7 @@ sub loadMovieCategories(account as Object)
     end if
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovieCategories"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.dns = account.dns
     m.xtreamService.username = account.username
     m.xtreamService.password = account.password
@@ -796,7 +879,7 @@ sub loadLiveChannels(category as Object)
 
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveStreams"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.categoryId = getCategoryId(category)
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
@@ -813,7 +896,7 @@ sub loadLiveCategories(account as Object)
     end if
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveCategories"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.dns = account.dns
     m.xtreamService.username = account.username
     m.xtreamService.password = account.password
@@ -904,6 +987,10 @@ sub onXtreamConnectionResult()
     end if
 end sub
 
+
+sub continueBootstrapIfNeeded()
+    if m.bootstrapActive = true and m.splashMaximumElapsed <> true then processNextBootstrapRequest()
+end sub
 
 sub hideSeriesScreens()
     m.seriesCategoriesScreen.callFunc("hide")
@@ -1115,7 +1202,7 @@ sub loadSeriesCategories(account as Object)
     end if
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeriesCategories"
-    m.xtreamService.cacheEnabled = false
+    m.xtreamService.cacheEnabled = true
     m.xtreamService.dns = account.dns
     m.xtreamService.username = account.username
     m.xtreamService.password = account.password
@@ -1261,6 +1348,7 @@ sub onMovieCategoriesResult(result as Object)
             m.movieListScreen.callFunc("focusCategories")
         end if
     end if
+    continueBootstrapIfNeeded()
 end sub
 
 sub onMoviesResult(result as Object)
@@ -1343,6 +1431,7 @@ sub onLiveCategoriesResult(result as Object)
             m.liveChannelsScreen.callFunc("focusCategories")
         end if
     end if
+    continueBootstrapIfNeeded()
 end sub
 
 sub onLiveChannelsResult(result as Object)
@@ -1421,6 +1510,7 @@ sub onSeriesCategoriesResult(result as Object)
             m.seriesListScreen.callFunc("focusCategories")
         end if
     end if
+    continueBootstrapIfNeeded()
 end sub
 
 sub onSeriesResult(result as Object)

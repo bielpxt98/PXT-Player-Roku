@@ -9,6 +9,7 @@
         <Poster id="globalBackground" uri="pkg:/images/background.jpeg" translation="[0, 0]" loadDisplayMode="scaleToFill" />
         <Rectangle id="globalBackgroundOverlay" color="#000000" opacity="0.32" translation="[0, 0]" />
         <HomeScreen id="homeScreen" visible="false" />
+        <SplashScreen id="splashScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
         <FavoritesScreen id="favoritesScreen" visible="false" />
         <RecentScreen id="recentScreen" visible="false" />
@@ -29,5 +30,7 @@
         <XtreamService id="xtreamService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
+        <Timer id="splashMinimumTimer" duration="4" repeat="false" />
+        <Timer id="splashMaximumTimer" duration="6" repeat="false" />
     </children>
 </component>
