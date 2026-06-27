@@ -3,7 +3,18 @@ sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.title = m.top.FindNode("homeTitle")
     m.subtitle = m.top.FindNode("homeSubtitle")
-    m.removeButton = m.top.FindNode("removeButton")
+    m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
+    m.menuGroup = m.top.FindNode("homeMenuGroup")
+    m.liveTvButton = m.top.FindNode("liveTvButton")
+    m.moviesButton = m.top.FindNode("moviesButton")
+    m.seriesButton = m.top.FindNode("seriesButton")
+    m.playlistButton = m.top.FindNode("playlistButton")
+
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.playlistButton]
+    m.focusIndex = 0
+
+    ' TV ao vivo, filmes e séries are placeholders for now.
+    m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
 
     m.removeButton.ObserveField("buttonSelected", "onRemoveSelected")
     configureLayout()
@@ -25,12 +36,28 @@ sub configureLayout()
     m.subtitle.font = "font:MediumSystemFont"
     m.subtitle.translation = [0, Int(height * 0.34)]
 
-    m.removeButton.translation = [Int((width - 520) / 2), Int(height * 0.58)]
+    m.connectionStatusLabel.width = width
+    m.connectionStatusLabel.font = "font:MediumSystemFont"
+    m.connectionStatusLabel.translation = [0, Int(height * 0.35)]
+
+    m.menuGroup.translation = [Int((width - 420) / 2), Int(height * 0.43)]
 end sub
 
 sub show()
     m.top.visible = true
     m.removeButton.SetFocus(true)
+end sub
+
+sub updateConnectionStatus(status as Object)
+    if status = invalid then return
+
+    if status.connected = true then
+        m.connectionStatusLabel.color = "#5CE08A"
+    else
+        m.connectionStatusLabel.color = "#FFCC66"
+    end if
+
+    m.connectionStatusLabel.text = status.message
 end sub
 
 sub hide()
