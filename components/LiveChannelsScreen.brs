@@ -273,6 +273,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
+    else if key = "options" then
+        if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
+            m.top.channelFavoriteToggled = m.channels[m.selectedIndex]
+            m.statusLabel.color = "#5CE08A"
+            m.statusLabel.text = "Canal atualizado nos favoritos."
+        end if
+        return true
     else if key = "OK" then
         if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
             print "OK opening selectedIndex="; m.selectedIndex

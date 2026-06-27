@@ -8,6 +8,7 @@
         <function name="showMessage" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="movieSelected" type="assocarray" alwaysNotify="true" />
+            <field id="movieFavoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/MovieListScreen.brs" />
     <children>
@@ -16,6 +17,6 @@
         <Label id="subtitle" text="Filmes" color="#B8C3D6" horizAlign="center" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="moviesGroup" />
-        <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para assistir • Voltar para categorias" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para assistir • * favoritar • Voltar para categorias" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

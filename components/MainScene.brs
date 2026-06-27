@@ -4,6 +4,7 @@
 sub Init()
     m.homeScreen = m.top.FindNode("homeScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
+    m.favoritesScreen = m.top.FindNode("favoritesScreen")
     m.liveCategoriesScreen = m.top.FindNode("liveCategoriesScreen")
     m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
     m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
@@ -42,6 +43,7 @@ sub Init()
     m.selectedSeries = invalid
     m.selectedSeason = invalid
     m.selectedEpisode = invalid
+    m.openedFromFavorites = false
 
     configureScene()
 
@@ -49,26 +51,33 @@ sub Init()
     m.homeScreen.ObserveField("openLiveCategories", "onOpenLiveCategoriesRequested")
     m.homeScreen.ObserveField("openMovieCategories", "onOpenMovieCategoriesRequested")
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesCategoriesRequested")
+    m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
+    m.favoritesScreen.ObserveField("backRequested", "onFavoritesBack")
+    m.favoritesScreen.ObserveField("favoriteSelected", "onFavoriteSelected")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
     m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
     m.liveChannelsScreen.ObserveField("backRequested", "onLiveChannelsBack")
     m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
+    m.liveChannelsScreen.ObserveField("channelFavoriteToggled", "onLiveChannelFavoriteToggled")
     m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
     m.movieCategoriesScreen.ObserveField("backRequested", "onMovieCategoriesBack")
     m.movieCategoriesScreen.ObserveField("categorySelected", "onMovieCategorySelected")
     m.movieListScreen.ObserveField("backRequested", "onMovieListBack")
     m.movieListScreen.ObserveField("movieSelected", "onMovieSelected")
+    m.movieListScreen.ObserveField("movieFavoriteToggled", "onMovieFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
     m.seriesCategoriesScreen.ObserveField("backRequested", "onSeriesCategoriesBack")
     m.seriesCategoriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
     m.seriesListScreen.ObserveField("backRequested", "onSeriesListBack")
     m.seriesListScreen.ObserveField("seriesSelected", "onSeriesSelected")
+    m.seriesListScreen.ObserveField("seriesFavoriteToggled", "onSeriesFavoriteToggled")
     m.seriesSeasonsScreen.ObserveField("backRequested", "onSeriesSeasonsBack")
     m.seriesSeasonsScreen.ObserveField("seasonSelected", "onSeriesSeasonSelected")
     m.seriesEpisodesScreen.ObserveField("backRequested", "onSeriesEpisodesBack")
     m.seriesEpisodesScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
+    m.seriesEpisodesScreen.ObserveField("episodeFavoriteToggled", "onEpisodeFavoriteToggled")
     m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
@@ -90,6 +99,7 @@ end sub
 
 sub showHome()
     m.loginScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -102,6 +112,7 @@ end sub
 
 sub showLogin()
     m.homeScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -112,6 +123,68 @@ sub showLogin()
     m.loginScreen.callFunc("show", m.account)
 end sub
 
+
+sub onOpenFavoritesRequested()
+    m.homeScreen.callFunc("hide")
+    m.loginScreen.callFunc("hide")
+    m.liveCategoriesScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
+    m.movieCategoriesScreen.callFunc("hide")
+    m.movieListScreen.callFunc("hide")
+    m.moviePlayerScreen.callFunc("hide")
+    hideSeriesScreens()
+    m.favoritesScreen.callFunc("setFavorites", LoadFavorites())
+    m.favoritesScreen.callFunc("show")
+end sub
+
+sub onFavoritesBack()
+    showHome()
+end sub
+
+sub onFavoriteSelected()
+    favorite = m.favoritesScreen.favoriteSelected
+    if favorite = invalid or favorite.content = invalid then return
+    content = favorite.content
+    m.favoritesScreen.callFunc("hide")
+    m.openedFromFavorites = true
+    if favorite.type = "live" then
+        m.selectedLiveChannel = content
+        m.livePlayerScreen.callFunc("show", content)
+        buildLiveStreamUrl(content)
+    else if favorite.type = "movie" then
+        m.selectedMovie = content
+        m.moviePlayerScreen.callFunc("show", content)
+        buildMovieStreamUrl(content)
+    else if favorite.type = "series" then
+        m.selectedSeries = content
+        m.seriesSeasonsScreen.callFunc("resetSelection")
+        m.seriesSeasonsScreen.callFunc("show", content)
+        m.seriesSeasonsScreen.callFunc("setLoading", true)
+        loadSeriesInfo(content)
+    else if favorite.type = "episode" then
+        m.selectedEpisode = content
+        m.seriesPlayerScreen.callFunc("show", content)
+        buildSeriesStreamUrl(content)
+    end if
+end sub
+
+sub onLiveChannelFavoriteToggled()
+    ToggleFavorite("live", m.liveChannelsScreen.channelFavoriteToggled)
+end sub
+
+sub onMovieFavoriteToggled()
+    ToggleFavorite("movie", m.movieListScreen.movieFavoriteToggled)
+end sub
+
+sub onSeriesFavoriteToggled()
+    ToggleFavorite("series", m.seriesListScreen.seriesFavoriteToggled)
+end sub
+
+sub onEpisodeFavoriteToggled()
+    ToggleFavorite("episode", m.seriesEpisodesScreen.episodeFavoriteToggled)
+end sub
+
 sub onOpenPlaylistRequested()
     showLogin()
 end sub
@@ -119,6 +192,7 @@ end sub
 sub onOpenLiveCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
@@ -143,6 +217,8 @@ end sub
 sub onOpenMovieCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -236,7 +312,12 @@ end sub
 
 sub onMoviePlayerBack()
     m.moviePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+    if m.openedFromFavorites = true then
+        m.openedFromFavorites = false
+        showHome()
+    else
+        m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+    end if
 end sub
 
 sub onLiveCategorySelected()
@@ -273,7 +354,12 @@ end sub
 
 sub onLivePlayerBack()
     m.livePlayerScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
+    if m.openedFromFavorites = true then
+        m.openedFromFavorites = false
+        showHome()
+    else
+        m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
+    end if
 end sub
 
 sub buildLiveStreamUrl(channel as Object)
@@ -473,6 +559,8 @@ end sub
 sub onOpenSeriesCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -509,7 +597,12 @@ end sub
 
 sub onSeriesSeasonsBack()
     m.seriesSeasonsScreen.callFunc("hide")
-    m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
+    if m.openedFromFavorites = true then
+        m.openedFromFavorites = false
+        showHome()
+    else
+        m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
+    end if
 end sub
 
 sub onSeriesEpisodesBack()
@@ -519,7 +612,12 @@ end sub
 
 sub onSeriesPlayerBack()
     m.seriesPlayerScreen.callFunc("hide")
-    m.seriesEpisodesScreen.callFunc("show", m.selectedSeason)
+    if m.openedFromFavorites = true then
+        m.openedFromFavorites = false
+        showHome()
+    else
+        m.seriesEpisodesScreen.callFunc("show", m.selectedSeason)
+    end if
 end sub
 
 sub onSeriesCategorySelected()

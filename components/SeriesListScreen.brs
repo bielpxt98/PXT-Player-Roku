@@ -275,6 +275,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
+    else if key = "options" then
+        if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then
+            m.top.seriesFavoriteToggled = m.series[m.selectedIndex]
+            m.statusLabel.color = "#5CE08A"
+            m.statusLabel.text = "Série atualizado nos favoritos."
+        end if
+        return true
     else if key = "OK" then
         if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then
             print "OK opening selectedIndex="; m.selectedIndex
