@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HomeButton" extends="Group">
+    <interface>
+        <field id="labelText" type="string" onChange="onLabelTextChanged" />
+        <field id="selected" type="boolean" value="false" onChange="onSelectedChanged" />
+    </interface>
+
+    <script type="text/brightscript" uri="pkg:/components/HomeButton.brs" />
+
+    <children>
+        <!-- The focus glow is a real SceneGraph layer, animated when the item receives focus. -->
+        <Rectangle
+            id="focusGlow"
+            width="400"
+            height="104"
+            color="#009DFF"
+            opacity="0"
+            translation="[-20, -9]" />
+
+        <Group id="buttonGroup" scaleRotateCenter="[180, 43]">
+            <Rectangle
+                id="buttonBackground"
+                width="360"
+                height="86"
+                color="#111827"
+                opacity="0.86" />
+
+            <Rectangle
+                id="buttonAccent"
+                width="6"
+                height="86"
+                color="#009DFF"
+                opacity="0.55" />
+
+            <Label
+                id="buttonLabel"
+                width="360"
+                height="86"
+                translation="[0, 0]"
+                horizAlign="center"
+                vertAlign="center"
+                color="#F8FAFC" />
+        </Group>
+
+        <Animation id="focusInAnimation" duration="0.16" easeFunction="outQuad">
+            <Vector2DFieldInterpolator
+                key="[0.0, 1.0]"
+                keyValue="[[1.0, 1.0], [1.06, 1.06]]"
+                fieldToInterp="buttonGroup.scale" />
+            <FloatFieldInterpolator
+                key="[0.0, 1.0]"
+                keyValue="[0.0, 0.34]"
+                fieldToInterp="focusGlow.opacity" />
+        </Animation>
+
+        <Animation id="focusOutAnimation" duration="0.14" easeFunction="outQuad">
+            <Vector2DFieldInterpolator
+                key="[0.0, 1.0]"
+                keyValue="[[1.06, 1.06], [1.0, 1.0]]"
+                fieldToInterp="buttonGroup.scale" />
+            <FloatFieldInterpolator
+                key="[0.0, 1.0]"
+                keyValue="[0.34, 0.0]"
+                fieldToInterp="focusGlow.opacity" />
+        </Animation>
+    </children>
+</component>

@@ -21,6 +21,7 @@ end sub
 sub configureScene()
     m.top.backgroundColor = "#000000"
     m.top.backgroundURI = ""
+    m.homeScreen.SetFocus(true)
 end sub
 
 function hasSavedAccount() as Boolean
