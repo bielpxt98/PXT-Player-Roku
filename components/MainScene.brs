@@ -47,6 +47,7 @@ sub Init()
     m.selectedEpisode = invalid
     m.openedFromFavorites = false
     m.openedFromSearch = false
+    m.openedFromRecent = false
     m.searchChannels = []
     m.searchMovies = []
     m.searchSeries = []
@@ -67,6 +68,7 @@ sub Init()
     m.searchScreen.ObserveField("movieSelected", "onSearchMovieSelected")
     m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
     m.recentScreen.ObserveField("backRequested", "onRecentBack")
+    m.recentScreen.ObserveField("historySelected", "onHistorySelected")
     m.favoritesScreen.ObserveField("backRequested", "onFavoritesBack")
     m.favoritesScreen.ObserveField("favoriteSelected", "onFavoriteSelected")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
@@ -318,6 +320,27 @@ sub onFavoritesBack()
     showHome()
 end sub
 
+sub onHistorySelected()
+    item = m.recentScreen.historySelected
+    if item = invalid then return
+    m.recentScreen.callFunc("hide")
+    m.openedFromRecent = true
+    if item.type = "movie" then
+        m.selectedMovie = item.content
+        m.moviePlayerScreen.callFunc("show", item.content)
+        m.moviePlayerScreen.callFunc("setResumePosition", item.position)
+        buildMovieStreamUrl(item.content)
+    else if item.type = "series" then
+        m.selectedSeries = item.series
+        m.selectedSeason = item.season
+        m.selectedEpisode = item.content
+        m.seriesPlayerScreen.callFunc("show", item.content)
+        m.seriesPlayerScreen.callFunc("setResumePosition", item.position)
+        buildSeriesStreamUrl(item.content)
+    end if
+end sub
+
+
 sub onFavoriteSelected()
     favorite = m.favoritesScreen.favoriteSelected
     if favorite = invalid or favorite.content = invalid then return
@@ -499,6 +522,9 @@ sub onMoviePlayerBack()
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
         showHome()
+    else if m.openedFromRecent = true then
+        m.openedFromRecent = false
+        showHome()
     else if m.openedFromSearch = true then
         m.openedFromSearch = false
         showHome()
@@ -543,6 +569,9 @@ sub onLivePlayerBack()
     m.livePlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
+        showHome()
+    else if m.openedFromRecent = true then
+        m.openedFromRecent = false
         showHome()
     else if m.openedFromSearch = true then
         m.openedFromSearch = false
@@ -798,6 +827,9 @@ sub onSeriesSeasonsBack()
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
         showHome()
+    else if m.openedFromRecent = true then
+        m.openedFromRecent = false
+        showHome()
     else if m.openedFromSearch = true then
         m.openedFromSearch = false
         showHome()
@@ -816,6 +848,9 @@ sub onSeriesPlayerBack()
     m.seriesPlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
+        showHome()
+    else if m.openedFromRecent = true then
+        m.openedFromRecent = false
         showHome()
     else if m.openedFromSearch = true then
         m.openedFromSearch = false

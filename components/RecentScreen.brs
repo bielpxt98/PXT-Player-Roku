@@ -5,6 +5,9 @@ sub Init()
     m.statusLabel = m.top.FindNode("statusLabel")
     m.itemsGroup = m.top.FindNode("itemsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
+    m.items = []
+    m.itemNodes = []
+    m.selectedIndex = 0
     configureLayout()
 end sub
 
@@ -31,16 +34,19 @@ end sub
 
 sub setHistory(history as Object)
     clearItems()
+    m.items = []
+    m.selectedIndex = 0
     if history = invalid then return
     y = 0
     y = addSection("Continuar assistindo", history.continueWatching, y)
     y = addSection("Últimos filmes assistidos", history.movies, y + 18)
     y = addSection("Últimas séries assistidas", history.series, y + 18)
-    if y = 0 then
+    if m.items.Count() = 0 then
         m.statusLabel.color = "#B8C3D6"
         m.statusLabel.text = "Você ainda não assistiu nenhum conteúdo. Seus itens recentes aparecerão aqui."
     else
         m.statusLabel.text = ""
+        updateFocus()
     end if
 end sub
 
@@ -60,7 +66,11 @@ function addSection(title as String, items as Dynamic, startY as Integer) as Int
     count = 0
     for each item in list
         if count >= 5 then exit for
-        m.itemsGroup.AppendChild(makeLabel(historyItemTitle(item), y, "#F8FAFC"))
+        label = makeLabel(historyItemTitle(item), y, "#F8FAFC")
+        label.id = "historyItem" + m.items.Count().ToStr()
+        m.items.Push(item)
+        m.itemsGroup.AppendChild(label)
+        m.itemNodes.Push(label)
         y = y + 38 : count = count + 1
     end for
     return y
@@ -84,6 +94,7 @@ sub clearItems()
     while m.itemsGroup.GetChildCount() > 0
         m.itemsGroup.RemoveChildIndex(0)
     end while
+    m.itemNodes = []
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -91,6 +102,36 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "back" then
         m.top.backRequested = true
         return true
+    else if key = "up" then
+        moveFocus(-1)
+        return true
+    else if key = "down" then
+        moveFocus(1)
+        return true
+    else if key = "OK" then
+        if m.items.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.items.Count() then m.top.historySelected = m.items[m.selectedIndex]
+        return true
     end if
     return false
 end function
+
+
+sub moveFocus(direction as Integer)
+    if m.items.Count() = 0 then return
+    m.selectedIndex = m.selectedIndex + direction
+    if m.selectedIndex < 0 then m.selectedIndex = m.items.Count() - 1
+    if m.selectedIndex >= m.items.Count() then m.selectedIndex = 0
+    updateFocus()
+end sub
+
+sub updateFocus()
+    for i = 0 to m.itemNodes.Count() - 1
+        if i = m.selectedIndex then
+            m.itemNodes[i].color = "#FFFFFF"
+            m.itemNodes[i].font = "font:MediumBoldSystemFont"
+        else
+            m.itemNodes[i].color = "#F8FAFC"
+            m.itemNodes[i].font = "font:MediumSystemFont"
+        end if
+    end for
+end sub

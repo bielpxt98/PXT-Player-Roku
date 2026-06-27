@@ -8,10 +8,11 @@ sub Init()
     m.seriesButton = m.top.FindNode("seriesButton")
     m.favoritesButton = m.top.FindNode("favoritesButton")
     m.recentButton = m.top.FindNode("recentButton")
+    m.accountIconLabel = m.top.FindNode("accountIconLabel")
     m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton, m.playlistButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
     m.focusIndex = 0
     m.focusArea = "cards"
     configureLayout()
@@ -29,22 +30,28 @@ sub configureLayout()
 
     m.title.width = width
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.16)]
+    m.title.translation = [0, Int(height * 0.18)]
 
     buttonWidth = 176
     buttonGap = 24
+    if width > 1500 then
+        buttonWidth = 192
+        buttonGap = 30
+    end if
     totalWidth = (buttonWidth * m.buttons.Count()) + (buttonGap * (m.buttons.Count() - 1))
     startX = Int((width - totalWidth) / 2)
-    buttonY = Int(height * 0.39)
+    buttonY = Int(height * 0.46)
 
     for i = 0 to m.buttons.Count() - 1
-        row = Int(i / buttonsPerRow)
-        col = i mod buttonsPerRow
-        m.buttons[i].translation = [startX + (col * (buttonWidth + buttonGap)), buttonY + (row * rowGap)]
+        m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), buttonY]
     end for
 
-    footerY = Int(height * 0.74)
-    m.accountFooterLabel.width = 180
+    footerY = Int(height * 0.78)
+    m.accountIconLabel.width = 220
+    m.accountIconLabel.font = "font:LargeBoldSystemFont"
+    m.accountIconLabel.translation = [Int((width - m.accountIconLabel.width) / 2), footerY - 42]
+
+    m.accountFooterLabel.width = 220
     m.accountFooterLabel.font = "font:SmallBoldSystemFont"
     m.accountFooterLabel.translation = [Int((width - m.accountFooterLabel.width) / 2), footerY]
 
@@ -162,10 +169,14 @@ sub updateFocus()
     end for
 
     if m.focusArea = "account" then
+        m.accountIconLabel.color = "#FFFFFF"
+        m.accountIconLabel.opacity = 1.0
         m.accountFooterLabel.color = "#FFFFFF"
         m.accountFooterLabel.opacity = 1.0
         m.accountFooterLabel.SetFocus(true)
     else
+        m.accountIconLabel.color = "#D8E2F3"
+        m.accountIconLabel.opacity = 0.78
         m.accountFooterLabel.color = "#D8E2F3"
         m.accountFooterLabel.opacity = 0.78
         m.accountFooterLabel.SetFocus(false)
@@ -188,8 +199,6 @@ sub selectFocusedButton()
         onFavoritesSelected()
     else if m.focusIndex = 4 then
         onRecentSelected()
-    else if m.focusIndex = 5 then
-        onPlaylistSelected()
     end if
 end sub
 
