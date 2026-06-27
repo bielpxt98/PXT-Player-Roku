@@ -17,6 +17,14 @@
             <BusySpinner id="loadingSpinner" width="60" height="60" />
             <Label id="loadingLabel" text="Carregando filme..." color="#FFFFFF" horizAlign="center" />
         </Group>
+        <Group id="controlsGroup" visible="false">
+            <Rectangle id="controlsBackground" color="#000000" opacity="0.72" />
+            <Label id="controlsTitle" text="Filme" color="#FFFFFF" />
+            <Label id="controlsTime" text="00:00" color="#DDE6F3" />
+            <Rectangle id="progressTrack" color="#394557" />
+            <Rectangle id="progressFill" color="#5CE08A" />
+            <Label id="controlsHint" text="OK pausar/continuar • ◀ retroceder • ▶ avançar • Replay reiniciar • Voltar sair" color="#B8C3D6" />
+        </Group>
         <Group id="errorGroup" visible="false">
             <Label id="errorTitle" text="Não foi possível reproduzir o filme" color="#FFFFFF" horizAlign="center" />
             <Label id="errorMessage" text="Pressione Voltar e tente novamente." color="#B8C3D6" horizAlign="center" wrap="true" />
