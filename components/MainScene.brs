@@ -5,6 +5,7 @@ sub Init()
     m.homeScreen = m.top.FindNode("homeScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
+    m.searchScreen = m.top.FindNode("searchScreen")
     m.liveCategoriesScreen = m.top.FindNode("liveCategoriesScreen")
     m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
     m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
@@ -44,6 +45,11 @@ sub Init()
     m.selectedSeason = invalid
     m.selectedEpisode = invalid
     m.openedFromFavorites = false
+    m.openedFromSearch = false
+    m.searchChannels = []
+    m.searchMovies = []
+    m.searchSeries = []
+    m.searchLoadStep = ""
 
     configureScene()
 
@@ -52,6 +58,11 @@ sub Init()
     m.homeScreen.ObserveField("openMovieCategories", "onOpenMovieCategoriesRequested")
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesCategoriesRequested")
     m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
+    m.homeScreen.ObserveField("openSearch", "onOpenSearchRequested")
+    m.searchScreen.ObserveField("backRequested", "onSearchBack")
+    m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
+    m.searchScreen.ObserveField("movieSelected", "onSearchMovieSelected")
+    m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
     m.favoritesScreen.ObserveField("backRequested", "onFavoritesBack")
     m.favoritesScreen.ObserveField("favoriteSelected", "onFavoriteSelected")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
@@ -100,6 +111,7 @@ end sub
 sub showHome()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -113,6 +125,7 @@ end sub
 sub showLogin()
     m.homeScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -124,9 +137,106 @@ sub showLogin()
 end sub
 
 
+
+sub onOpenSearchRequested()
+    m.homeScreen.callFunc("hide")
+    m.loginScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
+    m.liveCategoriesScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
+    m.movieCategoriesScreen.callFunc("hide")
+    m.movieListScreen.callFunc("hide")
+    m.moviePlayerScreen.callFunc("hide")
+    hideSeriesScreens()
+    m.searchScreen.callFunc("show")
+
+    if not hasAccount(m.account) then
+        m.searchScreen.callFunc("showMessage", "Conecte uma lista Xtream para buscar.")
+        return
+    end if
+
+    m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
+    if m.searchChannels.Count() = 0 or m.searchMovies.Count() = 0 or m.searchSeries.Count() = 0 then
+        m.searchScreen.callFunc("setLoading", true)
+        m.searchLoadStep = "channels"
+        loadSearchChannels()
+    end if
+end sub
+
+sub onSearchBack()
+    showHome()
+end sub
+
+sub onSearchChannelSelected()
+    channel = m.searchScreen.channelSelected
+    if channel = invalid then return
+    m.selectedLiveChannel = channel
+    m.openedFromSearch = true
+    m.searchScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("show", channel)
+    buildLiveStreamUrl(channel)
+end sub
+
+sub onSearchMovieSelected()
+    movie = m.searchScreen.movieSelected
+    if movie = invalid then return
+    m.selectedMovie = movie
+    m.openedFromSearch = true
+    m.searchScreen.callFunc("hide")
+    m.moviePlayerScreen.callFunc("show", movie)
+    buildMovieStreamUrl(movie)
+end sub
+
+sub onSearchSeriesSelected()
+    series = m.searchScreen.seriesSelected
+    if series = invalid then return
+    m.selectedSeries = series
+    m.openedFromSearch = true
+    m.searchScreen.callFunc("hide")
+    m.seriesSeasonsScreen.callFunc("resetSelection")
+    m.seriesSeasonsScreen.callFunc("show", series)
+    m.seriesSeasonsScreen.callFunc("setLoading", true)
+    loadSeriesInfo(series)
+end sub
+
+sub loadSearchChannels()
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "getLiveStreams"
+    m.xtreamService.cacheEnabled = false
+    m.xtreamService.categoryId = ""
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
+end sub
+
+sub loadSearchMovies()
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "getMovies"
+    m.xtreamService.cacheEnabled = false
+    m.xtreamService.categoryId = ""
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
+end sub
+
+sub loadSearchSeries()
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "getSeries"
+    m.xtreamService.cacheEnabled = false
+    m.xtreamService.categoryId = ""
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
+end sub
+
 sub onOpenFavoritesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -193,6 +303,7 @@ sub onOpenLiveCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
@@ -219,6 +330,7 @@ sub onOpenMovieCategoriesRequested()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -315,6 +427,9 @@ sub onMoviePlayerBack()
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
         showHome()
+    else if m.openedFromSearch = true then
+        m.openedFromSearch = false
+        showHome()
     else
         m.movieListScreen.callFunc("show", m.selectedMovieCategory)
     end if
@@ -356,6 +471,9 @@ sub onLivePlayerBack()
     m.livePlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
+        showHome()
+    else if m.openedFromSearch = true then
+        m.openedFromSearch = false
         showHome()
     else
         m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
@@ -519,6 +637,9 @@ sub onXtreamConnectionResult()
         m.liveChannelsLoading = false
         m.movieCategories = []
         m.movies = []
+        m.searchChannels = []
+        m.searchMovies = []
+        m.searchSeries = []
         m.movieCategoriesLoading = false
         m.moviesLoading = false
         resetSeriesData()
@@ -533,6 +654,9 @@ sub onXtreamConnectionResult()
         m.liveChannelsLoading = false
         m.movieCategories = []
         m.movies = []
+        m.searchChannels = []
+        m.searchMovies = []
+        m.searchSeries = []
         m.movieCategoriesLoading = false
         m.moviesLoading = false
         resetSeriesData()
@@ -561,6 +685,7 @@ sub onOpenSeriesCategoriesRequested()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -600,6 +725,9 @@ sub onSeriesSeasonsBack()
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
         showHome()
+    else if m.openedFromSearch = true then
+        m.openedFromSearch = false
+        showHome()
     else
         m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
     end if
@@ -614,6 +742,9 @@ sub onSeriesPlayerBack()
     m.seriesPlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
+        showHome()
+    else if m.openedFromSearch = true then
+        m.openedFromSearch = false
         showHome()
     else
         m.seriesEpisodesScreen.callFunc("show", m.selectedSeason)
@@ -783,6 +914,14 @@ sub onMovieCategoriesResult(result as Object)
 end sub
 
 sub onMoviesResult(result as Object)
+    if m.searchLoadStep = "movies" and getMoviesResultCategoryId(result) = "" then
+        if result.success = true then m.searchMovies = normalizeMovies(result.data)
+        m.searchLoadStep = "series"
+        if m.searchScreen.visible = true then m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
+        loadSearchSeries()
+        return
+    end if
+
     resultCategoryId = getMoviesResultCategoryId(result)
     if resultCategoryId <> "" and resultCategoryId <> m.selectedMovieCategoryId then
         print "DEBUG Movies: resposta ignorada para categoria fora do foco: " + resultCategoryId
@@ -844,6 +983,14 @@ sub onLiveCategoriesResult(result as Object)
 end sub
 
 sub onLiveChannelsResult(result as Object)
+    if m.searchLoadStep = "channels" and getLiveStreamsResultCategoryId(result) = "" then
+        if result.success = true then m.searchChannels = normalizeLiveChannels(result.data)
+        m.searchLoadStep = "movies"
+        if m.searchScreen.visible = true then m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
+        loadSearchMovies()
+        return
+    end if
+
     resultCategoryId = getLiveStreamsResultCategoryId(result)
     if resultCategoryId <> "" and resultCategoryId <> m.selectedLiveCategoryId then
         print "DEBUG LiveChannels: resposta ignorada para categoria fora do foco: " + resultCategoryId
@@ -903,6 +1050,16 @@ end sub
 sub onSeriesResult(result as Object)
     if isSeriesInfoResult(result) then
         onSeriesInfoResult(result)
+        return
+    end if
+
+    if m.searchLoadStep = "series" and getSeriesResultCategoryId(result) = "" then
+        if result.success = true then m.searchSeries = normalizeSeries(result.data)
+        m.searchLoadStep = ""
+        if m.searchScreen.visible = true then
+            m.searchScreen.callFunc("setLoading", false)
+            m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
+        end if
         return
     end if
 
