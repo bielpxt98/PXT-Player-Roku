@@ -12,6 +12,7 @@ sub Init()
     m.movies = []
     m.series = []
     m.results = []
+    m.searchMode = "all"
     m.keyboardDialog = invalid
     m.itemNodes = []
     m.selectedIndex = 0
@@ -40,14 +41,17 @@ sub configureLayout()
     if m.visibleItemCount < 4 then m.visibleItemCount = 4
 end sub
 
-sub show()
+sub show(mode as Dynamic)
+    if mode = invalid then mode = "all"
+    m.searchMode = mode
     configureLayout()
     m.top.visible = true
     m.top.SetFocus(true)
     m.searchInput.SetFocus(false)
+    configureSearchLabels()
     clearResultNodes()
     m.statusLabel.color = "#B8C3D6"
-    m.statusLabel.text = "Pressione OK em Buscar para abrir o teclado nativo da Roku."
+    m.statusLabel.text = "Pressione OK para abrir o teclado nativo da Roku."
 end sub
 
 sub hide()
@@ -80,9 +84,35 @@ end sub
 
 
 
+sub configureSearchLabels()
+    m.title.text = getSearchTitle()
+    m.searchInput.hintText = getSearchHint()
+end sub
+
+function getSearchTitle() as String
+    if m.searchMode = "live" then return "BUSCAR CANAL"
+    if m.searchMode = "movies" then return "BUSCAR FILME"
+    if m.searchMode = "series" then return "BUSCAR SÉRIE"
+    return "BUSCA"
+end function
+
+function getSearchHint() as String
+    if m.searchMode = "live" then return "Buscar canal"
+    if m.searchMode = "movies" then return "Buscar filme"
+    if m.searchMode = "series" then return "Buscar série"
+    return "Buscar canais, filmes e séries"
+end function
+
+function getEmptySearchMessage() as String
+    if m.searchMode = "live" then return "Digite um termo para buscar em todos os canais."
+    if m.searchMode = "movies" then return "Digite um termo para buscar em todos os filmes."
+    if m.searchMode = "series" then return "Digite um termo para buscar em todas as séries."
+    return "Digite um termo para buscar em TV ao vivo, filmes e séries."
+end function
+
 sub openSearchKeyboard()
     dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
-    dialog.title = "Buscar"
+    dialog.title = getSearchTitle()
     dialog.text = m.searchInput.text
     dialog.buttons = ["Buscar", "Cancelar"]
     dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
@@ -110,15 +140,21 @@ sub applyFilter()
     if query = "" then
         clearResultNodes()
         m.statusLabel.color = "#B8C3D6"
-        m.statusLabel.text = "Digite um termo para buscar em TV ao vivo, filmes e séries."
+        m.statusLabel.text = getEmptySearchMessage()
         return
     end if
-    addMatches("header", "Canais", invalid, query)
-    addMatches("channel", "", m.channels, query)
-    addMatches("header", "Filmes", invalid, query)
-    addMatches("movie", "", m.movies, query)
-    addMatches("header", "Séries", invalid, query)
-    addMatches("series", "", m.series, query)
+    if m.searchMode = "live" or m.searchMode = "all" then
+        addMatches("header", "Canais", invalid, query)
+        addMatches("channel", "", m.channels, query)
+    end if
+    if m.searchMode = "movies" or m.searchMode = "all" then
+        addMatches("header", "Filmes", invalid, query)
+        addMatches("movie", "", m.movies, query)
+    end if
+    if m.searchMode = "series" or m.searchMode = "all" then
+        addMatches("header", "Séries", invalid, query)
+        addMatches("series", "", m.series, query)
+    end if
     removeEmptyHeaders()
     m.selectedIndex = firstSelectableIndex()
     m.firstVisibleIndex = 0
