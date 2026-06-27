@@ -10,7 +10,7 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/LoginScreen.brs" />
     <children>
-        <Rectangle id="loginBackground" color="#000000" translation="[0, 0]" />
+        <Rectangle id="loginBackground" color="#000000" opacity="0.58" translation="[0, 0]" />
         <Label id="loginTitle" text="LOGIN PXT PLAYER" color="#FFFFFF" horizAlign="center" />
         <Label id="loginSubtitle" text="Informe os dados da sua conta" color="#B8C3D6" horizAlign="center" />
 

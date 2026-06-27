@@ -17,7 +17,7 @@
     <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
-        <Poster id="homeBackground" uri="pkg:/images/background.jpeg" translation="[0, 0]" loadDisplayMode="scaleToFill" />
+        <Poster id="homeBackground" uri="pkg:/images/background.jpeg" opacity="0" translation="[0, 0]" loadDisplayMode="scaleToFill" />
         <Rectangle id="homeOverlay" color="#000000" opacity="0.24" translation="[0, 0]" />
         <Label id="homeTitle" text="PXT PLAYER" color="#FFFFFF" horizAlign="center" />
         <HomeButton id="liveTvButton" labelText="TV AO VIVO" iconText="▣" accentColor="#E50914" />
