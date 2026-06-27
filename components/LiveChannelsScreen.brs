@@ -3,10 +3,24 @@
 ' channel is selected for live playback.
 sub Init()
     m.background = m.top.FindNode("background")
-    m.title = m.top.FindNode("title")
-    m.subtitle = m.top.FindNode("subtitle")
+    m.topBar = m.top.FindNode("topBar")
+    m.currentCategoryLabel = m.top.FindNode("currentCategoryLabel")
+    m.dateLabel = m.top.FindNode("dateLabel")
+    m.timeLabel = m.top.FindNode("timeLabel")
+    m.leftPanelBackground = m.top.FindNode("leftPanelBackground")
+    m.rightPanelBackground = m.top.FindNode("rightPanelBackground")
+    m.divider = m.top.FindNode("divider")
+    m.leftPanelTitle = m.top.FindNode("leftPanelTitle")
     m.statusLabel = m.top.FindNode("statusLabel")
     m.channelsGroup = m.top.FindNode("channelsGroup")
+    m.previewPanel = m.top.FindNode("previewPanel")
+    m.previewTitle = m.top.FindNode("previewTitle")
+    m.previewSubtitle = m.top.FindNode("previewSubtitle")
+    m.epgPanel = m.top.FindNode("epgPanel")
+    m.epgTitle = m.top.FindNode("epgTitle")
+    m.epgSubtitle = m.top.FindNode("epgSubtitle")
+    m.calendarPanel = m.top.FindNode("calendarPanel")
+    m.calendarTitle = m.top.FindNode("calendarTitle")
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = []
@@ -25,46 +39,50 @@ sub configureLayout()
     width = resolution.width
     height = resolution.height
 
-    ' Use the real display size, but keep fixed safe-area reservations so the
-    ' list never renders under the title or footer on different TV resolutions.
-    m.safeMarginX = 72
-    m.titleReservedHeight = 150
-    m.footerReservedHeight = 86
+    m.safeMarginX = 44
+    m.safeMarginY = 28
+    m.topBarHeight = 70
+    m.footerReservedHeight = 46
     if height <= 720 then
-        m.safeMarginX = 48
-        m.titleReservedHeight = 124
-        m.footerReservedHeight = 70
+        m.safeMarginX = 30
+        m.safeMarginY = 18
+        m.topBarHeight = 58
+        m.footerReservedHeight = 36
     end if
 
     m.contentX = m.safeMarginX
+    m.contentY = m.safeMarginY + m.topBarHeight
     m.contentWidth = width - (m.safeMarginX * 2)
+    m.contentHeight = height - m.contentY - m.footerReservedHeight - m.safeMarginY
     if m.contentWidth < 360 then
         m.contentX = 0
         m.contentWidth = width
     end if
+    if m.contentHeight < 300 then m.contentHeight = height - m.contentY - m.footerReservedHeight
 
-    m.titleY = 42
-    m.subtitleY = 100
-    if height <= 720 then
-        m.titleY = 28
-        m.subtitleY = 78
-    end if
+    m.leftPanelWidth = Int(m.contentWidth * 0.30)
+    if m.leftPanelWidth < 300 then m.leftPanelWidth = 300
+    if m.leftPanelWidth > 430 then m.leftPanelWidth = 430
+    m.dividerWidth = 2
+    m.gap = 18
+    m.rightPanelX = m.contentX + m.leftPanelWidth + m.dividerWidth
+    m.rightPanelWidth = m.contentWidth - m.leftPanelWidth - m.dividerWidth
 
-    m.listY = m.titleReservedHeight
-    m.footerY = height - m.footerReservedHeight + 18
-    m.listHeight = m.footerY - m.listY - 20
+    m.leftTitleHeight = 44
+    m.listY = m.contentY + m.leftTitleHeight
+    m.listHeight = m.contentHeight - m.leftTitleHeight
     if m.listHeight < 96 then m.listHeight = 96
 
     if height <= 720 then
-        m.itemHeight = 72
-        m.cardHeight = 62
-        m.logoSize = 42
-        m.logoInset = 10
+        m.itemHeight = 54
+        m.cardHeight = 46
+        m.logoSize = 32
+        m.logoInset = 7
     else
-        m.itemHeight = 88
-        m.cardHeight = 76
-        m.logoSize = 52
-        m.logoInset = 12
+        m.itemHeight = 64
+        m.cardHeight = 54
+        m.logoSize = 38
+        m.logoInset = 8
     end if
 
     m.visibleItemCount = Int(m.listHeight / m.itemHeight)
@@ -73,30 +91,108 @@ sub configureLayout()
     m.background.width = width
     m.background.height = height
 
-    m.title.width = width
-    m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, m.titleY]
+    m.topBar.width = m.contentWidth
+    m.topBar.height = m.topBarHeight
+    m.topBar.translation = [m.contentX, m.safeMarginY]
 
-    m.subtitle.width = width
-    m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, m.subtitleY]
+    m.currentCategoryLabel.width = Int(m.contentWidth * 0.55)
+    m.currentCategoryLabel.height = m.topBarHeight
+    m.currentCategoryLabel.font = "font:MediumBoldSystemFont"
+    m.currentCategoryLabel.translation = [m.contentX + 22, m.safeMarginY]
 
-    m.statusLabel.width = m.contentWidth
+    m.dateLabel.width = 210
+    m.dateLabel.height = m.topBarHeight
+    m.dateLabel.font = "font:SmallSystemFont"
+    m.dateLabel.translation = [width - m.safeMarginX - 320, m.safeMarginY]
+
+    m.timeLabel.width = 92
+    m.timeLabel.height = m.topBarHeight
+    m.timeLabel.font = "font:MediumBoldSystemFont"
+    m.timeLabel.translation = [width - m.safeMarginX - 110, m.safeMarginY]
+    updateHeaderClock()
+
+    m.leftPanelBackground.width = m.leftPanelWidth
+    m.leftPanelBackground.height = m.contentHeight
+    m.leftPanelBackground.translation = [m.contentX, m.contentY]
+
+    m.rightPanelBackground.width = m.rightPanelWidth
+    m.rightPanelBackground.height = m.contentHeight
+    m.rightPanelBackground.translation = [m.rightPanelX, m.contentY]
+
+    m.divider.width = m.dividerWidth
+    m.divider.height = m.contentHeight
+    m.divider.translation = [m.contentX + m.leftPanelWidth, m.contentY]
+
+    m.leftPanelTitle.width = m.leftPanelWidth - 36
+    m.leftPanelTitle.font = "font:MediumBoldSystemFont"
+    m.leftPanelTitle.translation = [m.contentX + 18, m.contentY + 12]
+
+    m.statusLabel.width = m.leftPanelWidth - 36
     m.statusLabel.font = "font:MediumSystemFont"
-    m.statusLabel.translation = [m.contentX, m.listY + Int(m.listHeight / 2)]
+    m.statusLabel.translation = [m.contentX + 18, m.listY + Int(m.listHeight / 2)]
 
-    m.channelsGroup.translation = [m.contentX, m.listY]
+    m.channelsGroup.translation = [m.contentX + 14, m.listY]
+
+    rightX = m.rightPanelX + m.gap
+    rightW = m.rightPanelWidth - (m.gap * 2)
+    previewH = Int(m.contentHeight * 0.47)
+    epgH = Int(m.contentHeight * 0.30)
+    calendarH = m.contentHeight - previewH - epgH - (m.gap * 2)
+    panelY = m.contentY + m.gap
+
+    layoutPanel(m.previewPanel, rightX, panelY, rightW, previewH)
+    centerLabel(m.previewTitle, rightX, panelY, rightW, previewH, "font:LargeBoldSystemFont")
+    m.previewSubtitle.width = rightW
+    m.previewSubtitle.font = "font:SmallSystemFont"
+    m.previewSubtitle.translation = [rightX, panelY + Int(previewH / 2) + 44]
+
+    epgY = panelY + previewH + m.gap
+    layoutPanel(m.epgPanel, rightX, epgY, rightW, epgH)
+    centerLabel(m.epgTitle, rightX, epgY, rightW, epgH, "font:MediumBoldSystemFont")
+    m.epgSubtitle.width = rightW
+    m.epgSubtitle.font = "font:SmallSystemFont"
+    m.epgSubtitle.translation = [rightX, epgY + Int(epgH / 2) + 34]
+
+    calendarY = epgY + epgH + m.gap
+    layoutPanel(m.calendarPanel, rightX, calendarY, rightW, calendarH)
+    centerLabel(m.calendarTitle, rightX, calendarY, rightW, calendarH, "font:MediumBoldSystemFont")
 
     m.hintLabel.width = width
     m.hintLabel.font = "font:SmallSystemFont"
-    m.hintLabel.translation = [0, m.footerY]
+    m.hintLabel.translation = [0, height - m.footerReservedHeight + 12]
 end sub
+
+sub layoutPanel(panel as Object, x as Integer, y as Integer, w as Integer, h as Integer)
+    panel.width = w
+    panel.height = h
+    panel.translation = [x, y]
+end sub
+
+sub centerLabel(label as Object, x as Integer, y as Integer, w as Integer, h as Integer, fontName as String)
+    label.width = w
+    label.height = h
+    label.font = fontName
+    label.translation = [x, y]
+end sub
+
+sub updateHeaderClock()
+    dateTime = CreateObject("roDateTime")
+    dateTime.ToLocalTime()
+    m.dateLabel.text = twoDigits(dateTime.GetDayOfMonth()) + "/" + twoDigits(dateTime.GetMonth()) + "/" + dateTime.GetYear().ToStr()
+    m.timeLabel.text = twoDigits(dateTime.GetHours()) + ":" + twoDigits(dateTime.GetMinutes())
+end sub
+
+function twoDigits(value as Integer) as String
+    text = value.ToStr()
+    if value < 10 then text = "0" + text
+    return text
+end function
 
 sub show(category as Dynamic)
     if category <> invalid then
-        m.subtitle.text = "Canais • " + getCategoryName(category)
+        m.currentCategoryLabel.text = getCategoryName(category)
     else
-        m.subtitle.text = "Canais"
+        m.currentCategoryLabel.text = "Categoria Atual"
     end if
 
     m.searchQuery = ""
@@ -191,7 +287,7 @@ function createSearchItem(visibleIndex as Integer) as Object
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
-    background.width = m.contentWidth
+    background.width = m.leftPanelWidth - 28
     background.height = m.cardHeight
     background.color = "#113B5C"
     background.opacity = 0.92
@@ -205,7 +301,7 @@ function createSearchItem(visibleIndex as Integer) as Object
 
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
-    label.width = m.contentWidth - 32
+    label.width = m.leftPanelWidth - 60
     label.height = m.cardHeight
     label.translation = [16, 0]
     label.vertAlign = "center"
@@ -230,7 +326,7 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
-    background.width = m.contentWidth
+    background.width = m.leftPanelWidth - 28
     background.height = m.cardHeight
     background.color = "#111827"
     background.opacity = 0.86
@@ -260,7 +356,7 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
 
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
-    label.width = m.contentWidth - 122
+    label.width = m.leftPanelWidth - 112
     label.height = m.cardHeight
     label.translation = [100, 0]
     label.vertAlign = "center"
