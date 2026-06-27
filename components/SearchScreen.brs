@@ -12,10 +12,10 @@ sub Init()
     m.movies = []
     m.series = []
     m.results = []
+    m.keyboardDialog = invalid
     m.itemNodes = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
-    m.searchInput.ObserveField("text", "onSearchTextChanged")
     configureLayout()
 end sub
 
@@ -44,8 +44,10 @@ sub show()
     configureLayout()
     m.top.visible = true
     m.top.SetFocus(true)
-    m.searchInput.SetFocus(true)
-    applyFilter()
+    m.searchInput.SetFocus(false)
+    clearResultNodes()
+    m.statusLabel.color = "#B8C3D6"
+    m.statusLabel.text = "Pressione OK em Buscar para abrir o teclado nativo da Roku."
 end sub
 
 sub hide()
@@ -76,8 +78,30 @@ sub showMessage(message as String)
     m.statusLabel.text = message
 end sub
 
-sub onSearchTextChanged()
-    applyFilter()
+
+
+sub openSearchKeyboard()
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Buscar"
+    dialog.text = m.searchInput.text
+    dialog.buttons = ["Buscar", "Cancelar"]
+    dialog.ObserveField("buttonSelected", "onSearchKeyboardButtonSelected")
+    m.keyboardDialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onSearchKeyboardButtonSelected()
+    if m.keyboardDialog = invalid then return
+    selectedButton = m.keyboardDialog.buttonSelected
+    if selectedButton = 0 then
+        m.searchInput.text = m.keyboardDialog.text
+        m.top.GetScene().dialog = invalid
+        m.keyboardDialog = invalid
+        applyFilter()
+    else if selectedButton = 1 then
+        m.top.GetScene().dialog = invalid
+        m.keyboardDialog = invalid
+    end if
 end sub
 
 sub applyFilter()
@@ -180,7 +204,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         moveSelection(1)
         return true
     else if key = "OK" then
-        openSelected()
+        if m.results.Count() = 0 then
+            openSearchKeyboard()
+        else
+            openSelected()
+        end if
         return true
     end if
     return false

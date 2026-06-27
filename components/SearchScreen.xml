@@ -16,7 +16,7 @@
         <Rectangle id="background" color="#000000" translation="[0, 0]" />
         <Label id="title" text="BUSCA" color="#FFFFFF" horizAlign="center" />
         <Label id="subtitle" text="Digite no controle ou no app Roku Remote" color="#B8C3D6" horizAlign="center" />
-        <TextEditBox id="searchInput" hintText="Buscar canais, filmes e séries" text="" maxTextLength="100" clearOnDownKey="false" />
+        <TextEditBox id="searchInput" hintText="Buscar canais, filmes e séries" text="" clearOnDownKey="false" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="resultsGroup" />
         <Label id="hintLabel" text="Digite para buscar • ↑/↓ navegar • OK abrir • Voltar para Home" color="#7D8CA3" horizAlign="center" />

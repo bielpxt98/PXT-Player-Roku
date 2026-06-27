@@ -12,7 +12,9 @@
         <field id="openMovieCategories" type="boolean" alwaysNotify="true" />
         <field id="openSeriesCategories" type="boolean" alwaysNotify="true" />
         <field id="openFavorites" type="boolean" alwaysNotify="true" />
+        <field id="openSearch" type="boolean" alwaysNotify="true" />
     </interface>
+    <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
         <Rectangle id="homeBackground" color="#000000" translation="[0, 0]" />
@@ -22,7 +24,11 @@
         <Button id="moviesButton" text="FILMES" minWidth="520" translation="[0, 0]" />
         <Button id="seriesButton" text="SÉRIES" minWidth="520" translation="[0, 0]" />
         <Button id="favoritesButton" text="FAVORITOS" minWidth="520" translation="[0, 0]" />
+        <Button id="searchButton" text="BUSCAR" minWidth="520" translation="[0, 0]" />
         <Button id="playlistButton" text="LISTA DE REPRODUÇÃO" minWidth="520" translation="[0, 0]" />
+        <Label id="continueWatchingLabel" text="Continuar assistindo" color="#FFFFFF" horizAlign="left" />
+        <Label id="lastMoviesLabel" text="Últimos filmes assistidos" color="#B8C3D6" horizAlign="left" />
+        <Label id="lastSeriesLabel" text="Últimas séries assistidas" color="#B8C3D6" horizAlign="left" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />
     </children>
 </component>
