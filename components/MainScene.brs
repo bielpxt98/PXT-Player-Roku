@@ -1,15 +1,19 @@
 ' Main scene for the PXT Player application.
 ' It coordinates feature screens and authenticates playlist credentials through
-' XtreamService without loading channels or playback resources.
+' XtreamService, including live TV categories and channel lists.
 sub Init()
     m.homeScreen = m.top.FindNode("homeScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.liveCategoriesScreen = m.top.FindNode("liveCategoriesScreen")
+    m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
     m.account = LoadSavedPlaylist()
     m.pendingAccount = invalid
     m.liveCategories = []
     m.liveCategoriesLoading = false
+    m.liveChannels = []
+    m.liveChannelsLoading = false
+    m.selectedLiveCategory = invalid
 
     configureScene()
 
@@ -18,6 +22,8 @@ sub Init()
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
+    m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
+    m.liveChannelsScreen.ObserveField("backRequested", "onLiveChannelsBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
 
     showHome()
@@ -32,12 +38,14 @@ end sub
 sub showHome()
     m.loginScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("hide")
     m.homeScreen.callFunc("show")
 end sub
 
 sub showLogin()
     m.homeScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("hide")
     m.loginScreen.callFunc("show", m.account)
 end sub
 
@@ -48,6 +56,7 @@ end sub
 sub onOpenLiveCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("show")
 
     if m.liveCategoriesLoading then
@@ -79,6 +88,24 @@ sub onLiveCategoriesBack()
     showHome()
 end sub
 
+sub onLiveChannelsBack()
+    m.liveChannelsScreen.callFunc("hide")
+    m.liveCategoriesScreen.callFunc("show")
+end sub
+
+sub onLiveCategorySelected()
+    category = m.liveCategoriesScreen.categorySelected
+    if category = invalid then return
+
+    m.selectedLiveCategory = category
+    m.liveChannels = []
+    m.liveChannelsLoading = true
+    m.liveCategoriesScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("show", category)
+    m.liveChannelsScreen.callFunc("setLoading", true)
+    loadLiveChannels(category)
+end sub
+
 sub connectXtream(account as Object)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "connect"
@@ -86,6 +113,23 @@ sub connectXtream(account as Object)
     m.xtreamService.dns = account.dns
     m.xtreamService.username = account.username
     m.xtreamService.password = account.password
+    m.xtreamService.control = "RUN"
+end sub
+
+sub loadLiveChannels(category as Object)
+    if not hasAccount(m.account) then
+        m.liveChannelsLoading = false
+        m.liveChannelsScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar os canais de TV ao vivo.")
+        return
+    end if
+
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "getLiveStreams"
+    m.xtreamService.cacheEnabled = false
+    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
     m.xtreamService.control = "RUN"
 end sub
 
@@ -108,6 +152,9 @@ sub onXtreamConnectionResult()
     if result.request = "getLiveCategories" then
         onLiveCategoriesResult(result)
         return
+    else if Left(result.request, 14) = "getLiveStreams" then
+        onLiveChannelsResult(result)
+        return
     end if
 
     if result.success = true and result.connected = true then
@@ -117,14 +164,18 @@ sub onXtreamConnectionResult()
         updateConnectionStatus(true, "Conectado")
         m.pendingAccount = invalid
         m.liveCategories = []
+        m.liveChannels = []
         m.liveCategoriesLoading = false
+        m.liveChannelsLoading = false
         showHome()
         loadLiveCategories(m.account)
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
         m.liveCategories = []
+        m.liveChannels = []
         m.liveCategoriesLoading = false
+        m.liveChannelsLoading = false
         m.loginScreen.callFunc("showError", "Não foi possível conectar ao servidor.")
     end if
 end sub
@@ -152,6 +203,40 @@ sub onLiveCategoriesResult(result as Object)
         end if
     end if
 end sub
+
+sub onLiveChannelsResult(result as Object)
+    m.liveChannelsLoading = false
+
+    if result.success = true then
+        m.liveChannels = normalizeLiveChannels(result.data)
+        if m.liveChannels.Count() > 0 then
+            if m.liveChannelsScreen.visible = true then
+                m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+            end if
+        else
+            if m.liveChannelsScreen.visible = true then
+                m.liveChannelsScreen.callFunc("showMessage", "Nenhum canal foi encontrado nesta categoria.")
+            end if
+        end if
+    else
+        if m.liveChannelsScreen.visible = true then
+            m.liveChannelsScreen.callFunc("showMessage", "Não foi possível carregar os canais desta categoria. Tente novamente mais tarde.")
+        end if
+    end if
+end sub
+
+function normalizeLiveChannels(data as Dynamic) as Object
+    if data = invalid then return []
+    if Type(data) = "roArray" then return data
+    return []
+end function
+
+function getCategoryId(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.category_id <> invalid then return category.category_id.ToStr()
+    if category.id <> invalid then return category.id.ToStr()
+    return ""
+end function
 
 function normalizeLiveCategories(data as Dynamic) as Object
     if data = invalid then return []

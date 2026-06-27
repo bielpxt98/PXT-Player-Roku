@@ -1,19 +1,20 @@
-' Live TV category list screen.
-' This screen displays category metadata and notifies MainScene when a category is selected.
+' Live TV channel list screen.
+' This screen displays channels for one category and intentionally shows only a
+' playback placeholder when a channel is selected.
 sub Init()
     m.background = m.top.FindNode("background")
     m.title = m.top.FindNode("title")
     m.subtitle = m.top.FindNode("subtitle")
     m.statusLabel = m.top.FindNode("statusLabel")
-    m.categoriesGroup = m.top.FindNode("categoriesGroup")
+    m.channelsGroup = m.top.FindNode("channelsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
-    m.categories = []
+    m.channels = []
     m.itemNodes = []
     m.focusIndex = 0
     m.firstVisibleIndex = 0
-    m.maxVisibleItems = 8
-    m.itemHeight = 70
+    m.maxVisibleItems = 6
+    m.itemHeight = 92
 
     configureLayout()
 end sub
@@ -38,14 +39,20 @@ sub configureLayout()
     m.statusLabel.font = "font:MediumSystemFont"
     m.statusLabel.translation = [0, Int(height * 0.44)]
 
-    m.categoriesGroup.translation = [Int((width - 760) / 2), Int(height * 0.26)]
+    m.channelsGroup.translation = [Int((width - 860) / 2), Int(height * 0.25)]
 
     m.hintLabel.width = width
     m.hintLabel.font = "font:SmallSystemFont"
     m.hintLabel.translation = [0, Int(height * 0.91)]
 end sub
 
-sub show()
+sub show(category as Dynamic)
+    if category <> invalid then
+        m.subtitle.text = "Canais • " + getCategoryName(category)
+    else
+        m.subtitle.text = "Canais"
+    end if
+
     m.top.visible = true
     updateFocus()
     m.top.SetFocus(true)
@@ -56,22 +63,22 @@ sub hide()
 end sub
 
 sub setLoading(isLoading as Boolean)
-    clearCategoryNodes()
+    clearChannelNodes()
     if isLoading then
-        m.statusLabel.text = "Carregando categorias de TV ao vivo..."
+        m.statusLabel.text = "Carregando canais de TV ao vivo..."
         m.statusLabel.color = "#B8C3D6"
     else
         m.statusLabel.text = ""
     end if
 end sub
 
-sub setCategories(categories as Object)
-    m.categories = normalizeCategories(categories)
+sub setChannels(channels as Object)
+    m.channels = normalizeChannels(channels)
     m.focusIndex = 0
     m.firstVisibleIndex = 0
 
-    if m.categories.Count() = 0 then
-        showMessage("Nenhuma categoria de TV ao vivo foi encontrada.")
+    if m.channels.Count() = 0 then
+        showMessage("Nenhum canal foi encontrado nesta categoria.")
         return
     end if
 
@@ -80,76 +87,108 @@ sub setCategories(categories as Object)
 end sub
 
 sub showMessage(message as String)
-    clearCategoryNodes()
-    m.categories = []
+    clearChannelNodes()
+    m.channels = []
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
 end sub
 
-function normalizeCategories(categories as Dynamic) as Object
-    if categories = invalid then return []
-    if Type(categories) = "roArray" then return categories
+function normalizeChannels(channels as Dynamic) as Object
+    if channels = invalid then return []
+    if Type(channels) = "roArray" then return channels
     return []
 end function
 
 sub renderVisibleItems()
-    clearCategoryNodes()
+    clearChannelNodes()
     lastIndex = m.firstVisibleIndex + m.maxVisibleItems - 1
-    if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
+    if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
 
     for i = m.firstVisibleIndex to lastIndex
-        item = createCategoryItem(m.categories[i], i - m.firstVisibleIndex)
-        m.categoriesGroup.AppendChild(item)
+        item = createChannelItem(m.channels[i], i - m.firstVisibleIndex)
+        m.channelsGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
 
     updateFocus()
 end sub
 
-function createCategoryItem(category as Object, visibleIndex as Integer) as Object
+function createChannelItem(channel as Object, visibleIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
     item.translation = [0, visibleIndex * m.itemHeight]
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
-    background.width = 760
-    background.height = 58
+    background.width = 860
+    background.height = 78
     background.color = "#111827"
     background.opacity = 0.86
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
     accent.width = 6
-    accent.height = 58
+    accent.height = 78
     accent.color = "#009DFF"
     accent.opacity = 0.45
 
+    logoBackground = CreateObject("roSGNode", "Rectangle")
+    logoBackground.id = "logoBackground"
+    logoBackground.width = 58
+    logoBackground.height = 58
+    logoBackground.translation = [22, 10]
+    logoBackground.color = "#1F2937"
+    logoBackground.opacity = 0.95
+
+    logo = CreateObject("roSGNode", "Poster")
+    logo.id = "channelLogo"
+    logo.width = 52
+    logo.height = 52
+    logo.translation = [25, 13]
+    logo.loadDisplayMode = "scaleToFit"
+    logo.uri = getChannelLogo(channel)
+
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
-    label.width = 720
-    label.height = 58
-    label.translation = [22, 0]
+    label.width = 735
+    label.height = 78
+    label.translation = [100, 0]
     label.vertAlign = "center"
     label.color = "#F8FAFC"
     label.font = "font:MediumSystemFont"
-    label.text = getCategoryName(category)
+    label.text = getChannelName(channel)
 
     item.AppendChild(background)
     item.AppendChild(accent)
+    item.AppendChild(logoBackground)
+    item.AppendChild(logo)
     item.AppendChild(label)
     return item
 end function
 
-function getCategoryName(category as Dynamic) as String
-    if category = invalid then return "Categoria sem nome"
-    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
-    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
-    return "Categoria sem nome"
+function getChannelName(channel as Dynamic) as String
+    if channel = invalid then return "Canal sem nome"
+    if channel.name <> invalid and channel.name.ToStr().Trim() <> "" then return channel.name.ToStr()
+    if channel.title <> invalid and channel.title.ToStr().Trim() <> "" then return channel.title.ToStr()
+    return "Canal sem nome"
 end function
 
-sub clearCategoryNodes()
-    while m.categoriesGroup.GetChildCount() > 0
-        m.categoriesGroup.RemoveChildIndex(0)
+function getChannelLogo(channel as Dynamic) as String
+    if channel = invalid then return ""
+    if channel.stream_icon <> invalid and channel.stream_icon.ToStr().Trim() <> "" then return channel.stream_icon.ToStr()
+    if channel.logo <> invalid and channel.logo.ToStr().Trim() <> "" then return channel.logo.ToStr()
+    return ""
+end function
+
+function getCategoryName(category as Dynamic) as String
+    if category = invalid then return "Categoria"
+    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
+    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
+    return "Categoria"
+end function
+
+sub clearChannelNodes()
+    while m.channelsGroup.GetChildCount() > 0
+        m.channelsGroup.RemoveChildIndex(0)
     end while
     m.itemNodes = []
 end sub
@@ -167,7 +206,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         moveFocus(1)
         return true
     else if key = "OK" then
-        if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.focusIndex]
+        if m.channels.Count() > 0 then showMessage("Player será implementado na próxima etapa.")
         return true
     end if
 
@@ -175,11 +214,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 sub moveFocus(direction as Integer)
-    if m.categories.Count() = 0 then return
+    if m.channels.Count() = 0 then return
 
     nextIndex = m.focusIndex + direction
-    if nextIndex < 0 then nextIndex = m.categories.Count() - 1
-    if nextIndex >= m.categories.Count() then nextIndex = 0
+    if nextIndex < 0 then nextIndex = m.channels.Count() - 1
+    if nextIndex >= m.channels.Count() then nextIndex = 0
     m.focusIndex = nextIndex
 
     if m.focusIndex < m.firstVisibleIndex then
@@ -199,17 +238,20 @@ sub updateFocus()
         background = m.itemNodes[i].FindNode("itemBackground")
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
+        logoBackground = m.itemNodes[i].FindNode("logoBackground")
 
         if selected then
             background.color = "#0B3A5E"
             background.opacity = 1.0
             accent.opacity = 1.0
             label.color = "#FFFFFF"
+            logoBackground.color = "#0F4F7A"
         else
             background.color = "#111827"
             background.opacity = 0.86
             accent.opacity = 0.45
             label.color = "#F8FAFC"
+            logoBackground.color = "#1F2937"
         end if
     end for
 end sub

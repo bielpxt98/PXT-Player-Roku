@@ -47,7 +47,10 @@ function getSeriesCategories() as Object
 end function
 
 function getLiveStreams() as Object
-    return requestXtream("getLiveStreams", "get_live_streams")
+    categoryId = safeTrim(m.top.categoryId)
+    cacheKey = "getLiveStreams"
+    if categoryId <> "" then cacheKey = cacheKey + ":" + categoryId
+    return requestXtream(cacheKey, "get_live_streams")
 end function
 
 function getMovies() as Object
@@ -69,6 +72,9 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     end if
 
     url = buildPlayerApiUrl(credentials.dns, credentials.username, credentials.password, apiAction)
+    if apiAction = "get_live_streams" and safeTrim(m.top.categoryId) <> "" then
+        url = url + "&category_id=" + escapeQueryValue(m.top.categoryId)
+    end if
     httpResponse = sendHttpGet(url)
     if not httpResponse.success then return httpResponse
 
@@ -210,6 +216,7 @@ function buildFailure(message as String) as Object
     return {
         success: false,
         connected: false,
+        request: m.top.action,
         data: invalid,
         message: message
     }
