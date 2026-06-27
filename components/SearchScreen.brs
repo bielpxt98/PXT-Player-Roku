@@ -18,7 +18,7 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
-    m.maxResults = 60
+    m.maxResults = 40
     m.searchMode = "live"
     m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
     m.keyNodes = [] : m.itemNodes = []
@@ -54,6 +54,7 @@ sub configureLayout()
     if m.gridColumns < 1 then m.gridColumns = 1
     m.gridRows = 2
     m.visibleItemCount = m.gridColumns * m.gridRows
+    if m.visibleItemCount > 40 then m.visibleItemCount = 40
 end sub
 
 sub show(mode as Dynamic)
@@ -176,11 +177,12 @@ end sub
 
 sub renderResults()
     clearResultNodes()
-    maxIndex = m.results.Count() - 1
-    visibleMax = m.visibleItemCount - 1
-    if maxIndex > visibleMax then maxIndex = visibleMax
-    for i = 0 to maxIndex
-        node = createCardResultNode(m.results[i], i)
+    if m.results.Count() = 0 then return
+    updateResultWindow()
+    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
+    if lastIndex >= m.results.Count() then lastIndex = m.results.Count() - 1
+    for i = m.firstVisibleIndex to lastIndex
+        node = createCardResultNode(m.results[i], i - m.firstVisibleIndex)
         m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node)
     end for
 end sub
@@ -224,6 +226,8 @@ sub moveVertical(direction as Integer)
         nextIndex = m.selectedIndex + (direction * m.gridColumns)
         if nextIndex >= 0 and nextIndex < m.results.Count() then
             m.selectedIndex = nextIndex
+            updateResultWindow()
+            renderResults()
             updateResultFocus()
         else
             moveZone(direction)
@@ -258,6 +262,8 @@ sub moveHorizontal(direction as Integer)
         m.selectedIndex = m.selectedIndex + direction
         if m.selectedIndex < 0 then m.selectedIndex = m.results.Count() - 1
         if m.selectedIndex >= m.results.Count() then m.selectedIndex = 0
+        updateResultWindow()
+        renderResults()
         updateResultFocus()
     end if
 end sub
@@ -313,9 +319,9 @@ sub updateKeyboardFocus()
         for c = 0 to m.keyNodes[r].Count() - 1
             bg = m.keyNodes[r][c].FindNode("keyBackground") : lb = m.keyNodes[r][c].FindNode("keyLabel")
             if m.focusZone = "keyboard" and r = m.selectedKeyRow and c = m.selectedKeyCol then
-                bg.color = "#063B66" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
+                bg.color = "#FFCC00" : bg.opacity = 1.0 : lb.color = "#06111F" : m.keyNodes[r][c].scale = [1.08, 1.08]
             else
-                bg.color = "#101A2C" : bg.opacity = 0.92 : lb.color = "#EAF2FF"
+                bg.color = "#101A2C" : bg.opacity = 0.92 : lb.color = "#EAF2FF" : m.keyNodes[r][c].scale = [1.0, 1.0]
             end if
         end for
     end for
@@ -324,12 +330,30 @@ end sub
 sub updateResultFocus()
     for i = 0 to m.itemNodes.Count() - 1
         bg = m.itemNodes[i].FindNode("itemBackground") : lb = m.itemNodes[i].FindNode("itemLabel")
-        if m.focusZone = "results" and i = m.selectedIndex then
+        realIndex = m.firstVisibleIndex + i
+        if m.focusZone = "results" and realIndex = m.selectedIndex then
             bg.color = "#063B66" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
         else
             bg.color = "#101827" : bg.opacity = 0.92 : lb.color = "#FFFFFF"
         end if
     end for
+end sub
+
+sub updateResultWindow()
+    if m.results.Count() = 0 then
+        m.selectedIndex = 0 : m.firstVisibleIndex = 0
+        return
+    end if
+    if m.selectedIndex < 0 then m.selectedIndex = 0
+    if m.selectedIndex >= m.results.Count() then m.selectedIndex = m.results.Count() - 1
+    row = Int(m.selectedIndex / m.gridColumns)
+    firstRow = Int(m.firstVisibleIndex / m.gridColumns)
+    if row < firstRow then m.firstVisibleIndex = row * m.gridColumns
+    if row >= firstRow + m.gridRows then m.firstVisibleIndex = (row - m.gridRows + 1) * m.gridColumns
+    maxFirst = m.results.Count() - m.visibleItemCount
+    if maxFirst < 0 then maxFirst = 0
+    if m.firstVisibleIndex > maxFirst then m.firstVisibleIndex = maxFirst
+    if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
 end sub
 
 sub openSelected()

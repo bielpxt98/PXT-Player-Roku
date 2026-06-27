@@ -29,17 +29,6 @@
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="categoriesGroup" />
         <Group id="channelsGroup" />
-        <Rectangle id="previewPanel" color="#101C2E" opacity="1" />
-        <Video id="previewVideo" translation="[0, 0]" visible="false" />
-        <Poster id="previewLogo" loadDisplayMode="scaleToFit" />
-        <Label id="previewTitle" text="Preview do Canal" color="#FFFFFF" horizAlign="center" vertAlign="center" />
-        <Label id="previewSubtitle" text="Selecione um canal para assistir" color="#7D8CA3" horizAlign="center" />
-        <Rectangle id="epgPanel" color="#0C1524" opacity="0.88" />
-        <Label id="epgTitle" text="Área do EPG" color="#FFFFFF" horizAlign="center" vertAlign="center" />
-        <Label id="epgSubtitle" text="Programação será exibida aqui" color="#7D8CA3" horizAlign="center" />
-        <Rectangle id="calendarPanel" color="#09111E" opacity="0.88" />
-        <Label id="calendarTitle" text="Calendário próximos dias" color="#FFFFFF" horizAlign="center" vertAlign="center" />
-        <Label id="hintLabel" text="↑/↓ navegar • OK assistir • * favoritar • Replay buscar • Voltar categorias" color="#7D8CA3" horizAlign="center" />
-        <Timer id="previewDelayTimer" duration="1.5" repeat="false" />
+        <Label id="hintLabel" text="↑/↓ navegar • OK selecionar/assistir • * favoritar • Voltar categorias" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
