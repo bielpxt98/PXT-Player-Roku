@@ -1,12 +1,21 @@
-' Main splash scene for the PXT Player application.
-' Future feature flows (login, catalog, player) should be composed from this scene
-' instead of being implemented directly in main.brs.
+' Main scene for the PXT Player application.
+' It coordinates feature screens while keeping login data in memory only.
 sub Init()
-    m.background = m.top.FindNode("splashBackground")
-    m.title = m.top.FindNode("splashTitle")
+    m.homeScreen = m.top.FindNode("homeScreen")
+    m.loginScreen = m.top.FindNode("loginScreen")
+    m.account = invalid
 
     configureScene()
-    showSplash()
+
+    m.homeScreen.ObserveField("openSettings", "onOpenSettings")
+    m.loginScreen.ObserveField("submit", "onLoginSubmit")
+    m.loginScreen.ObserveField("backRequested", "onLoginBack")
+
+    if hasSavedAccount() then
+        showHome()
+    else
+        showLogin()
+    end if
 end sub
 
 sub configureScene()
@@ -14,26 +23,31 @@ sub configureScene()
     m.top.backgroundURI = ""
 end sub
 
-sub showSplash()
-    resolution = getDisplayResolution()
-    width = resolution.width
-    height = resolution.height
+function hasSavedAccount() as Boolean
+    ' Persistent account loading will be added with the Xtream/M3U integration.
+    return false
+end function
 
-    m.background.width = width
-    m.background.height = height
-
-    m.title.width = width
-    m.title.height = height
-    m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, 0]
+sub showHome()
+    m.loginScreen.callFunc("hide")
+    m.homeScreen.callFunc("show")
 end sub
 
-function getDisplayResolution() as Object
-    deviceInfo = CreateObject("roDeviceInfo")
-    displaySize = deviceInfo.GetDisplaySize()
+sub showLogin()
+    m.homeScreen.callFunc("hide")
+    m.loginScreen.callFunc("show", m.account)
+end sub
 
-    return {
-        width: displaySize.w
-        height: displaySize.h
-    }
-end function
+sub onOpenSettings()
+    showLogin()
+end sub
+
+sub onLoginSubmit()
+    ' No validation or remote connection is performed in this step.
+    m.account = m.loginScreen.submit
+    showHome()
+end sub
+
+sub onLoginBack()
+    showHome()
+end sub
