@@ -133,7 +133,7 @@ end sub
 function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group") : col = visualIndex mod m.columns : row = Int(visualIndex / m.columns)
     item.translation = [col * (m.posterW + m.posterGapX), row * (m.posterH + m.posterGapY)]
-    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#009DFF" : bg.opacity = 0.0
+    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#063B66" : bg.opacity = 0.0
     poster = CreateObject("roSGNode", "Poster") : poster.id = "poster" : poster.width = m.posterW : poster.height = m.posterH : poster.loadDisplayMode = "scaleToFill" : poster.uri = getSeriesCover(itemData)
     label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [0, m.posterH + 6] : label.width = m.posterW : label.height = 28 : label.font = "font:SmallSystemFont" : label.color = "#DDE6F3" : label.text = getSeriesName(itemData) : label.horizAlign = "center"
     item.AppendChild(bg) : item.AppendChild(poster) : item.AppendChild(label) : return item
@@ -238,14 +238,14 @@ end sub
 
 sub updateFocus()
     if m.activePane = "search" then
-        m.searchBar.color = "#123A5C" : m.searchLabel.color = "#FFFFFF"
+        m.searchBar.color = "#061F36" : m.searchLabel.color = "#FFFFFF"
     else
         m.searchBar.color = "#101722" : m.searchLabel.color = "#DDE6F3"
     end if
     for i = 0 to m.categoryNodes.Count() - 1
         realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
         bg.opacity = 0.0 : label.color = "#C9D4E5"
-        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#123A5C" : label.color = "#FFFFFF"
+        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#061F36" : label.color = "#FFFFFF"
         if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
     first = m.firstVisibleRow * m.columns

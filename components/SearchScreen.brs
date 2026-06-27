@@ -35,17 +35,20 @@ sub configureLayout()
     m.topGradient.width = m.screenW : m.topGradient.height = 170
     m.title.width = m.screenW : m.title.font = "font:LargeBoldSystemFont" : m.title.translation = [0, 28]
     m.subtitle.width = m.screenW : m.subtitle.font = "font:MediumSystemFont" : m.subtitle.translation = [0, 82]
-    m.inputBackground.translation = [m.marginX, 124] : m.inputBackground.width = m.contentWidth : m.inputBackground.height = 70
-    m.searchInput.translation = [m.marginX + 14, 130] : m.searchInput.width = m.contentWidth - 28 : m.searchInput.height = 58
-    m.queryMirror.translation = [m.marginX + 28, 142] : m.queryMirror.width = m.contentWidth - 56 : m.queryMirror.height = 42 : m.queryMirror.font = "font:LargeBoldSystemFont"
-    m.statusLabel.translation = [m.marginX, 206] : m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont"
-    m.keyboardGroup.translation = [m.marginX, 240]
-    m.resultsTitle.translation = [m.marginX, 470] : m.resultsTitle.font = "font:MediumBoldSystemFont"
-    m.resultsGroup.translation = [m.marginX, 510]
-    m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 54]
-    m.keyW = Int((m.contentWidth - 9 * 10) / 10) : m.keyH = 42 : m.keyGap = 10
-    m.cardWidth = 156 : m.cardHeight = 184 : m.cardGap = 18 : m.cardRowGap = 18
-    if m.screenH <= 720 then m.cardWidth = 128 : m.cardHeight = 148 : m.cardGap = 14 : m.cardRowGap = 14 : m.keyH = 34
+    m.resultsTitle.translation = [m.marginX, 118] : m.resultsTitle.font = "font:MediumBoldSystemFont"
+    m.resultsGroup.translation = [m.marginX, 158]
+    m.keyboardTop = m.screenH - 260
+    if m.screenH <= 720 then m.keyboardTop = m.screenH - 210
+    m.inputBackground.translation = [m.marginX, m.keyboardTop - 58] : m.inputBackground.width = m.contentWidth : m.inputBackground.height = 46
+    m.searchInput.translation = [m.marginX + 14, m.keyboardTop - 54] : m.searchInput.width = m.contentWidth - 28 : m.searchInput.height = 40 : m.searchInput.visible = false
+    m.queryMirror.translation = [m.marginX + 20, m.keyboardTop - 49] : m.queryMirror.width = m.contentWidth - 40 : m.queryMirror.height = 34 : m.queryMirror.font = "font:MediumBoldSystemFont"
+    m.statusLabel.translation = [m.marginX, m.keyboardTop - 104] : m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont"
+    m.keyboardGroup.translation = [m.marginX, m.keyboardTop]
+    m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 34]
+    m.keyGap = 8
+    m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.keyH = 34
+    m.cardWidth = 144 : m.cardHeight = 166 : m.cardGap = 16 : m.cardRowGap = 14
+    if m.screenH <= 720 then m.cardWidth = 116 : m.cardHeight = 136 : m.cardGap = 12 : m.cardRowGap = 10 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10)
     m.gridColumns = Int((m.contentWidth + m.cardGap) / (m.cardWidth + m.cardGap))
     if m.gridColumns < 1 then m.gridColumns = 1
     m.gridRows = 2
@@ -57,9 +60,9 @@ sub show(mode as Dynamic)
     m.searchMode = mode
     configureLayout()
     configureSearchLabels()
-    m.top.visible = true : m.top.SetFocus(true) : m.searchInput.SetFocus(true)
+    m.top.visible = true : m.top.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
-    m.searchInput.text = "" : m.queryMirror.text = ""
+    m.searchInput.text = "" : m.queryMirror.text = "Texto digitado: "
     m.focusZone = "keyboard" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
     clearResultNodes()
@@ -132,9 +135,9 @@ sub renderKeyboard()
 end sub
 
 sub onSearchTextChanged()
-    m.queryMirror.text = m.searchInput.text
+    m.queryMirror.text = "Texto digitado: " + m.searchInput.text
     m.searchDebounceTimer.control = "stop"
-    m.searchDebounceTimer.control = "start"
+    applyFilter()
 end sub
 
 sub onSearchDebounceFire()
@@ -226,13 +229,13 @@ end sub
 
 sub moveZone(direction as Integer)
     if direction < 0 then
-        if m.focusZone = "results" then
-            m.focusZone = "keyboard"
+        if m.focusZone = "keyboard" and m.results.Count() > 0 then
+            m.focusZone = "results"
         else
-            m.focusZone = "input"
+            m.focusZone = "keyboard"
         end if
     else
-        if m.focusZone = "input" then
+        if m.focusZone = "results" then
             m.focusZone = "keyboard"
         else if m.results.Count() > 0 then
             m.focusZone = "results"
@@ -261,7 +264,6 @@ sub moveKeyboardHorizontal(direction as Integer)
 end sub
 
 sub activateFocused()
-    if m.focusZone = "input" then return
     if m.focusZone = "results" then openSelected() : return
     keyLabel = m.keyRows[m.selectedKeyRow][m.selectedKeyCol]
     if keyLabel = "APAGAR" then
@@ -297,7 +299,7 @@ end function
 
 sub updateAllFocus()
     updateKeyboardFocus() : updateResultFocus()
-    if m.focusZone = "input" then m.inputBackground.color = "#12395A" else m.inputBackground.color = "#0B1220"
+    if m.focusZone = "keyboard" then m.inputBackground.color = "#081E33" else m.inputBackground.color = "#0B1220"
 end sub
 
 sub updateKeyboardFocus()
@@ -305,7 +307,7 @@ sub updateKeyboardFocus()
         for c = 0 to m.keyNodes[r].Count() - 1
             bg = m.keyNodes[r][c].FindNode("keyBackground") : lb = m.keyNodes[r][c].FindNode("keyLabel")
             if m.focusZone = "keyboard" and r = m.selectedKeyRow and c = m.selectedKeyCol then
-                bg.color = "#1F8FFF" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
+                bg.color = "#063B66" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
             else
                 bg.color = "#101A2C" : bg.opacity = 0.92 : lb.color = "#EAF2FF"
             end if
@@ -317,7 +319,7 @@ sub updateResultFocus()
     for i = 0 to m.itemNodes.Count() - 1
         bg = m.itemNodes[i].FindNode("itemBackground") : lb = m.itemNodes[i].FindNode("itemLabel")
         if m.focusZone = "results" and i = m.selectedIndex then
-            bg.color = "#0F6CBD" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
+            bg.color = "#063B66" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
         else
             bg.color = "#101827" : bg.opacity = 0.92 : lb.color = "#FFFFFF"
         end if
