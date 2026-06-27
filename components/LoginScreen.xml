@@ -3,6 +3,8 @@
     <interface>
         <function name="show" />
         <function name="hide" />
+        <function name="setLoading" />
+        <function name="showError" />
         <field id="submit" type="assocarray" alwaysNotify="true" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
     </interface>
@@ -27,6 +29,9 @@
 
             <Button id="enterButton" text="ENTRAR" minWidth="280" translation="[0, 390]" />
             <Button id="backButton" text="VOLTAR" minWidth="280" translation="[320, 390]" />
+            <BusySpinner id="loadingSpinner" translation="[240, 486]" visible="false" />
+            <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 548]" visible="false" />
+            <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 488]" visible="false" />
         </Group>
     </children>
 </component>

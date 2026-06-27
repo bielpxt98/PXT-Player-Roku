@@ -3,6 +3,7 @@
     <interface>
         <function name="show" />
         <function name="hide" />
+        <function name="updateConnectionStatus" />
         <field id="openPlaylist" type="boolean" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
@@ -11,5 +12,6 @@
         <Label id="homeTitle" text="PXT PLAYER" color="#FFFFFF" horizAlign="center" />
         <Label id="homeSubtitle" text="Selecione uma opção para continuar" color="#B8C3D6" horizAlign="center" />
         <Button id="playlistButton" text="LISTA DE REPRODUÇÃO" minWidth="520" translation="[0, 0]" />
+        <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />
     </children>
 </component>
