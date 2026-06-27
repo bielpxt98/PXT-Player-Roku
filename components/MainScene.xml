@@ -3,6 +3,7 @@
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
-        <HomeScreen id="homeScreen" />
+        <HomeScreen id="homeScreen" visible="false" />
+        <LoginScreen id="loginScreen" visible="false" />
     </children>
 </component>
