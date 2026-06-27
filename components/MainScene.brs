@@ -30,6 +30,12 @@ sub Init()
     m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
 
+    if hasAccount(m.account) then
+        updateConnectionStatus(true, "Conectado")
+    else
+        updateConnectionStatus(false, "Nenhuma playlist conectada")
+    end if
+
     showHome()
 end sub
 
@@ -66,12 +72,15 @@ sub onOpenLiveCategoriesRequested()
     m.livePlayerScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("show")
 
-    if m.liveCategoriesLoading then
+    if not hasAccount(m.account) then
+        m.liveCategoriesScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de TV ao vivo.")
+    else if m.liveCategoriesLoading then
         m.liveCategoriesScreen.callFunc("setLoading", true)
     else if m.liveCategories <> invalid and m.liveCategories.Count() > 0 then
         m.liveCategoriesScreen.callFunc("setCategories", m.liveCategories)
     else
-        m.liveCategoriesScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de TV ao vivo.")
+        m.liveCategoriesScreen.callFunc("setLoading", true)
+        loadLiveCategories(m.account)
     end if
 end sub
 
@@ -177,7 +186,11 @@ end sub
 
 sub loadLiveCategories(account as Object)
     m.liveCategoriesLoading = true
-    m.homeScreen.callFunc("setLiveCategoriesLoading", true)
+    if m.liveCategoriesScreen.visible = true then
+        m.liveCategoriesScreen.callFunc("setLoading", true)
+    else
+        m.homeScreen.callFunc("setLiveCategoriesLoading", true)
+    end if
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveCategories"
     m.xtreamService.cacheEnabled = false
@@ -213,7 +226,6 @@ sub onXtreamConnectionResult()
         m.liveCategoriesLoading = false
         m.liveChannelsLoading = false
         showHome()
-        loadLiveCategories(m.account)
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid

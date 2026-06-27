@@ -139,9 +139,21 @@ function sendHttpGet(url as String) as Object
     transfer.SetUrl(url)
     transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.InitClientCertificates()
+    port = CreateObject("roMessagePort")
+    transfer.SetMessagePort(port)
 
-    response = transfer.GetToString()
-    statusCode = transfer.GetResponseCode()
+    if not transfer.AsyncGetToString() then
+        return buildFailure("Não foi possível iniciar a conexão com o servidor Xtream.")
+    end if
+
+    event = waitForHttpResponse(port, 15000)
+    if event = invalid then
+        transfer.AsyncCancel()
+        return buildFailure("Tempo esgotado ao conectar ao servidor Xtream.")
+    end if
+
+    response = event.GetString()
+    statusCode = event.GetResponseCode()
 
     if statusCode < 200 or statusCode > 299 then
         return buildFailure("Não foi possível conectar ao servidor Xtream. Código HTTP: " + statusCode.ToStr())
@@ -156,6 +168,15 @@ function sendHttpGet(url as String) as Object
         body: response,
         statusCode: statusCode
     }
+end function
+
+function waitForHttpResponse(port as Object, timeoutMs as Integer) as Dynamic
+    if port = invalid then return invalid
+
+    event = Wait(timeoutMs, port)
+    if Type(event) = "roUrlEvent" then return event
+
+    return invalid
 end function
 
 function validateJsonResponse(response as String, apiAction as String) as Object
