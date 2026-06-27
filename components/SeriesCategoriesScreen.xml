@@ -9,6 +9,7 @@
         <function name="resetSelection" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="categorySelected" type="assocarray" alwaysNotify="true" />
+        <field id="searchRequested" type="boolean" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesCategoriesScreen.brs" />
     <children>

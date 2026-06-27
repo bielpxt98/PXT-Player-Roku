@@ -9,6 +9,7 @@
         <HomeScreen id="homeScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
         <FavoritesScreen id="favoritesScreen" visible="false" />
+        <RecentScreen id="recentScreen" visible="false" />
         <SearchScreen id="searchScreen" visible="false" />
         <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
         <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
