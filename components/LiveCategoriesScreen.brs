@@ -86,9 +86,10 @@ end sub
 
 sub show()
     configureLayout()
-    ensureFocusIsVisible()
-    logInitialSelection()
-    renderVisibleItems()
+    resetSelection()
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
     m.top.visible = true
     m.top.SetFocus(true)
 end sub
@@ -128,7 +129,9 @@ sub setCategories(categories as Object)
     end if
 
     m.statusLabel.text = ""
-    renderVisibleItems()
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
 end sub
 
 sub showMessage(message as String)
@@ -145,11 +148,9 @@ function normalizeCategories(categories as Dynamic) as Object
     return []
 end function
 
-sub renderVisibleItems()
+sub renderList()
     clearCategoryNodes()
     if m.categories.Count() = 0 then return
-
-    ensureFocusIsVisible()
 
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
@@ -160,8 +161,6 @@ sub renderVisibleItems()
         m.categoriesGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
-
-    updateFocus()
 end sub
 
 function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
@@ -262,10 +261,12 @@ sub moveFocus(direction as Integer)
         end if
     end if
 
-    renderVisibleItems()
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
 end sub
 
-sub ensureFocusIsVisible()
+sub updateVisibleWindow()
     if m.categories.Count() = 0 then
         m.selectedIndex = 0
         m.firstVisibleIndex = 0
@@ -289,25 +290,32 @@ sub ensureFocusIsVisible()
 end sub
 
 sub updateFocus()
+    selectedNode = invalid
+
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
-        selected = realIndex = m.selectedIndex
         background = m.itemNodes[i].FindNode("itemBackground")
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
 
-        if selected then
-            background.color = "#0B3A5E"
-            background.opacity = 1.0
-            accent.opacity = 1.0
-            label.color = "#FFFFFF"
-        else
-            background.color = "#111827"
-            background.opacity = 0.86
-            accent.opacity = 0.45
-            label.color = "#F8FAFC"
-        end if
+        background.color = "#111827"
+        background.opacity = 0.86
+        accent.opacity = 0.45
+        label.color = "#F8FAFC"
+
+        if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
     end for
+
+    if selectedNode <> invalid then
+        background = selectedNode.FindNode("itemBackground")
+        accent = selectedNode.FindNode("itemAccent")
+        label = selectedNode.FindNode("itemLabel")
+
+        background.color = "#0B3A5E"
+        background.opacity = 1.0
+        accent.opacity = 1.0
+        label.color = "#FFFFFF"
+    end if
 end sub
 
 function getDisplayResolution() as Object

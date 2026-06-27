@@ -97,9 +97,10 @@ sub show(category as Dynamic)
     end if
 
     configureLayout()
-    ensureFocusIsVisible()
-    logInitialSelection()
-    renderVisibleItems()
+    resetSelection()
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
     m.top.visible = true
     m.top.SetFocus(true)
 end sub
@@ -139,7 +140,9 @@ sub setChannels(channels as Object)
     end if
 
     m.statusLabel.text = ""
-    renderVisibleItems()
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
 end sub
 
 sub showMessage(message as String)
@@ -156,11 +159,9 @@ function normalizeChannels(channels as Dynamic) as Object
     return []
 end function
 
-sub renderVisibleItems()
+sub renderList()
     clearChannelNodes()
     if m.channels.Count() = 0 then return
-
-    ensureFocusIsVisible()
 
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
@@ -171,8 +172,6 @@ sub renderVisibleItems()
         m.channelsGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
-
-    updateFocus()
 end sub
 
 function createChannelItem(channel as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
@@ -305,10 +304,12 @@ sub moveFocus(direction as Integer)
         end if
     end if
 
-    renderVisibleItems()
+    updateVisibleWindow()
+    renderList()
+    updateFocus()
 end sub
 
-sub ensureFocusIsVisible()
+sub updateVisibleWindow()
     if m.channels.Count() = 0 then
         m.selectedIndex = 0
         m.firstVisibleIndex = 0
@@ -332,28 +333,36 @@ sub ensureFocusIsVisible()
 end sub
 
 sub updateFocus()
+    selectedNode = invalid
+
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
-        selected = realIndex = m.selectedIndex
         background = m.itemNodes[i].FindNode("itemBackground")
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
         logoBackground = m.itemNodes[i].FindNode("logoBackground")
 
-        if selected then
-            background.color = "#0B3A5E"
-            background.opacity = 1.0
-            accent.opacity = 1.0
-            label.color = "#FFFFFF"
-            logoBackground.color = "#0F4F7A"
-        else
-            background.color = "#111827"
-            background.opacity = 0.86
-            accent.opacity = 0.45
-            label.color = "#F8FAFC"
-            logoBackground.color = "#1F2937"
-        end if
+        background.color = "#111827"
+        background.opacity = 0.86
+        accent.opacity = 0.45
+        label.color = "#F8FAFC"
+        logoBackground.color = "#1F2937"
+
+        if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
     end for
+
+    if selectedNode <> invalid then
+        background = selectedNode.FindNode("itemBackground")
+        accent = selectedNode.FindNode("itemAccent")
+        label = selectedNode.FindNode("itemLabel")
+        logoBackground = selectedNode.FindNode("logoBackground")
+
+        background.color = "#0B3A5E"
+        background.opacity = 1.0
+        accent.opacity = 1.0
+        label.color = "#FFFFFF"
+        logoBackground.color = "#0F4F7A"
+    end if
 end sub
 
 function getDisplayResolution() as Object
