@@ -12,9 +12,11 @@ sub Init()
     m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
     m.movieCategoriesScreen = m.top.FindNode("movieCategoriesScreen")
     m.movieListScreen = m.top.FindNode("movieListScreen")
+    m.movieDetailScreen = m.top.FindNode("movieDetailScreen")
     m.moviePlayerScreen = m.top.FindNode("moviePlayerScreen")
     m.seriesCategoriesScreen = m.top.FindNode("seriesCategoriesScreen")
     m.seriesListScreen = m.top.FindNode("seriesListScreen")
+    m.seriesDetailScreen = m.top.FindNode("seriesDetailScreen")
     m.seriesSeasonsScreen = m.top.FindNode("seriesSeasonsScreen")
     m.seriesEpisodesScreen = m.top.FindNode("seriesEpisodesScreen")
     m.seriesPlayerScreen = m.top.FindNode("seriesPlayerScreen")
@@ -45,6 +47,7 @@ sub Init()
     m.selectedSeries = invalid
     m.selectedSeason = invalid
     m.selectedEpisode = invalid
+    m.selectedSeriesSeasons = []
     m.openedFromFavorites = false
     m.openedFromSearch = false
     m.openedFromRecent = false
@@ -86,6 +89,9 @@ sub Init()
     m.movieListScreen.ObserveField("backRequested", "onMovieListBack")
     m.movieListScreen.ObserveField("movieSelected", "onMovieSelected")
     m.movieListScreen.ObserveField("movieFavoriteToggled", "onMovieFavoriteToggled")
+    m.movieDetailScreen.ObserveField("backRequested", "onMovieDetailBack")
+    m.movieDetailScreen.ObserveField("playRequested", "onMovieDetailPlay")
+    m.movieDetailScreen.ObserveField("favoriteToggled", "onMovieDetailFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
     m.seriesCategoriesScreen.ObserveField("backRequested", "onSeriesCategoriesBack")
     m.seriesCategoriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
@@ -93,6 +99,9 @@ sub Init()
     m.seriesListScreen.ObserveField("backRequested", "onSeriesListBack")
     m.seriesListScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.seriesListScreen.ObserveField("seriesFavoriteToggled", "onSeriesFavoriteToggled")
+    m.seriesDetailScreen.ObserveField("backRequested", "onSeriesDetailBack")
+    m.seriesDetailScreen.ObserveField("playRequested", "onSeriesDetailPlay")
+    m.seriesDetailScreen.ObserveField("favoriteToggled", "onSeriesDetailFavoriteToggled")
     m.seriesSeasonsScreen.ObserveField("backRequested", "onSeriesSeasonsBack")
     m.seriesSeasonsScreen.ObserveField("seasonSelected", "onSeriesSeasonSelected")
     m.seriesEpisodesScreen.ObserveField("backRequested", "onSeriesEpisodesBack")
@@ -127,6 +136,7 @@ sub showHome()
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
     m.homeScreen.callFunc("show")
@@ -142,6 +152,7 @@ sub showLogin()
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
     m.loginScreen.callFunc("show", m.account)
@@ -159,6 +170,7 @@ sub openSearch(mode as String, backTarget as String)
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
     m.searchMode = mode
@@ -291,6 +303,7 @@ sub onOpenRecentRequested()
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
     m.recentScreen.callFunc("setHistory", LoadViewingHistory())
@@ -310,6 +323,7 @@ sub onOpenFavoritesRequested()
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
     m.favoritesScreen.callFunc("setFavorites", LoadFavorites())
@@ -400,6 +414,7 @@ sub onOpenLiveCategoriesRequested()
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("resetSelection")
     m.liveCategoriesScreen.callFunc("show")
@@ -428,6 +443,7 @@ sub onOpenMovieCategoriesRequested()
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("resetSelection")
     m.movieCategoriesScreen.callFunc("show")
@@ -480,6 +496,7 @@ end sub
 
 sub onMovieListBack()
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("show")
 end sub
@@ -493,6 +510,7 @@ sub onMovieCategorySelected()
     m.movies = []
     m.moviesLoading = true
     m.movieCategoriesScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.movieListScreen.callFunc("resetSelection")
     m.movieListScreen.callFunc("show", category)
@@ -511,13 +529,31 @@ sub onMovieSelected()
 
     m.selectedMovie = movie
     m.movieListScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("show", movie)
-    m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
-    buildMovieStreamUrl(movie)
+    m.movieDetailScreen.callFunc("show", movie)
+    m.movieDetailScreen.callFunc("setLoading", true)
+    loadMovieInfo(movie)
+end sub
+
+sub onMovieDetailBack()
+    m.movieDetailScreen.callFunc("hide")
+    m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+end sub
+
+sub onMovieDetailPlay()
+    if m.selectedMovie = invalid then return
+    m.movieDetailScreen.callFunc("hide")
+    m.moviePlayerScreen.callFunc("show", m.selectedMovie)
+    m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", m.selectedMovie))
+    buildMovieStreamUrl(m.selectedMovie)
+end sub
+
+sub onMovieDetailFavoriteToggled()
+    ToggleFavorite("movie", m.movieDetailScreen.favoriteToggled)
 end sub
 
 sub onMoviePlayerBack()
     UpsertMovieHistory(m.selectedMovie, m.moviePlayerScreen.callFunc("getPlaybackPosition"))
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
@@ -593,6 +629,17 @@ sub buildLiveStreamUrl(channel as Object)
     m.xtreamService.control = "RUN"
 end sub
 
+
+sub loadMovieInfo(movie as Object)
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "getMovieInfo"
+    m.xtreamService.cacheEnabled = false
+    m.xtreamService.streamId = getStreamId(movie)
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
+end sub
 
 sub buildMovieStreamUrl(movie as Object)
     m.xtreamService.control = "STOP"
@@ -697,6 +744,9 @@ sub onXtreamConnectionResult()
     else if result.request = "buildSeriesStreamUrl" then
         onSeriesStreamUrlResult(result)
         return
+    else if isMovieInfoResult(result) then
+        onMovieInfoResult(result)
+        return
     else if result.request = "getMovieCategories" then
         onMovieCategoriesResult(result)
         return
@@ -769,6 +819,7 @@ end sub
 sub hideSeriesScreens()
     m.seriesCategoriesScreen.callFunc("hide")
     m.seriesListScreen.callFunc("hide")
+    m.seriesDetailScreen.callFunc("hide")
     m.seriesSeasonsScreen.callFunc("hide")
     m.seriesEpisodesScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("hide")
@@ -793,8 +844,10 @@ sub onOpenSeriesCategoriesRequested()
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.seriesListScreen.callFunc("hide")
+    m.seriesDetailScreen.callFunc("hide")
     m.seriesSeasonsScreen.callFunc("hide")
     m.seriesEpisodesScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("hide")
@@ -878,11 +931,32 @@ sub onSeriesSelected()
     series = m.seriesListScreen.seriesSelected
     if series = invalid then return
     m.selectedSeries = series
+    m.selectedSeriesSeasons = []
     m.seriesListScreen.callFunc("hide")
-    m.seriesSeasonsScreen.callFunc("resetSelection")
-    m.seriesSeasonsScreen.callFunc("show", series)
-    m.seriesSeasonsScreen.callFunc("setLoading", true)
+    m.seriesDetailScreen.callFunc("show", series)
+    m.seriesDetailScreen.callFunc("setLoading", true)
     loadSeriesInfo(series)
+end sub
+
+sub onSeriesDetailBack()
+    m.seriesDetailScreen.callFunc("hide")
+    m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
+end sub
+
+sub onSeriesDetailPlay()
+    if m.selectedSeries = invalid then return
+    m.seriesDetailScreen.callFunc("hide")
+    m.seriesSeasonsScreen.callFunc("resetSelection")
+    m.seriesSeasonsScreen.callFunc("show", m.selectedSeries)
+    if m.selectedSeriesSeasons <> invalid and m.selectedSeriesSeasons.Count() > 0 then
+        m.seriesSeasonsScreen.callFunc("setSeasons", m.selectedSeriesSeasons)
+    else
+        m.seriesSeasonsScreen.callFunc("setLoading", true)
+    end if
+end sub
+
+sub onSeriesDetailFavoriteToggled()
+    ToggleFavorite("series", m.seriesDetailScreen.favoriteToggled)
 end sub
 
 sub onSeriesSeasonSelected()
@@ -1194,16 +1268,34 @@ end sub
 
 sub onSeriesInfoResult(result as Object)
     if result.success = true then
+        if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setDetails", result.data)
         seasons = normalizeSeriesSeasons(result.data)
+        m.selectedSeriesSeasons = seasons
         if seasons.Count() > 0 then
             if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("setSeasons", seasons)
         else
             if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Esta série não possui episódios disponíveis.")
         end if
     else
+        if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setLoading", false)
         if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Não foi possível carregar as temporadas desta série. Tente novamente mais tarde.")
     end if
 end sub
+
+sub onMovieInfoResult(result as Object)
+    if m.movieDetailScreen.visible <> true then return
+    if result.success = true then
+        m.movieDetailScreen.callFunc("setDetails", result.data)
+    else
+        m.movieDetailScreen.callFunc("setLoading", false)
+    end if
+end sub
+
+function isMovieInfoResult(result as Dynamic) as Boolean
+    if result = invalid or result.request = invalid then return false
+    prefix = "getMovieInfo"
+    return Left(result.request.ToStr(), Len(prefix)) = prefix
+end function
 
 sub onSeriesStreamUrlResult(result as Object)
     if m.seriesPlayerScreen.visible <> true then return
