@@ -7,15 +7,11 @@ sub Init()
 
     configureScene()
 
-    m.homeScreen.ObserveField("openSettings", "onOpenSettings")
+    m.homeScreen.ObserveField("openLogin", "onOpenLogin")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
 
-    if hasSavedAccount() then
-        showHome()
-    else
-        showLogin()
-    end if
+    showHome()
 end sub
 
 sub configureScene()
@@ -23,11 +19,6 @@ sub configureScene()
     m.top.backgroundURI = ""
     m.homeScreen.SetFocus(true)
 end sub
-
-function hasSavedAccount() as Boolean
-    ' Persistent account loading will be added with the Xtream/M3U integration.
-    return false
-end function
 
 sub showHome()
     m.loginScreen.callFunc("hide")
@@ -39,7 +30,7 @@ sub showLogin()
     m.loginScreen.callFunc("show", m.account)
 end sub
 
-sub onOpenSettings()
+sub onOpenLogin()
     showLogin()
 end sub
 

@@ -3,9 +3,18 @@ sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.title = m.top.FindNode("homeTitle")
     m.subtitle = m.top.FindNode("homeSubtitle")
-    m.settingsButton = m.top.FindNode("settingsButton")
+    m.menuGroup = m.top.FindNode("homeMenuGroup")
+    m.liveTvButton = m.top.FindNode("liveTvButton")
+    m.moviesButton = m.top.FindNode("moviesButton")
+    m.seriesButton = m.top.FindNode("seriesButton")
+    m.playlistButton = m.top.FindNode("playlistButton")
 
-    m.settingsButton.ObserveField("buttonSelected", "onSettingsSelected")
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.playlistButton]
+    m.focusIndex = 0
+
+    ' TV ao vivo, filmes e séries are placeholders for now.
+    m.playlistButton.ObserveField("buttonSelected", "onPlaylistSelected")
+
     configureLayout()
 end sub
 
@@ -19,32 +28,54 @@ sub configureLayout()
 
     m.title.width = width
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.26)]
+    m.title.translation = [0, Int(height * 0.18)]
 
     m.subtitle.width = width
     m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, Int(height * 0.38)]
+    m.subtitle.translation = [0, Int(height * 0.29)]
 
-    m.settingsButton.translation = [Int((width - 360) / 2), Int(height * 0.58)]
+    m.menuGroup.translation = [Int((width - 420) / 2), Int(height * 0.43)]
 end sub
 
 sub show()
     m.top.visible = true
-    m.settingsButton.SetFocus(true)
+    m.focusIndex = 0
+    updateFocus()
 end sub
 
 sub hide()
     m.top.visible = false
 end sub
 
-sub onSettingsSelected()
-    m.top.openSettings = true
+sub onPlaylistSelected()
+    m.top.openLogin = true
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+
+    if key = "up" then
+        moveFocus(-1)
+        return true
+    else if key = "down" then
+        moveFocus(1)
+        return true
+    end if
+
     return false
 end function
+
+sub moveFocus(direction as Integer)
+    nextIndex = m.focusIndex + direction
+    if nextIndex < 0 then nextIndex = m.buttons.Count() - 1
+    if nextIndex >= m.buttons.Count() then nextIndex = 0
+    m.focusIndex = nextIndex
+    updateFocus()
+end sub
+
+sub updateFocus()
+    m.buttons[m.focusIndex].SetFocus(true)
+end sub
 
 function getDisplayResolution() as Object
     deviceInfo = CreateObject("roDeviceInfo")
