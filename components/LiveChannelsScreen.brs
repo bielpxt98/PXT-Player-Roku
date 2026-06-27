@@ -151,11 +151,15 @@ sub renderVisibleItems()
     if m.channels.Count() = 0 then return
 
     ensureFocusIsVisible()
+    print "selectedIndex="; m.selectedIndex
+    print "firstVisibleIndex="; m.firstVisibleIndex
+
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
 
-    for i = m.firstVisibleIndex to lastIndex
-        item = createChannelItem(m.channels[i], i - m.firstVisibleIndex, i)
+    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
+        realIndex = m.firstVisibleIndex + visualIndex
+        item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
         m.channelsGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
@@ -223,6 +227,12 @@ function getChannelName(channel as Dynamic) as String
     return "Canal sem nome"
 end function
 
+function getChannelLogTitle(channel as Dynamic) as String
+    if channel = invalid then return ""
+    if channel.title <> invalid and channel.title.ToStr().Trim() <> "" then return channel.title.ToStr()
+    return getChannelName(channel)
+end function
+
 function getChannelLogo(channel as Dynamic) as String
     if channel = invalid then return ""
     if channel.stream_icon <> invalid and channel.stream_icon.ToStr().Trim() <> "" then return channel.stream_icon.ToStr()
@@ -258,6 +268,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
+            print "opening item="; getChannelLogTitle(m.channels[m.selectedIndex])
             m.top.channelSelected = m.channels[m.selectedIndex]
         end if
         return true
@@ -269,19 +280,23 @@ end function
 sub moveFocus(direction as Integer)
     if m.channels.Count() = 0 then return
 
-    nextIndex = m.selectedIndex + direction
-    if nextIndex < 0 then nextIndex = 0
-    if nextIndex >= m.channels.Count() then nextIndex = m.channels.Count() - 1
-    if nextIndex = m.selectedIndex then return
-    m.selectedIndex = nextIndex
+    if direction > 0 then
+        m.selectedIndex = m.selectedIndex + 1
+        if m.selectedIndex >= m.channels.Count() then m.selectedIndex = m.channels.Count() - 1
 
-    oldFirstVisibleIndex = m.firstVisibleIndex
-    ensureFocusIsVisible()
-    if oldFirstVisibleIndex <> m.firstVisibleIndex then
-        renderVisibleItems()
-    else
-        updateFocus()
+        if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then
+            m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
+        end if
+    else if direction < 0 then
+        m.selectedIndex = m.selectedIndex - 1
+        if m.selectedIndex < 0 then m.selectedIndex = 0
+
+        if m.selectedIndex < m.firstVisibleIndex then
+            m.firstVisibleIndex = m.selectedIndex
+        end if
     end if
+
+    renderVisibleItems()
 end sub
 
 sub ensureFocusIsVisible()
@@ -309,7 +324,8 @@ end sub
 
 sub updateFocus()
     for i = 0 to m.itemNodes.Count() - 1
-        selected = (m.firstVisibleIndex + i) = m.selectedIndex
+        realIndex = m.firstVisibleIndex + i
+        selected = realIndex = m.selectedIndex
         background = m.itemNodes[i].FindNode("itemBackground")
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")

@@ -140,11 +140,15 @@ sub renderVisibleItems()
     if m.categories.Count() = 0 then return
 
     ensureFocusIsVisible()
+    print "selectedIndex="; m.selectedIndex
+    print "firstVisibleIndex="; m.firstVisibleIndex
+
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
 
-    for i = m.firstVisibleIndex to lastIndex
-        item = createCategoryItem(m.categories[i], i - m.firstVisibleIndex, i)
+    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
+        realIndex = m.firstVisibleIndex + visualIndex
+        item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
         m.categoriesGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
@@ -194,6 +198,12 @@ function getCategoryName(category as Dynamic) as String
     return "Categoria sem nome"
 end function
 
+function getCategoryLogTitle(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.title <> invalid and category.title.ToStr().Trim() <> "" then return category.title.ToStr()
+    return getCategoryName(category)
+end function
+
 sub clearCategoryNodes()
     while m.categoriesGroup.GetChildCount() > 0
         m.categoriesGroup.RemoveChildIndex(0)
@@ -215,6 +225,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
+            print "opening item="; getCategoryLogTitle(m.categories[m.selectedIndex])
             m.top.categorySelected = m.categories[m.selectedIndex]
         end if
         return true
@@ -226,19 +237,23 @@ end function
 sub moveFocus(direction as Integer)
     if m.categories.Count() = 0 then return
 
-    nextIndex = m.selectedIndex + direction
-    if nextIndex < 0 then nextIndex = 0
-    if nextIndex >= m.categories.Count() then nextIndex = m.categories.Count() - 1
-    if nextIndex = m.selectedIndex then return
-    m.selectedIndex = nextIndex
+    if direction > 0 then
+        m.selectedIndex = m.selectedIndex + 1
+        if m.selectedIndex >= m.categories.Count() then m.selectedIndex = m.categories.Count() - 1
 
-    oldFirstVisibleIndex = m.firstVisibleIndex
-    ensureFocusIsVisible()
-    if oldFirstVisibleIndex <> m.firstVisibleIndex then
-        renderVisibleItems()
-    else
-        updateFocus()
+        if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then
+            m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
+        end if
+    else if direction < 0 then
+        m.selectedIndex = m.selectedIndex - 1
+        if m.selectedIndex < 0 then m.selectedIndex = 0
+
+        if m.selectedIndex < m.firstVisibleIndex then
+            m.firstVisibleIndex = m.selectedIndex
+        end if
     end if
+
+    renderVisibleItems()
 end sub
 
 sub ensureFocusIsVisible()
@@ -266,7 +281,8 @@ end sub
 
 sub updateFocus()
     for i = 0 to m.itemNodes.Count() - 1
-        selected = (m.firstVisibleIndex + i) = m.selectedIndex
+        realIndex = m.firstVisibleIndex + i
+        selected = realIndex = m.selectedIndex
         background = m.itemNodes[i].FindNode("itemBackground")
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
