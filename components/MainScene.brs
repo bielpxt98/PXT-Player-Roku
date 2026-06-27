@@ -84,6 +84,7 @@ sub Init()
     m.movieCategoriesScreen.ObserveField("categorySelected", "onMovieCategorySelected")
     m.movieCategoriesScreen.ObserveField("searchRequested", "onMovieSearchRequested")
     m.movieListScreen.ObserveField("backRequested", "onMovieListBack")
+    m.movieListScreen.ObserveField("categorySelected", "onMovieListCategorySelected")
     m.movieListScreen.ObserveField("movieSelected", "onMovieSelected")
     m.movieListScreen.ObserveField("movieFavoriteToggled", "onMovieFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
@@ -91,6 +92,7 @@ sub Init()
     m.seriesCategoriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
     m.seriesCategoriesScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
     m.seriesListScreen.ObserveField("backRequested", "onSeriesListBack")
+    m.seriesListScreen.ObserveField("categorySelected", "onSeriesListCategorySelected")
     m.seriesListScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.seriesListScreen.ObserveField("seriesFavoriteToggled", "onSeriesFavoriteToggled")
     m.seriesSeasonsScreen.ObserveField("backRequested", "onSeriesSeasonsBack")
@@ -494,7 +496,20 @@ sub onMovieCategorySelected()
     m.moviesLoading = true
     m.movieCategoriesScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
+    m.movieListScreen.callFunc("setCategories", m.movieCategories)
     m.movieListScreen.callFunc("resetSelection")
+    m.movieListScreen.callFunc("show", category)
+    m.movieListScreen.callFunc("setLoading", true)
+    loadMovies(category)
+end sub
+
+sub onMovieListCategorySelected()
+    category = m.movieListScreen.categorySelected
+    if category = invalid then return
+    m.selectedMovieCategory = category
+    m.selectedMovieCategoryId = getCategoryId(category)
+    m.movies = []
+    m.moviesLoading = true
     m.movieListScreen.callFunc("show", category)
     m.movieListScreen.callFunc("setLoading", true)
     loadMovies(category)
@@ -868,7 +883,20 @@ sub onSeriesCategorySelected()
     m.series = []
     m.seriesLoading = true
     m.seriesCategoriesScreen.callFunc("hide")
+    m.seriesListScreen.callFunc("setCategories", m.seriesCategories)
     m.seriesListScreen.callFunc("resetSelection")
+    m.seriesListScreen.callFunc("show", category)
+    m.seriesListScreen.callFunc("setLoading", true)
+    loadSeries(category)
+end sub
+
+sub onSeriesListCategorySelected()
+    category = m.seriesListScreen.categorySelected
+    if category = invalid then return
+    m.selectedSeriesCategory = category
+    m.selectedSeriesCategoryId = getCategoryId(category)
+    m.series = []
+    m.seriesLoading = true
     m.seriesListScreen.callFunc("show", category)
     m.seriesListScreen.callFunc("setLoading", true)
     loadSeries(category)

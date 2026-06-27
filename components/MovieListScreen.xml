@@ -5,18 +5,26 @@
         <function name="hide" />
         <function name="setLoading" />
         <function name="setMovies" />
+        <function name="setCategories" />
         <function name="showMessage" />
+        <function name="resetSelection" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="categorySelected" type="assocarray" alwaysNotify="true" />
         <field id="movieSelected" type="assocarray" alwaysNotify="true" />
-            <field id="movieFavoriteToggled" type="assocarray" alwaysNotify="true" />
+        <field id="movieFavoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/MovieListScreen.brs" />
     <children>
-        <Rectangle id="background" color="#000000" translation="[0, 0]" />
-        <Label id="title" text="FILMES" color="#FFFFFF" horizAlign="center" />
-        <Label id="subtitle" text="Filmes" color="#B8C3D6" horizAlign="center" />
+        <Rectangle id="background" color="#05070B" translation="[0, 0]" />
+        <Rectangle id="searchBar" color="#101722" opacity="0.96" />
+        <Label id="searchLabel" text="Pesquisar" color="#DDE6F3" vertAlign="center" />
+        <Rectangle id="leftPanel" color="#0B111B" opacity="0.98" />
+        <Rectangle id="divider" color="#1D2A3A" />
+        <Label id="categoriesTitle" text="Categorias" color="#FFFFFF" />
+        <Label id="subtitle" text="FILMES" color="#9FAEC4" horizAlign="right" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
+        <Group id="categoriesGroup" />
         <Group id="moviesGroup" />
-        <Label id="hintLabel" text="Buscar no topo • OK para assistir • * favoritar • Voltar para categorias" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="←/→ alternar painel • OK selecionar • * favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
