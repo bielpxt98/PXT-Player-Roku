@@ -24,6 +24,8 @@ sub Init()
     m.seriesPlayerScreen = m.top.FindNode("seriesPlayerScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
+    m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
+    m.pendingDetailRequest = ""
     m.account = LoadSavedPlaylist()
     m.pendingAccount = invalid
     m.liveCategories = []
@@ -118,6 +120,7 @@ sub Init()
     m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
+    m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
 
     if hasAccount(m.account) then
         updateConnectionStatus(true, "Conectado")
@@ -584,6 +587,7 @@ sub onMovieSelected()
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("show", movie)
     m.movieDetailScreen.callFunc("setLoading", true)
+    startDetailTimeout("movie")
     loadMovieInfo(movie)
 end sub
 
@@ -594,6 +598,10 @@ end sub
 
 sub onMovieDetailPlay()
     if m.selectedMovie = invalid then return
+    if getStreamId(m.selectedMovie) = "" then
+        m.movieDetailScreen.callFunc("setLoading", false)
+        return
+    end if
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("show", m.selectedMovie)
     m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", m.selectedMovie))
@@ -606,7 +614,6 @@ end sub
 
 sub onMoviePlayerBack()
     UpsertMovieHistory(m.selectedMovie, m.moviePlayerScreen.callFunc("getPlaybackPosition"))
-    m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     if m.openedFromFavorites = true then
         m.openedFromFavorites = false
@@ -618,7 +625,7 @@ sub onMoviePlayerBack()
         m.openedFromSearch = false
         showHome()
     else
-        m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+        m.movieDetailScreen.callFunc("show", m.selectedMovie)
     end if
 end sub
 
@@ -1020,6 +1027,7 @@ sub onSeriesSelected()
     m.seriesListScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("show", series)
     m.seriesDetailScreen.callFunc("setLoading", true)
+    startDetailTimeout("series")
     loadSeriesInfo(series)
 end sub
 
@@ -1069,6 +1077,10 @@ sub onSeriesEpisodeSelected()
         return
     end if
     m.selectedEpisode = episode
+    if getEpisodeId(episode) = "" then
+        m.seriesEpisodesScreen.callFunc("showMessage", "Não foi possível abrir este episódio: stream inválido.")
+        return
+    end if
     m.seriesEpisodesScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("show", episode)
     m.seriesPlayerScreen.callFunc("setResumePosition", GetHistoryPosition("episode", episode))
@@ -1157,6 +1169,31 @@ sub onLoginTimeout()
     m.loginScreen.callFunc("showError", "Servidor não respondeu. Verifique DNS, usuário e senha.")
 end sub
 
+
+sub startDetailTimeout(kind as String)
+    m.pendingDetailRequest = kind
+    if m.detailTimeoutTimer = invalid then return
+    m.detailTimeoutTimer.control = "stop"
+    m.detailTimeoutTimer.duration = 10
+    m.detailTimeoutTimer.control = "start"
+end sub
+
+sub stopDetailTimeout(kind as String)
+    if m.pendingDetailRequest = kind then m.pendingDetailRequest = ""
+    if m.detailTimeoutTimer <> invalid then m.detailTimeoutTimer.control = "stop"
+end sub
+
+sub onDetailTimeout()
+    kind = m.pendingDetailRequest
+    m.pendingDetailRequest = ""
+    m.xtreamService.control = "STOP"
+    if kind = "movie" then
+        if m.movieDetailScreen.visible = true then m.movieDetailScreen.callFunc("setLoading", false)
+    else if kind = "series" then
+        if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setLoading", false)
+        if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Não foi possível carregar as temporadas desta série. Tente novamente mais tarde.")
+    end if
+end sub
 
 sub onMovieCategoriesResult(result as Object)
     m.movieCategoriesLoading = false
@@ -1391,6 +1428,7 @@ sub onSeriesResult(result as Object)
 end sub
 
 sub onSeriesInfoResult(result as Object)
+    stopDetailTimeout("series")
     if result.success = true then
         if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setDetails", result.data)
         seasons = normalizeSeriesSeasons(result.data)
@@ -1407,6 +1445,7 @@ sub onSeriesInfoResult(result as Object)
 end sub
 
 sub onMovieInfoResult(result as Object)
+    stopDetailTimeout("movie")
     if m.movieDetailScreen.visible <> true then return
     if result.success = true then
         m.movieDetailScreen.callFunc("setDetails", result.data)

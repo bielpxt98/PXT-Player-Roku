@@ -130,14 +130,14 @@ end sub
 
 function mergeItem(base as Dynamic, details as Dynamic) as Object
     merged = {}
-    if base <> invalid then
+    if base <> invalid and Type(base) = "roAssociativeArray" then
         for each k in base
             merged[k] = base[k]
         end for
     end if
     info = details
-    if details.info <> invalid then info = details.info
-    if info <> invalid then
+    if details <> invalid and Type(details) = "roAssociativeArray" and details.info <> invalid then info = details.info
+    if info <> invalid and Type(info) = "roAssociativeArray" then
         for each k in info
             merged[k] = info[k]
         end for
@@ -146,9 +146,9 @@ function mergeItem(base as Dynamic, details as Dynamic) as Object
 end function
 
 function firstText(item as Dynamic, keys as Object) as String
-    if item = invalid then return ""
+    if item = invalid or Type(item) <> "roAssociativeArray" then return ""
     for each k in keys
-        if item[k] <> invalid and item[k].ToStr().Trim() <> "" then return item[k].ToStr().Trim()
+        if item.DoesExist(k) and item[k] <> invalid and item[k].ToStr().Trim() <> "" then return item[k].ToStr().Trim()
     end for
     return ""
 end function

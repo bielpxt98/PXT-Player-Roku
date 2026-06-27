@@ -7,6 +7,9 @@ sub Init()
     m.errorGroup = m.top.FindNode("errorGroup")
     m.errorTitle = m.top.FindNode("errorTitle")
     m.errorMessage = m.top.FindNode("errorMessage")
+    m.infoGroup = m.top.FindNode("infoGroup")
+    m.infoTitle = m.top.FindNode("infoTitle")
+    m.infoTime = m.top.FindNode("infoTime")
 
     m.episode = invalid
     m.episodeName = "Episódio"
@@ -40,6 +43,15 @@ sub configureLayout()
     m.errorMessage.width = 760
     m.errorMessage.font = "font:MediumSystemFont"
     m.errorMessage.translation = [0, 78]
+
+    m.infoGroup.translation = [0, height - 112]
+    m.infoGroup.width = width
+    m.infoTitle.width = width - 120
+    m.infoTitle.translation = [60, 16]
+    m.infoTitle.font = "font:MediumBoldSystemFont"
+    m.infoTime.width = width - 120
+    m.infoTime.translation = [60, 58]
+    m.infoTime.font = "font:MediumSystemFont"
 end sub
 
 sub show(episode as Dynamic)
@@ -76,6 +88,7 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     m.video.content = content
     if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
+    m.top.SetFocus(true)
     m.isPlaying = true
     showLoading("Carregando " + m.episodeName + "...")
 end sub
@@ -130,6 +143,11 @@ sub stopPlayback()
     end if
     m.isPlaying = false
     m.loadingSpinner.control = "stop"
+    if m.infoGroup <> invalid then m.infoGroup.visible = false
+    if m.resumeDialog <> invalid then
+        m.top.GetScene().dialog = invalid
+        m.resumeDialog = invalid
+    end if
 end sub
 
 sub showLoading(message as String)
@@ -167,9 +185,69 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         stopPlayback()
         m.top.backRequested = true
         return true
+    else if key = "OK" then
+        togglePause()
+        return true
+    else if key = "right" then
+        seekBy(30)
+        return true
+    else if key = "left" then
+        seekBy(-15)
+        return true
+    else if key = "up" then
+        showInfo()
+        return true
+    else if key = "down" then
+        hideInfo()
+        return true
     end if
 
     return false
+end function
+
+sub togglePause()
+    if m.video = invalid then return
+    state = LCase(m.video.state)
+    if state = "playing" or m.isPlaying = true then
+        m.video.control = "pause"
+        m.isPlaying = false
+    else
+        m.video.control = "resume"
+        m.isPlaying = true
+    end if
+    showInfo()
+end sub
+
+sub seekBy(offsetSeconds as Integer)
+    if m.video = invalid then return
+    pos = getPlaybackPosition() + offsetSeconds
+    if pos < 0 then pos = 0
+    m.video.seek = pos
+    showInfo()
+end sub
+
+sub showInfo()
+    if m.infoGroup = invalid then return
+    m.infoTitle.text = m.episodeName
+    m.infoTime.text = formatSeconds(getPlaybackPosition())
+    m.infoGroup.visible = true
+end sub
+
+sub hideInfo()
+    if m.infoGroup <> invalid then m.infoGroup.visible = false
+end sub
+
+function formatSeconds(totalSeconds as Integer) as String
+    if totalSeconds < 0 then totalSeconds = 0
+    hours = Int(totalSeconds / 3600)
+    minutes = Int((totalSeconds - (hours * 3600)) / 60)
+    seconds = totalSeconds mod 60
+    return twoDigits(hours) + ":" + twoDigits(minutes) + ":" + twoDigits(seconds)
+end function
+
+function twoDigits(value as Integer) as String
+    if value < 10 then return "0" + value.ToStr()
+    return value.ToStr()
 end function
 
 function getEpisodeName(episode as Dynamic) as String
