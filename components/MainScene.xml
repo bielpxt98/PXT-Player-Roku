@@ -6,6 +6,7 @@
     <children>
         <HomeScreen id="homeScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
+        <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
         <XtreamService id="xtreamService" />
     </children>
 </component>
