@@ -3,19 +3,17 @@ sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.overlay = m.top.FindNode("homeOverlay")
     m.title = m.top.FindNode("homeTitle")
-    m.subtitle = m.top.FindNode("homeSubtitle")
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
     m.favoritesButton = m.top.FindNode("favoritesButton")
     m.recentButton = m.top.FindNode("recentButton")
-    m.playlistButton = m.top.FindNode("playlistButton")
-    m.settingsFooterLabel = m.top.FindNode("settingsFooterLabel")
     m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
     m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton, m.playlistButton]
     m.focusIndex = 0
+    m.focusArea = "cards"
     configureLayout()
 end sub
 
@@ -31,17 +29,11 @@ sub configureLayout()
 
     m.title.width = width
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.18)]
+    m.title.translation = [0, Int(height * 0.16)]
 
-    m.subtitle.width = width
-    m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, Int(height * 0.27)]
-
-    buttonWidth = 224
-    buttonGap = 30
-    buttonsPerRow = 3
-    rowGap = 108
-    totalWidth = (buttonWidth * buttonsPerRow) + (buttonGap * (buttonsPerRow - 1))
+    buttonWidth = 176
+    buttonGap = 24
+    totalWidth = (buttonWidth * m.buttons.Count()) + (buttonGap * (m.buttons.Count() - 1))
     startX = Int((width - totalWidth) / 2)
     buttonY = Int(height * 0.39)
 
@@ -51,14 +43,10 @@ sub configureLayout()
         m.buttons[i].translation = [startX + (col * (buttonWidth + buttonGap)), buttonY + (row * rowGap)]
     end for
 
-    footerY = Int(height * 0.86)
-    m.settingsFooterLabel.width = 240
-    m.settingsFooterLabel.font = "font:SmallSystemFont"
-    m.settingsFooterLabel.translation = [Int((width / 2) - 260), footerY]
-
-    m.accountFooterLabel.width = 160
-    m.accountFooterLabel.font = "font:SmallSystemFont"
-    m.accountFooterLabel.translation = [Int((width / 2) + 60), footerY]
+    footerY = Int(height * 0.74)
+    m.accountFooterLabel.width = 180
+    m.accountFooterLabel.font = "font:SmallBoldSystemFont"
+    m.accountFooterLabel.translation = [Int((width - m.accountFooterLabel.width) / 2), footerY]
 
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:SmallSystemFont"
@@ -68,6 +56,7 @@ end sub
 sub show()
     m.top.visible = true
     m.focusIndex = 0
+    m.focusArea = "cards"
     updateFocus()
 end sub
 
@@ -136,10 +125,18 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "left" then
-        moveFocus(-1)
+        if m.focusArea = "cards" then moveFocus(-1)
         return true
     else if key = "right" then
-        moveFocus(1)
+        if m.focusArea = "cards" then moveFocus(1)
+        return true
+    else if key = "down" then
+        m.focusArea = "account"
+        updateFocus()
+        return true
+    else if key = "up" then
+        m.focusArea = "cards"
+        updateFocus()
         return true
     else if key = "OK" then
         selectFocusedButton()
@@ -159,12 +156,28 @@ end sub
 
 sub updateFocus()
     for i = 0 to m.buttons.Count() - 1
-        m.buttons[i].selected = (i = m.focusIndex)
-        m.buttons[i].SetFocus(i = m.focusIndex)
+        isCardFocused = (m.focusArea = "cards" and i = m.focusIndex)
+        m.buttons[i].selected = isCardFocused
+        m.buttons[i].SetFocus(isCardFocused)
     end for
+
+    if m.focusArea = "account" then
+        m.accountFooterLabel.color = "#FFFFFF"
+        m.accountFooterLabel.opacity = 1.0
+        m.accountFooterLabel.SetFocus(true)
+    else
+        m.accountFooterLabel.color = "#D8E2F3"
+        m.accountFooterLabel.opacity = 0.78
+        m.accountFooterLabel.SetFocus(false)
+    end if
 end sub
 
 sub selectFocusedButton()
+    if m.focusArea = "account" then
+        onPlaylistSelected()
+        return
+    end if
+
     if m.focusIndex = 0 then
         onLiveTvSelected()
     else if m.focusIndex = 1 then
