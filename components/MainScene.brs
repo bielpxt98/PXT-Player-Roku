@@ -554,7 +554,14 @@ sub onSeriesSeasonSelected()
     m.seriesSeasonsScreen.callFunc("hide")
     m.seriesEpisodesScreen.callFunc("resetSelection")
     m.seriesEpisodesScreen.callFunc("show", season)
-    m.seriesEpisodesScreen.callFunc("setEpisodes", getSeasonEpisodes(season))
+    m.seriesEpisodesScreen.callFunc("setLoading", true)
+
+    episodes = getSeasonEpisodes(season)
+    if episodes.Count() > 0 then
+        m.seriesEpisodesScreen.callFunc("setEpisodes", episodes)
+    else
+        m.seriesEpisodesScreen.callFunc("showMessage", "Esta temporada não possui episódios disponíveis.")
+    end if
 end sub
 
 sub onSeriesEpisodeSelected()
@@ -796,7 +803,7 @@ sub onSeriesCategoriesResult(result as Object)
 end sub
 
 sub onSeriesResult(result as Object)
-    if result.request = "getSeriesInfo" then
+    if isSeriesInfoResult(result) then
         onSeriesInfoResult(result)
         return
     end if
@@ -826,7 +833,7 @@ sub onSeriesInfoResult(result as Object)
         if seasons.Count() > 0 then
             if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("setSeasons", seasons)
         else
-            if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Nenhuma temporada foi encontrada para esta série.")
+            if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Esta série não possui episódios disponíveis.")
         end if
     else
         if m.seriesSeasonsScreen.visible = true then m.seriesSeasonsScreen.callFunc("showMessage", "Não foi possível carregar as temporadas desta série. Tente novamente mais tarde.")
@@ -841,6 +848,13 @@ sub onSeriesStreamUrlResult(result as Object)
         m.seriesPlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste episódio.")
     end if
 end sub
+
+function isSeriesInfoResult(result as Dynamic) as Boolean
+    if result = invalid or result.request = invalid then return false
+    request = result.request.ToStr()
+    prefix = "getSeriesInfo"
+    return Left(request, Len(prefix)) = prefix
+end function
 
 function getSeriesResultCategoryId(result as Dynamic) as String
     if result = invalid or result.request = invalid then return ""
@@ -864,16 +878,68 @@ end function
 
 function normalizeSeriesSeasons(data as Dynamic) as Object
     if data = invalid then return []
-    episodesBySeason = data.episodes
-    seasons = []
-    if data.seasons <> invalid and Type(data.seasons) = "roArray" then
-        seasons = data.seasons
+
+    episodesBySeason = invalid
+    if data.episodes <> invalid and Type(data.episodes) = "roAssociativeArray" then
+        episodesBySeason = data.episodes
     end if
-    for each season in seasons
-        key = getSeasonNumber(season)
-        if episodesBySeason <> invalid and key <> "" and episodesBySeason.DoesExist(key) then season.episodes = episodesBySeason[key]
-    end for
-    return seasons
+
+    normalizedSeasons = []
+    if data.seasons <> invalid and Type(data.seasons) = "roArray" then
+        for each season in data.seasons
+            normalizedSeason = season
+            seasonNumber = getSeasonNumber(normalizedSeason)
+            seasonEpisodes = getEpisodesForSeason(episodesBySeason, seasonNumber)
+            if seasonEpisodes.Count() > 0 then
+                normalizedSeason.episodes = seasonEpisodes
+                normalizedSeasons.Push(normalizedSeason)
+            else if seasonNumber <> "" then
+                normalizedSeason.episodes = []
+                normalizedSeasons.Push(normalizedSeason)
+            end if
+        end for
+    end if
+
+    if normalizedSeasons.Count() = 0 and episodesBySeason <> invalid then
+        for each seasonKey in episodesBySeason
+            seasonEpisodes = getEpisodesForSeason(episodesBySeason, seasonKey)
+            if seasonEpisodes.Count() > 0 then
+                normalizedSeasons.Push({
+                    name: "Temporada " + seasonKey.ToStr(),
+                    title: "Temporada " + seasonKey.ToStr(),
+                    season_number: seasonKey.ToStr(),
+                    episodes: seasonEpisodes
+                })
+            end if
+        end for
+    end if
+
+    return normalizedSeasons
+end function
+
+function getEpisodesForSeason(episodesBySeason as Dynamic, seasonNumber as Dynamic) as Object
+    if episodesBySeason = invalid or Type(episodesBySeason) <> "roAssociativeArray" then return []
+
+    key = safeText(seasonNumber)
+    if key = "" then return []
+    if episodesBySeason.DoesExist(key) and Type(episodesBySeason[key]) = "roArray" then return episodesBySeason[key]
+
+    numericKey = key
+    while Len(numericKey) > 1 and Left(numericKey, 1) = "0"
+        numericKey = Mid(numericKey, 2)
+    end while
+    if numericKey <> key and episodesBySeason.DoesExist(numericKey) and Type(episodesBySeason[numericKey]) = "roArray" then return episodesBySeason[numericKey]
+
+    paddedKey = key
+    if Len(paddedKey) = 1 then paddedKey = "0" + paddedKey
+    if paddedKey <> key and episodesBySeason.DoesExist(paddedKey) and Type(episodesBySeason[paddedKey]) = "roArray" then return episodesBySeason[paddedKey]
+
+    return []
+end function
+
+function safeText(value as Dynamic) as String
+    if value = invalid then return ""
+    return value.ToStr().Trim()
 end function
 
 function getSeasonEpisodes(season as Dynamic) as Object
