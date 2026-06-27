@@ -54,6 +54,11 @@ sub show(category as Dynamic)
     m.top.visible = true : m.top.SetFocus(true)
 end sub
 
+sub focusCategories()
+    m.activePane = "categories"
+    updateFocus()
+end sub
+
 sub hide()
     m.top.visible = false
 end sub
