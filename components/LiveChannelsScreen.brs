@@ -237,6 +237,11 @@ sub selectCategory(category as Dynamic)
     end for
 end sub
 
+sub focusCategories()
+    m.focusColumn = "categories"
+    updateFocus()
+end sub
+
 sub hide()
     m.top.visible = false
 end sub
