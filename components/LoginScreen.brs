@@ -1,5 +1,5 @@
-' Login screen. It captures account data locally and intentionally does not
-' validate or connect to Xtream/M3U services yet.
+' Login screen. It captures account data and delegates Xtream authentication
+' to the MainScene/XtreamService integration.
 sub Init()
     m.background = m.top.FindNode("loginBackground")
     m.title = m.top.FindNode("loginTitle")
@@ -11,6 +11,9 @@ sub Init()
     m.passwordInput = m.top.FindNode("passwordInput")
     m.enterButton = m.top.FindNode("enterButton")
     m.backButton = m.top.FindNode("backButton")
+    m.loadingSpinner = m.top.FindNode("loadingSpinner")
+    m.loadingLabel = m.top.FindNode("loadingLabel")
+    m.messageLabel = m.top.FindNode("messageLabel")
 
     m.focusRings = [
         m.top.FindNode("dnsFocus"),
@@ -19,11 +22,14 @@ sub Init()
     ]
     m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.backButton]
     m.focusIndex = 0
+    m.isLoading = false
 
     m.enterButton.ObserveField("buttonSelected", "onEnterSelected")
     m.backButton.ObserveField("buttonSelected", "onBackSelected")
 
     configureLayout()
+    setLoading(false)
+    clearMessage()
     updateFocus()
 end sub
 
@@ -44,6 +50,8 @@ sub configureLayout()
     m.subtitle.translation = [0, 142]
 
     m.formGroup.translation = [Int((width - 600) / 2), 230]
+    m.messageLabel.width = 600
+    m.loadingLabel.width = 500
 end sub
 
 sub show(account as Object)
@@ -53,15 +61,46 @@ sub show(account as Object)
         m.userInput.text = account.username
         m.passwordInput.text = account.password
     end if
+    setLoading(false)
+    clearMessage()
     m.focusIndex = 0
     updateFocus()
 end sub
 
 sub hide()
     m.top.visible = false
+    setLoading(false)
+end sub
+
+sub setLoading(isLoading as Boolean)
+    m.isLoading = isLoading
+    m.loadingSpinner.visible = isLoading
+    if isLoading then
+        m.loadingSpinner.control = "start"
+    else
+        m.loadingSpinner.control = "stop"
+    end if
+    m.loadingLabel.visible = isLoading
+    m.enterButton.enabled = not isLoading
+    m.backButton.enabled = not isLoading
+end sub
+
+sub showError(message as String)
+    setLoading(false)
+    m.messageLabel.color = "#FF6B6B"
+    m.messageLabel.text = message
+    m.messageLabel.visible = true
+    updateFocus()
+end sub
+
+sub clearMessage()
+    m.messageLabel.text = ""
+    m.messageLabel.visible = false
 end sub
 
 sub onEnterSelected()
+    if m.isLoading then return
+    clearMessage()
     m.top.submit = {
         dns: m.dnsInput.text,
         username: m.userInput.text,
@@ -70,11 +109,13 @@ sub onEnterSelected()
 end sub
 
 sub onBackSelected()
+    if m.isLoading then return
     m.top.backRequested = true
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    if m.isLoading then return true
 
     if key = "up" then
         moveFocus(-1)

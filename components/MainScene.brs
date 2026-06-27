@@ -1,11 +1,12 @@
 ' Main scene for the PXT Player application.
-' It coordinates feature screens and starts the basic Xtream connection check
-' when locally saved login data is available.
+' It coordinates feature screens and authenticates playlist credentials through
+' XtreamService without loading channels, categories, or playback resources.
 sub Init()
     m.homeScreen = m.top.FindNode("homeScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
-    m.account = loadSavedAccount()
+    m.account = LoadSavedPlaylist()
+    m.pendingAccount = invalid
 
     configureScene()
 
@@ -14,7 +15,6 @@ sub Init()
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
 
-    m.account = LoadSavedPlaylist()
     showHome()
 end sub
 
@@ -23,10 +23,6 @@ sub configureScene()
     m.top.backgroundURI = ""
     m.homeScreen.SetFocus(true)
 end sub
-
-function hasSavedPlaylist() as Boolean
-    return m.account <> invalid
-end function
 
 sub showHome()
     m.loginScreen.callFunc("hide")
@@ -43,24 +39,24 @@ sub onOpenPlaylistRequested()
 end sub
 
 sub onLoginSubmit()
-    m.account = m.loginScreen.submit
-    saveAccount(m.account)
-    updateConnectionStatus(false, "Conectando ao servidor...")
-    showHome()
-    testXtreamConnection(m.account)
+    account = m.loginScreen.submit
+    if not hasAccount(account) then
+        m.loginScreen.callFunc("showError", "Informe DNS, usuário e senha para conectar.")
+        return
+    end if
+
+    m.pendingAccount = account
+    m.loginScreen.callFunc("setLoading", true)
+    connectXtream(account)
 end sub
 
 sub onLoginBack()
     showHome()
 end sub
 
-sub testXtreamConnection(account as Object)
-    if not hasAccount(account) then
-        updateConnectionStatus(false, "Informe DNS, usuário e senha para conectar.")
-        return
-    end if
-
+sub connectXtream(account as Object)
     m.xtreamService.control = "STOP"
+    m.xtreamService.action = "connect"
     m.xtreamService.dns = account.dns
     m.xtreamService.username = account.username
     m.xtreamService.password = account.password
@@ -71,8 +67,18 @@ sub onXtreamConnectionResult()
     result = m.xtreamService.result
     if result = invalid then return
 
-    saveConnectionStatus(result.connected = true)
-    updateConnectionStatus(result.connected = true, result.message)
+    if result.success = true and result.connected = true then
+        m.account = m.pendingAccount
+        SavePlaylist(m.account)
+        SavePlaylistConnectionStatus("Conectado")
+        updateConnectionStatus(true, "Conectado")
+        m.pendingAccount = invalid
+        showHome()
+    else
+        SavePlaylistConnectionStatus("Desconectado")
+        m.pendingAccount = invalid
+        m.loginScreen.callFunc("showError", "Não foi possível conectar ao servidor.")
+    end if
 end sub
 
 sub updateConnectionStatus(connected as Boolean, message as String)
@@ -82,40 +88,12 @@ sub updateConnectionStatus(connected as Boolean, message as String)
     })
 end sub
 
-function loadSavedAccount() as Dynamic
-    section = CreateObject("roRegistrySection", "pxt_player_account")
-    if not section.Exists("dns") or not section.Exists("username") or not section.Exists("password") then
-        return invalid
-    end if
-
-    return {
-        dns: section.Read("dns"),
-        username: section.Read("username"),
-        password: section.Read("password")
-    }
-end function
-
-sub saveAccount(account as Object)
-    if account = invalid then return
-
-    section = CreateObject("roRegistrySection", "pxt_player_account")
-    section.Write("dns", account.dns)
-    section.Write("username", account.username)
-    section.Write("password", account.password)
-    section.Flush()
-end sub
-
-sub saveConnectionStatus(connected as Boolean)
-    section = CreateObject("roRegistrySection", "pxt_player_connection")
-    if connected then
-        section.Write("status", "connected")
-    else
-        section.Write("status", "disconnected")
-    end if
-    section.Flush()
-end sub
-
 function hasAccount(account as Dynamic) as Boolean
     if account = invalid then return false
-    return account.dns.Trim() <> "" and account.username.Trim() <> "" and account.password.Trim() <> ""
+    return safeText(account.dns) <> "" and safeText(account.username) <> "" and safeText(account.password) <> ""
+end function
+
+function safeText(value as Dynamic) as String
+    if value = invalid then return ""
+    return value.Trim()
 end function

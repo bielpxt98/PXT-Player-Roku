@@ -4,6 +4,7 @@ sub Init()
     m.title = m.top.FindNode("homeTitle")
     m.subtitle = m.top.FindNode("homeSubtitle")
     m.playlistButton = m.top.FindNode("playlistButton")
+    m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
     m.buttons = [m.playlistButton]
     m.focusIndex = 0
@@ -29,6 +30,9 @@ sub configureLayout()
     m.subtitle.translation = [0, Int(height * 0.34)]
 
     m.playlistButton.translation = [Int((width - 520) / 2), Int(height * 0.58)]
+    m.connectionStatusLabel.width = width
+    m.connectionStatusLabel.font = "font:MediumSystemFont"
+    m.connectionStatusLabel.translation = [0, Int(height * 0.72)]
 end sub
 
 sub show()

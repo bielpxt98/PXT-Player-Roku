@@ -18,6 +18,8 @@ function LoadSavedPlaylist() as Object
         password: section.Read("password")
     }
 
+    if section.Exists("status") then playlist.status = section.Read("status")
+
     if playlist.dns = "" or playlist.username = "" or playlist.password = "" then
         return invalid
     end if
@@ -30,6 +32,7 @@ sub SavePlaylist(playlist as Object)
     section.Write("dns", playlist.dns)
     section.Write("username", playlist.username)
     section.Write("password", playlist.password)
+    section.Write("status", "Conectado")
     section.Flush()
 end sub
 
@@ -38,5 +41,12 @@ sub DeleteSavedPlaylist()
     if section.Exists("dns") then section.Delete("dns")
     if section.Exists("username") then section.Delete("username")
     if section.Exists("password") then section.Delete("password")
+    if section.Exists("status") then section.Delete("status")
+    section.Flush()
+end sub
+
+sub SavePlaylistConnectionStatus(status as String)
+    section = CreateObject("roRegistrySection", PlaylistStorageSectionName())
+    section.Write("status", status)
     section.Flush()
 end sub
