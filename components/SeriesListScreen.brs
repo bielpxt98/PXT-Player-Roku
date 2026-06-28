@@ -27,14 +27,14 @@ sub configureLayout()
     m.gridW = w - m.gridX - m.margin : m.gridH = m.panelH - 54
     m.categoryX = m.margin + 18 : m.categoryY = m.panelY + 72
     m.categoryW = m.leftW - 36 : m.categoryItemH = 52
-    m.posterW = 150 : m.posterH = 220
-    m.posterGapX = 56 : m.posterGapY = 42
+    m.posterW = 178 : m.posterH = 260
+    m.posterGapX = 88 : m.posterGapY = 46
     m.titleOffsetY = 10 : m.titleH = 42
-    if h <= 720 then m.posterW = 104 : m.posterH = 152 : m.posterGapX = 48 : m.posterGapY = 16 : m.titleOffsetY = 6 : m.titleH = 30 : m.categoryItemH = 44
+    if h <= 720 then m.posterW = 126 : m.posterH = 184 : m.posterGapX = 64 : m.posterGapY = 22 : m.titleOffsetY = 6 : m.titleH = 30 : m.categoryItemH = 44
     m.itemH = m.posterH + m.titleOffsetY + m.titleH + m.posterGapY
     m.columns = Int((m.gridW + m.posterGapX) / (m.posterW + m.posterGapX)) : if m.columns < 1 then m.columns = 1
-    if m.columns > 4 then m.columns = 4
-    if h <= 720 and m.columns > 3 then m.columns = 3
+    if m.columns > 5 then m.columns = 5
+    if h <= 720 and m.columns > 4 then m.columns = 4
     m.rows = 3
     m.visibleItemCount = m.columns * m.rows
     if m.visibleItemCount > 12 then m.visibleItemCount = 12

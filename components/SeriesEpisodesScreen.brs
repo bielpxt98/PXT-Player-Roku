@@ -91,9 +91,9 @@ end sub
 
 sub show(category as Dynamic)
     if category <> invalid then
-        m.subtitle.text = "Episódios • " + getCategoryName(category)
+        m.subtitle.text = getCategoryName(category)
     else
-        m.subtitle.text = "Episódios"
+        m.subtitle.text = "Temporada"
     end if
 
     configureLayout()
@@ -267,7 +267,7 @@ end sub
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
-    if key = "back" then
+    if key = "back" or key = "left" then
         m.top.backRequested = true
         return true
     else if key = "up" then
