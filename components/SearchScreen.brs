@@ -1,4 +1,4 @@
-' Premium in-app search screen for section-scoped live channels, movies, and series.
+' Simple in-app search screen for section-scoped live channels, movies, and series.
 sub Init()
     m.backgroundImage = m.top.FindNode("backgroundImage")
     m.overlay = m.top.FindNode("overlay")

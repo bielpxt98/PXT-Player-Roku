@@ -18,7 +18,7 @@
         <Rectangle id="overlay" color="#02040A" opacity="0.82" translation="[0, 0]" />
         <Rectangle id="topGradient" color="#000000" opacity="0.34" translation="[0, 0]" />
         <Label id="title" text="BUSCA" color="#FFFFFF" horizAlign="center" />
-        <Label id="subtitle" text="Busca premium PXT Player" color="#B8C3D6" horizAlign="center" />
+        <Label id="subtitle" text="Busca PXT Player" color="#B8C3D6" horizAlign="center" />
         <Rectangle id="inputBackground" color="#0B1220" opacity="0.92" />
         <TextEditBox id="searchInput" hintText="Digite no controle ou no app Roku Remote" text="" clearOnDownKey="false" />
         <Label id="queryMirror" text="" color="#FFFFFF" />
