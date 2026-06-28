@@ -80,6 +80,7 @@ end sub
 sub resetSelection()
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
     m.selectedChannelIndex = 0 : m.firstVisibleChannelIndex = 0
+    m.activePane = "categories"
 end sub
 
 sub focusCategories()
@@ -87,7 +88,12 @@ sub focusCategories()
 end sub
 
 sub focusChannels()
-    if m.channels.Count() > 0 then m.activePane = "channels"
+    if m.channels.Count() > 0 then
+        m.activePane = "channels"
+        m.selectedChannelIndex = 0
+        m.firstVisibleChannelIndex = 0
+        renderChannels()
+    end if
     updateFocus()
 end sub
 
@@ -119,7 +125,6 @@ sub setChannels(channels as Object)
     end if
     m.statusLabel.text = ""
     renderChannels()
-    m.activePane = "channels"
     updateFocus()
 end sub
 
@@ -193,9 +198,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     else if key = "right" then
-        if m.activePane = "categories" and m.channels.Count() > 0 then
-            m.activePane = "channels"
-            updateFocus()
+        if m.activePane = "categories" then
+            focusChannels()
         end if
         return true
     else if key = "up" then
@@ -214,7 +218,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.activePane = "categories" then
-            if m.categories.Count() > 0 then
+            if m.channels.Count() > 0 then
+                focusChannels()
+            else if m.categories.Count() > 0 then
                 m.top.categorySelected = m.categories[m.selectedCategoryIndex]
             end if
         else if m.channels.Count() > 0 then
