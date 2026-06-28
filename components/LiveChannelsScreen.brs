@@ -13,6 +13,10 @@ sub Init()
     m.leftPanelTitle = m.top.FindNode("leftPanelTitle")
     m.middlePanelTitle = m.top.FindNode("middlePanelTitle")
     m.statusLabel = m.top.FindNode("statusLabel")
+    m.categorySectionIndicator = m.top.FindNode("categorySectionIndicator")
+    m.categorySectionAccent = m.top.FindNode("categorySectionAccent")
+    m.channelSectionIndicator = m.top.FindNode("channelSectionIndicator")
+    m.channelSectionAccent = m.top.FindNode("channelSectionAccent")
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.channelsGroup = m.top.FindNode("channelsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
@@ -131,6 +135,20 @@ sub configureLayout()
     m.statusLabel.width = m.middlePanelWidth - 36
     m.statusLabel.font = "font:MediumSystemFont"
     m.statusLabel.translation = [m.middlePanelX + 18, m.listY + Int(m.listHeight / 2)]
+
+    m.categorySectionIndicator.translation = [m.contentX + 22, m.listY]
+    m.categorySectionIndicator.width = m.leftPanelWidth - 44
+    m.categorySectionIndicator.height = m.cardHeight
+    m.categorySectionAccent.translation = [m.contentX + 22, m.listY]
+    m.categorySectionAccent.width = 6
+    m.categorySectionAccent.height = m.cardHeight
+
+    m.channelSectionIndicator.translation = [m.middlePanelX + m.logoSize + 34, m.listY]
+    m.channelSectionIndicator.width = m.middlePanelWidth - m.logoSize - 56
+    m.channelSectionIndicator.height = m.cardHeight
+    m.channelSectionAccent.translation = [m.middlePanelX + m.logoSize + 34, m.listY]
+    m.channelSectionAccent.width = 6
+    m.channelSectionAccent.height = m.cardHeight
 
     m.categoriesGroup.translation = [m.contentX + 14, m.listY]
     m.channelsGroup.translation = [m.middlePanelX + 14, m.listY]
@@ -323,7 +341,7 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     background.width = m.leftPanelWidth - 44
     background.height = m.cardHeight
     background.color = "#0B3A5E"
-    background.opacity = 1.0
+    background.opacity = 0.0
     background.visible = false
 
     accent = CreateObject("roSGNode", "Rectangle")
@@ -376,7 +394,7 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     background.width = m.middlePanelWidth - m.logoSize - 56
     background.height = m.cardHeight
     background.color = "#0B3A5E"
-    background.opacity = 1.0
+    background.opacity = 0.0
     background.visible = false
 
     accent = CreateObject("roSGNode", "Rectangle")
@@ -571,77 +589,30 @@ sub updateVisibleWindow()
 end sub
 
 sub updateFocus()
-    selectedNode = invalid
-    selectedCategoryNode = invalid
-
     for i = 0 to m.categoryNodes.Count() - 1
         realIndex = m.categoryFirstVisibleIndex + i
-        background = m.categoryNodes[i].FindNode("itemBackground")
-        accent = m.categoryNodes[i].FindNode("itemAccent")
         label = m.categoryNodes[i].FindNode("itemLabel")
 
         m.categoryNodes[i].scale = [1.0, 1.0]
-        background.visible = false
-        background.color = "#0B3A5E"
-        background.opacity = 1.0
-        accent.opacity = 0.0
         label.color = "#AAAAAABB"
 
-        if realIndex = m.categorySelectedIndex then selectedCategoryNode = m.categoryNodes[i]
+        if realIndex = m.categorySelectedIndex then label.color = "#FFFFFF"
     end for
 
-    if selectedCategoryNode <> invalid then
-        background = selectedCategoryNode.FindNode("itemBackground")
-        accent = selectedCategoryNode.FindNode("itemAccent")
-        label = selectedCategoryNode.FindNode("itemLabel")
-
-        if m.focusColumn = "categories" then
-            selectedCategoryNode.scale = [1.02, 1.02]
-            background.visible = true
-            background.color = "#061F36"
-            background.opacity = 1.0
-            accent.opacity = 1.0
-            label.color = "#FFFFFF"
-        end if
-    end if
-
-    ' Keep a single manual highlight: reset every visible item before
-    ' applying the selectedIndex state to exactly one realIndex.
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
-        background = m.itemNodes[i].FindNode("itemBackground")
-        accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
         logoBackground = m.itemNodes[i].FindNode("logoBackground")
 
         m.itemNodes[i].scale = [1.0, 1.0]
-        background.visible = false
-        background.color = "#0B3A5E"
-        background.opacity = 1.0
-        accent.opacity = 0.0
         label.color = "#AAAAAABB"
         if logoBackground <> invalid then logoBackground.color = "#1F2937"
 
-        if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
-    end for
-
-    if selectedNode <> invalid then
-        background = selectedNode.FindNode("itemBackground")
-        accent = selectedNode.FindNode("itemAccent")
-        label = selectedNode.FindNode("itemLabel")
-        logoBackground = selectedNode.FindNode("logoBackground")
-
-        if m.focusColumn = "channels" then
-            selectedNode.scale = [1.02, 1.02]
-            background.visible = true
-            background.color = "#061F36"
-            background.opacity = 1.0
-            accent.opacity = 1.0
+        if realIndex = m.selectedIndex then
             label.color = "#FFFFFF"
             if logoBackground <> invalid then logoBackground.color = "#063B66"
         end if
-    end if
-
+    end for
 end sub
 
 
