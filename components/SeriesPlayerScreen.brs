@@ -1,6 +1,7 @@
 ' Native Roku player screen for series episode streams.
 sub Init()
     m.video = m.top.FindNode("video")
+    m.videoPlayer = m.video
     m.loadingGroup = m.top.FindNode("loadingGroup")
     m.loadingSpinner = m.top.FindNode("loadingSpinner")
     m.loadingLabel = m.top.FindNode("loadingLabel")
@@ -237,9 +238,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "back" then
-        stopPlayback()
-        m.top.backRequested = true
-        return true
+        return handleBackKeySafely()
     else if key = "OK" then
         togglePause()
         return true
