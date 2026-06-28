@@ -93,10 +93,13 @@ end sub
 
 sub setLoading(isLoading as Boolean)
     clearGridNodes()
+    m.movies = [] : m.allMovie = []
     if isLoading then m.statusLabel.text = "Carregando filmes..." else m.statusLabel.text = ""
 end sub
 
 sub setMovies(items as Object)
+    clearGridNodes()
+    m.statusLabel.text = ""
     m.allMovie = normalizeArray(items) : m.movies = m.allMovie
     if m.movies.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
     m.statusLabel.text = "" : resetGridSelection() : renderGrid() : updateFocus()
@@ -135,14 +138,17 @@ end function
 
 sub renderGrid()
     clearGridNodes()
+    m.statusLabel.text = ""
     if m.movies.Count() = 0 then return
 
     content = CreateObject("roSGNode", "ContentNode")
     for each movie in m.movies
         node = content.CreateChild("ContentNode")
         node.title = getMovieName(movie)
-        node.HDPosterUrl = getMovieCover(movie)
-        node.SDPosterUrl = getMovieCover(movie)
+        coverUrl = getMovieCover(movie)
+        node.HDPosterUrl = coverUrl
+        node.SDPosterUrl = coverUrl
+        node.url = coverUrl
     end for
 
     m.moviesGrid.content = content
@@ -332,9 +338,11 @@ sub clearCategoryNodes()
 end sub
 
 sub clearGridNodes()
-    m.moviesGrid.content = invalid
-    m.moviesGrid.visible = false
     clearMovieTitleNodes()
+    emptyContent = CreateObject("roSGNode", "ContentNode")
+    m.moviesGrid.content = emptyContent
+    m.moviesGrid.jumpToItem = 0
+    m.moviesGrid.visible = false
     m.itemNodes = []
 end sub
 

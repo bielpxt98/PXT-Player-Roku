@@ -17,6 +17,7 @@ sub Init()
     m.progressTrack = m.top.FindNode("progressTrack")
     m.progressFill = m.top.FindNode("progressFill")
     m.seekHoldTimer = m.top.FindNode("seekHoldTimer")
+    m.progressTimer = m.top.FindNode("progressTimer")
 
     m.movie = invalid
     m.movieName = "Filme"
@@ -31,13 +32,17 @@ sub Init()
     m.seekHoldHandled = false
     m.seekPressTimer = invalid
     m.pendingStreamUrl = ""
+    m.pendingSeekPosition = invalid
+    m.pendingSeekTimer = invalid
     m.resumeDialog = invalid
 
     configureLayout()
     m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
-    m.top.ObserveField("visible", "onVisibleChanged")
+    m.video.ObserveField("position", "onVideoProgressChanged")
+    m.video.ObserveField("duration", "onVideoProgressChanged")
     m.seekHoldTimer.ObserveField("fire", "onSeekHoldTimerFire")
+    m.progressTimer.ObserveField("fire", "onProgressTimerFire")
     hide()
 end sub
 
@@ -127,6 +132,8 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     content.live = false
 
     m.lastPosition = startPosition
+    m.pendingSeekPosition = invalid
+    m.pendingSeekTimer = invalid
     m.video.visible = true
     m.video.content = content
     if startPosition > 0 then content.PlayStart = startPosition
@@ -146,6 +153,13 @@ sub setResumePosition(position as Dynamic)
 end sub
 
 function getPlaybackPosition() as Integer
+    if m.pendingSeekPosition <> invalid then
+        if m.pendingSeekTimer <> invalid and m.pendingSeekTimer.TotalMilliseconds() < 1800 then
+            return Int(m.pendingSeekPosition)
+        end if
+        m.pendingSeekPosition = invalid
+        m.pendingSeekTimer = invalid
+    end if
     if m.video <> invalid and m.video.position <> invalid then
         m.lastPosition = Int(m.video.position)
         return m.lastPosition
@@ -199,6 +213,9 @@ sub stopPlayback()
     if m.loadingSpinner <> invalid then m.loadingSpinner.control = "stop"
     if m.loadingGroup <> invalid then m.loadingGroup.visible = false
     stopSeekHold()
+    if m.progressTimer <> invalid then m.progressTimer.control = "stop"
+    m.pendingSeekPosition = invalid
+    m.pendingSeekTimer = invalid
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
 end sub
 
@@ -226,6 +243,9 @@ sub onVideoStateChanged()
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
+        if m.progressTimer <> invalid then m.progressTimer.control = "start"
+        m.top.SetFocus(true)
+        updateControls()
     else if state = "paused" then
         m.isPlaying = false
         showControls()
@@ -398,6 +418,9 @@ sub seekToWithDelta(position as Integer, delta as Integer)
     if duration > 0 and position > duration then position = duration
     m.video.seek = position
     m.lastPosition = position
+    m.pendingSeekPosition = position
+    m.pendingSeekTimer = CreateObject("roTimespan")
+    m.pendingSeekTimer.Mark()
     if delta > 0 then
         m.seekStatusLabel.text = "+" + delta.ToStr() + "s  " + formatTime(position)
     else if delta < 0 then
@@ -406,6 +429,25 @@ sub seekToWithDelta(position as Integer, delta as Integer)
         m.seekStatusLabel.text = formatTime(position)
     end if
     showControls()
+    updateControls()
+end sub
+
+sub onVideoProgressChanged()
+    if m.video <> invalid and m.video.position <> invalid then
+        videoPosition = Int(m.video.position)
+        if m.pendingSeekPosition = invalid or videoPosition >= Int(m.pendingSeekPosition) - 1 then
+            m.lastPosition = videoPosition
+            m.pendingSeekPosition = invalid
+            m.pendingSeekTimer = invalid
+        end if
+    end if
+    updateControls()
+end sub
+
+sub onProgressTimerFire()
+    if m.top.visible <> true then return
+    m.top.SetFocus(true)
+    updateControls()
 end sub
 
 sub showControls()
