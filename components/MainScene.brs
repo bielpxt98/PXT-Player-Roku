@@ -121,6 +121,7 @@ sub Init()
     m.seriesListScreen.ObserveField("seriesFavoriteToggled", "onSeriesFavoriteToggled")
     m.seriesDetailScreen.ObserveField("backRequested", "onSeriesDetailBack")
     m.seriesDetailScreen.ObserveField("playRequested", "onSeriesDetailPlay")
+    m.seriesDetailScreen.ObserveField("episodeSelected", "onSeriesDetailEpisodeSelected")
     m.seriesDetailScreen.ObserveField("favoriteToggled", "onSeriesDetailFavoriteToggled")
     m.seriesSeasonsScreen.ObserveField("backRequested", "onSeriesSeasonsBack")
     m.seriesSeasonsScreen.ObserveField("seasonSelected", "onSeriesSeasonSelected")
@@ -1251,6 +1252,19 @@ sub onSeriesDetailPlay()
         m.seriesSeasonsScreen.callFunc("setLoading", true)
         loadSeriesInfo(m.selectedSeries)
     end if
+end sub
+
+
+sub onSeriesDetailEpisodeSelected()
+    episode = m.seriesDetailScreen.episodeSelected
+    if episode = invalid then return
+    if not hasAccount(m.account) then return
+    m.selectedEpisode = episode
+    m.selectedSeason = invalid
+    m.seriesDetailScreen.callFunc("hide")
+    m.seriesPlayerScreen.callFunc("show", episode)
+    m.seriesPlayerScreen.callFunc("setResumePosition", GetHistoryPosition("episode", episode))
+    buildSeriesStreamUrl(episode)
 end sub
 
 sub onSeriesDetailFavoriteToggled()
