@@ -80,7 +80,6 @@ sub Init()
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesCategoriesRequested")
     m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
     m.homeScreen.ObserveField("openRecent", "onOpenRecentRequested")
-    m.homeScreen.ObserveField("continueSelected", "onHomeContinueSelected")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
     m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
     m.searchScreen.ObserveField("movieSelected", "onSearchMovieSelected")
@@ -521,30 +520,6 @@ sub loadSearchSeries()
     m.xtreamService.control = "RUN"
 end sub
 
-sub onHomeContinueSelected()
-    item = m.homeScreen.continueSelected
-    if item = invalid then return
-    m.homeScreen.callFunc("hide")
-    m.entryPoint = "continue"
-
-    if item.type = "movie" then
-        m.selectedMovie = item.content
-        m.movieDetailScreen.callFunc("show", item.content)
-    else if item.type = "series" then
-        m.selectedSeries = item.series
-        m.selectedSeason = item.season
-        m.selectedEpisode = item.content
-        seasonLabel = ""
-        if item.seasonNumber <> invalid then seasonLabel = item.seasonNumber.ToStr()
-        m.selectedSeriesSeasons = [{ season_number: seasonLabel, name: "Temporada " + seasonLabel, episodes: [item.content] }]
-        if item.season <> invalid then
-            if item.season.episodes = invalid then item.season.episodes = [item.content]
-            m.selectedSeriesSeasons = [item.season]
-        end if
-        m.seriesDetailScreen.callFunc("show", item.series)
-    end if
-end sub
-
 sub onOpenRecentRequested()
     hideAllScreensExcept(m.recentScreen)
     m.recentScreen.callFunc("setHistory", LoadViewingHistory())
@@ -749,8 +724,8 @@ end sub
 
 sub onMovieDetailBack()
     m.movieDetailScreen.callFunc("hide")
-    if m.entryPoint = "continue" then
-        showHome()
+    if returnToEntryPoint() then
+        return
     else
         m.movieListScreen.callFunc("show", m.selectedMovieCategory)
     end if
@@ -1142,10 +1117,7 @@ end sub
 
 sub onSeriesDetailBack()
     m.seriesDetailScreen.callFunc("hide")
-    if m.entryPoint = "continue" then
-        showHome()
-        return
-    else if returnToEntryPoint() then
+    if returnToEntryPoint() then
         return
     else
         m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
