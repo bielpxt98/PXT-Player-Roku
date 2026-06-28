@@ -247,6 +247,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
+    else if key = "right" then
+        m.top.focusMoviesRequested = true
+        return true
     else if key = "OK" then
         if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
             print "OK opening selectedIndex="; m.selectedIndex
@@ -337,10 +340,10 @@ sub updateFocus()
         label = selectedNode.FindNode("itemLabel")
 
         selectedNode.scale = [1.02, 1.02]
-        background.color = "#FFFFFF"
+        background.color = "#0B5CAD"
         background.opacity = 1.0
         accent.opacity = 1.0
-        label.color = "#05070B"
+        label.color = "#FFFFFF"
     end if
 end sub
 
