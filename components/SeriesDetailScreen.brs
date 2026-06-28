@@ -79,17 +79,27 @@ end function
 
 function mergeItem(base as Dynamic, details as Dynamic) as Object
     result = {}
-    if base <> invalid and Type(base) = "roAssociativeArray" then for each k in base : result[k] = base[k] : end for
+    if base <> invalid and Type(base) = "roAssociativeArray" then
+        for each k in base
+            result[k] = base[k]
+        end for
+    end if
     info = details
-    if Type(details) = "roAssociativeArray" and details.DoesExist("info") and Type(details.info) = "roAssociativeArray" then info = details.info
-    if info <> invalid and Type(info) = "roAssociativeArray" then for each k in info : result[k] = info[k] : end for
+    if details <> invalid and Type(details) = "roAssociativeArray" and details.DoesExist("info") and Type(details.info) = "roAssociativeArray" then
+        info = details.info
+    end if
+    if info <> invalid and Type(info) = "roAssociativeArray" then
+        for each k in info
+            result[k] = info[k]
+        end for
+    end if
     return result
 end function
 
 function firstText(item as Dynamic, keys as Object) as String
     if item = invalid or Type(item) <> "roAssociativeArray" then return ""
-    for each key in keys
-        if item.DoesExist(key) and item[key] <> invalid and item[key].ToStr().Trim() <> "" then return item[key].ToStr()
+    for each k in keys
+        if item.DoesExist(k) and item[k] <> invalid and item[k].ToStr().Trim() <> "" then return item[k].ToStr()
     end for
     return ""
 end function
