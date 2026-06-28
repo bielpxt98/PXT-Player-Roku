@@ -30,6 +30,6 @@
         <Group id="categoriesGroup" />
         <Group id="channelsGroup" />
         <Timer id="progressiveLoadTimer" duration="0.03" repeat="true" />
-        <Label id="hintLabel" text="←/→ alternar painel • ↑/↓ navegar • OK assistir • Voltar" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="←/→ painel • ↑/↓ navegar • OK assistir • * buscar • Play/Pause favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
