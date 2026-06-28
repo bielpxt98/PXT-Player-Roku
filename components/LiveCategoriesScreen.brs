@@ -130,6 +130,21 @@ sub hide()
     m.top.visible = false
 end sub
 
+sub selectCategory(category as Dynamic)
+    if category = invalid or m.categories.Count() = 0 then return
+
+    categoryId = getCategoryId(category)
+    for i = 0 to m.categories.Count() - 1
+        if getCategoryId(m.categories[i]) = categoryId then
+            m.selectedIndex = i
+            updateVisibleWindow()
+            renderList()
+            updateFocus()
+            return
+        end if
+    end for
+end sub
+
 sub resetSelection()
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
@@ -202,13 +217,15 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
-    background.width = m.categoryPanelWidth - 28
+    background.translation = [14, 0]
+    background.width = m.categoryPanelWidth - 42
     background.height = m.cardHeight
     background.color = "#111827"
     background.opacity = 0.86
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
+    accent.translation = [14, 0]
     accent.width = 6
     accent.height = m.cardHeight
     accent.color = "#009DFF"
@@ -246,6 +263,13 @@ end function
 
 function isSearchEntry(category as Dynamic) as Boolean
     return category <> invalid and category.isSearch = true
+end function
+
+function getCategoryId(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.category_id <> invalid then return category.category_id.ToStr()
+    if category.id <> invalid then return category.id.ToStr()
+    return ""
 end function
 
 function getCategoryName(category as Dynamic) as String

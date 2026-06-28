@@ -851,8 +851,16 @@ sub onLivePlayerBack()
         m.openedFromSearch = false
         showHome()
     else
+        m.liveCategoriesScreen.callFunc("show")
+        m.liveCategoriesScreen.callFunc("selectCategory", m.selectedLiveCategory)
         m.liveChannelsScreen.callFunc("setAccount", m.account)
+        m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
         m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
+        if m.liveChannels <> invalid and m.liveChannels.Count() > 0 then
+            m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+        end if
+        m.liveChannelsScreen.callFunc("restoreSelectedChannel", m.selectedLiveChannel)
+        m.liveChannelsScreen.SetFocus(true)
     end if
 end sub
 

@@ -6,6 +6,7 @@
         <function name="setLoading" />
         <function name="setCategories" />
         <function name="showMessage" />
+        <function name="selectCategory" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="categorySelected" type="assocarray" alwaysNotify="true" />
         <field id="searchRequested" type="boolean" alwaysNotify="true" />
