@@ -106,7 +106,7 @@ sub show(movie as Dynamic)
     m.top.visible = true
     showLoading("Preparando " + m.movieName + "...")
     hideControls()
-    m.top.SetFocus(true)
+    setTopFocus()
 end sub
 
 sub play(streamUrl as String)
@@ -139,8 +139,7 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
-    if m.progressTimer <> invalid then m.progressTimer.control = "start"
-    m.top.SetFocus(true)
+    setTopFocus()
     showLoading("Carregando " + m.movieName + "...")
 end sub
 
@@ -260,34 +259,81 @@ sub onVideoStateChanged()
     end if
 end sub
 
+sub onVisibleChanged()
+    print "MoviePlayer visible changed"
+    if m.top.visible = true then setTopFocus()
+end sub
+
+sub setTopFocus()
+    m.top.SetFocus(true)
+    print "MoviePlayer SetFocus top"
+end sub
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    if key = "back" then
-        if press then return handleBackKeySafely()
-        return true
-    end if
+    print "MoviePlayer onKeyEvent: "; key; " press="; press
 
     if key = "right" or key = "left" then
         if press then
-            beginSeekHold(key)
+            if key = "right" then
+                seekBy(m.seekStep)
+            else
+                seekBy(-m.seekStep)
+            end if
         else
-            finishSeekHold(key)
+            stopSeekHold()
+        end if
+        setTopFocus()
+        updateControls()
+        return true
+    end if
+
+    if key = "fastforward" or key = "rewind" then
+        if press then
+            if key = "fastforward" then
+                seekBy(m.seekStep)
+            else
+                seekBy(-m.seekStep)
+            end if
+            setTopFocus()
+            updateControls()
         end if
         return true
     end if
 
-    if not press then return false
+    if key = "play" or key = "pause" then
+        if press then
+            togglePause()
+            setTopFocus()
+            updateControls()
+        end if
+        return true
+    end if
 
-    if key = "OK" then
-        togglePause()
+    if key = "back" then
+        if not press then return true
+        return handleBackKeySafely()
+    else if key = "OK" then
+        if press then
+            toggleControls()
+            setTopFocus()
+            updateControls()
+        end if
+        return true
+    else if key = "options" then
+        if press then
+            toggleControls()
+            setTopFocus()
+            updateControls()
+        end if
         return true
     else if key = "up" then
-        showControls()
+        if press then showControls()
         return true
     else if key = "down" then
-        hideControls()
+        if press then hideControls()
         return true
     else if key = "replay" then
-        seekTo(0)
+        if press then seekTo(0)
         return true
     end if
 
@@ -296,13 +342,6 @@ end function
 
 function handleBackKeySafely() as Boolean
     stopPlayback()
-    m.top.visible = false
-    parentNode = m.top.GetParent()
-    if parentNode <> invalid then
-        parentNode.SetFocus(true)
-    else
-        m.top.SetFocus(true)
-    end if
     m.top.backRequested = true
     return true
 end function
@@ -418,6 +457,14 @@ end sub
 
 sub hideControls()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
+end sub
+
+sub toggleControls()
+    if m.controlsGroup <> invalid and m.controlsGroup.visible = true then
+        hideControls()
+    else
+        showControls()
+    end if
 end sub
 
 sub updateControls()
