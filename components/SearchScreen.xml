@@ -23,9 +23,9 @@
         <Label id="queryMirror" text="" color="#FFFFFF" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Timer id="searchDebounceTimer" duration="0.4" repeat="false" />
-        <Group id="keyboardGroup" />
+        <Group id="keyboardGroup" focusable="true" />
         <Label id="resultsTitle" text="RESULTADOS EM GRADE" color="#D7E2F4" />
         <Group id="resultsGroup" />
-        <Label id="hintLabel" text="←/→ navega • ↑/↓ alterna campo, teclado e resultados • OK seleciona • Voltar retorna" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="←/→ navega • ↑ sobe para resultados • 123/ABC alterna letras e números • OK seleciona • Voltar retorna" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

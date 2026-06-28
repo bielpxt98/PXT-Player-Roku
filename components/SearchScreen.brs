@@ -20,7 +20,8 @@ sub Init()
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
     m.initialResultLimit = 30 : m.maxRenderedResults = 30 : m.resultBatchSize = 30 : m.renderedResultLimit = 30
     m.searchMode = "live"
-    m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
+    m.keyboardMode = "alpha"
+    setKeyboardRows()
     m.keyNodes = [] : m.itemNodes = []
     m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     configureLayout()
@@ -47,10 +48,10 @@ sub configureLayout()
     m.keyboardGroup.translation = [m.marginX, m.keyboardTop]
     m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 34]
     m.keyGap = 8
-    m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.keyH = 34
+    m.keyW = Int((m.contentWidth - 6 * m.keyGap) / 7) : m.keyH = 34
     m.cardGap = 16 : m.cardHeight = 196
     m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
-    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
+    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 6 * m.keyGap) / 7) : m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
     m.visibleItemCount = 7
 end sub
 
@@ -63,7 +64,7 @@ sub show(mode as Dynamic)
     m.searchInput.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
     m.searchInput.text = "" : m.queryMirror.text = "Texto digitado: "
-    m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
+    m.focusZone = "input" : m.keyboardMode = "alpha" : setKeyboardRows() : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
     applyFilter()
 end sub
@@ -116,6 +117,14 @@ function getEmptySearchMessage() as String
     return "Digite para encontrar canais ao vivo na sua lista."
 end function
 
+sub setKeyboardRows()
+    if m.keyboardMode = "numeric" then
+        m.keyRows = [ ["1","2","3"], ["4","5","6"], ["7","8","9"], ["ABC","0","APAGAR"], ["ESPAÇO","LIMPAR","BUSCAR"] ]
+    else
+        m.keyRows = [ ["A","B","C","D","E","F","G"], ["H","I","J","K","L","M","N"], ["O","P","Q","R","S","T","U"], ["V","W","X","Y","Z","123","APAGAR"], ["ESPAÇO","LIMPAR","BUSCAR"] ]
+    end if
+end sub
+
 sub renderKeyboard()
     while m.keyboardGroup.GetChildCount() > 0 : m.keyboardGroup.RemoveChildIndex(0) : end while
     m.keyNodes = []
@@ -123,15 +132,32 @@ sub renderKeyboard()
         rowNodes = []
         for c = 0 to m.keyRows[r].Count() - 1
             keyLabel = m.keyRows[r][c]
-            g = CreateObject("roSGNode", "Group") : g.translation = [c * (m.keyW + m.keyGap), r * (m.keyH + m.keyGap)]
-            bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = m.keyW : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
-            lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = m.keyW : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
+            keyWidth = getKeyWidth(keyLabel)
+            keyX = getKeyX(r, c)
+            g = CreateObject("roSGNode", "Group") : g.translation = [keyX, r * (m.keyH + m.keyGap)]
+            bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = keyWidth : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
+            lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = keyWidth : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
             g.AppendChild(bg) : g.AppendChild(lb) : m.keyboardGroup.AppendChild(g) : rowNodes.Push(g)
         end for
         m.keyNodes.Push(rowNodes)
     end for
     updateKeyboardFocus()
 end sub
+
+function getKeyX(rowIndex as Integer, colIndex as Integer) as Integer
+    keyX = 0
+    if rowIndex < 0 or rowIndex >= m.keyRows.Count() then return 0
+    for i = 0 to colIndex - 1
+        keyX = keyX + getKeyWidth(m.keyRows[rowIndex][i]) + m.keyGap
+    end for
+    return keyX
+end function
+
+function getKeyWidth(keyLabel as String) as Integer
+    if keyLabel = "ESPAÇO" then return (m.keyW * 3) + (m.keyGap * 2)
+    if keyLabel = "LIMPAR" or keyLabel = "BUSCAR" then return (m.keyW * 2) + m.keyGap
+    return m.keyW
+end function
 
 sub onSearchTextChanged()
     m.queryMirror.text = "Texto digitado: " + m.searchInput.text
@@ -315,7 +341,11 @@ sub activateFocused()
     if m.focusZone = "results" then openSelected() : return
     if m.focusZone = "input" then m.searchInput.SetFocus(true) : return
     keyLabel = m.keyRows[m.selectedKeyRow][m.selectedKeyCol]
-    if keyLabel = "APAGAR" then
+    if keyLabel = "123" then
+        m.keyboardMode = "numeric" : setKeyboardRows() : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : renderKeyboard()
+    else if keyLabel = "ABC" then
+        m.keyboardMode = "alpha" : setKeyboardRows() : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : renderKeyboard()
+    else if keyLabel = "APAGAR" then
         t = m.searchInput.text : if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
     else if keyLabel = "LIMPAR" then
         m.searchInput.text = ""
