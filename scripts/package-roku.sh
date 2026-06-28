@@ -57,7 +57,7 @@ mkdir -p "${OUT_DIR}"
 rm -f "${OUT_ZIP}"
 
 # Optional images are included only when present. The app does not reference
-# background.jpg, logo.png, or icon.png directly, so their absence cannot stop launch.
+# background.jpeg, logo.png, or icon.png directly, so their absence cannot stop launch.
 zip -r "${OUT_ZIP}" \
   manifest \
   source \
