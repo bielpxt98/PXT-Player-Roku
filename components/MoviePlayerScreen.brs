@@ -305,7 +305,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return handleBackKeySafely()
     else if key = "OK" then
         if press then
-            toggleControls()
+            togglePause()
             setTopFocus()
             updateControls()
         end if
