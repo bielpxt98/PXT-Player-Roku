@@ -62,6 +62,7 @@ sub Init()
     m.searchMovies = []
     m.searchSeries = []
     m.searchLoadStep = ""
+    m.searchMoviesBackgroundLoading = false
     m.searchMode = "all"
     m.searchBackTarget = "home"
     m.splashMinimumElapsed = false
@@ -171,6 +172,7 @@ sub processNextBootstrapRequest()
     if m.bootstrapQueue = invalid or m.bootstrapQueue.Count() = 0 then
         m.bootstrapActive = false
         finishSplashIfReady()
+        startBackgroundMoviePreload()
         return
     end if
 
@@ -458,6 +460,24 @@ sub loadSearchChannels()
 end sub
 
 sub loadSearchMovies()
+    m.searchMoviesBackgroundLoading = false
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "getMovies"
+    m.xtreamService.cacheEnabled = true
+    m.xtreamService.categoryId = ""
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
+end sub
+
+sub startBackgroundMoviePreload()
+    if not hasAccount(m.account) then return
+    if m.searchMoviesBackgroundLoading = true then return
+    if m.searchMovies <> invalid and m.searchMovies.Count() > 0 then return
+    if m.searchLoadStep <> "" then return
+
+    m.searchMoviesBackgroundLoading = true
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
     m.xtreamService.cacheEnabled = true
@@ -1436,6 +1456,16 @@ sub onMoviesResult(result as Object)
         m.searchLoadStep = "series"
         if m.searchScreen.visible = true then m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
         loadSearchSeries()
+        return
+    end if
+
+    if m.searchMoviesBackgroundLoading = true and getMoviesResultCategoryId(result) = "" then
+        m.searchMoviesBackgroundLoading = false
+        if result.success = true then m.searchMovies = normalizeMovies(result.data)
+        if m.searchScreen.visible = true then
+            m.searchScreen.callFunc("setLoading", false)
+            m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
+        end if
         return
     end if
 

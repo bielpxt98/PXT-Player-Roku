@@ -12,12 +12,16 @@ sub Init()
     m.statusLabel = m.top.FindNode("statusLabel")
     m.searchDebounceTimer = m.top.FindNode("searchDebounceTimer")
     m.searchDebounceTimer.ObserveField("fire", "onSearchDebounceFire")
+    m.moviePreloadTimer = m.top.FindNode("moviePreloadTimer")
+    m.moviePreloadTimer.ObserveField("fire", "onMoviePreloadTimerFire")
     m.keyboardGroup = m.top.FindNode("keyboardGroup")
     m.resultsTitle = m.top.FindNode("resultsTitle")
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
+    m.movieSource = [] : m.movieSearchCache = [] : m.moviePreloadIndex = 0 : m.moviePreloadComplete = true
+    m.moviePreloadBatchSize = 75 : m.isLoading = false
     m.initialResultLimit = 30 : m.maxRenderedResults = 30 : m.resultBatchSize = 30 : m.renderedResultLimit = 30
     m.searchMode = "live"
     m.keyboardMode = "alpha"
@@ -74,8 +78,9 @@ sub hide()
 end sub
 
 sub setLoading(isLoading as Boolean)
+    m.isLoading = isLoading
     if isLoading then
-        clearResultNodes() : m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando conteúdo para busca..."
+        m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando..."
     else
         m.statusLabel.text = ""
     end if
@@ -84,9 +89,56 @@ end sub
 sub setData(data as Object)
     if data = invalid then return
     if data.channels <> invalid then m.channels = normalizeArray(data.channels)
-    if data.movies <> invalid then m.movies = normalizeArray(data.movies)
+    if data.movies <> invalid then startMoviePreload(normalizeArray(data.movies))
     if data.series <> invalid then m.series = normalizeArray(data.series)
     applyFilter()
+end sub
+
+sub startMoviePreload(items as Object)
+    if items = invalid then items = []
+    if m.movieSource <> invalid and m.movieSource.Count() = items.Count() and m.moviePreloadComplete = true then
+        m.movies = items
+        return
+    end if
+
+    m.movieSource = items
+    m.movies = []
+    m.movieSearchCache = []
+    m.moviePreloadIndex = 0
+    m.moviePreloadComplete = (items.Count() = 0)
+    if m.moviePreloadTimer <> invalid then m.moviePreloadTimer.control = "stop"
+    processMoviePreloadBatch()
+    if m.moviePreloadComplete <> true and m.moviePreloadTimer <> invalid then m.moviePreloadTimer.control = "start"
+end sub
+
+sub onMoviePreloadTimerFire()
+    processMoviePreloadBatch()
+    if m.moviePreloadComplete = true and m.moviePreloadTimer <> invalid then m.moviePreloadTimer.control = "stop"
+end sub
+
+sub processMoviePreloadBatch()
+    if m.movieSource = invalid then return
+    if m.moviePreloadIndex >= m.movieSource.Count() then
+        m.moviePreloadComplete = true
+        m.isLoading = false
+        return
+    end if
+
+    batchEnd = m.moviePreloadIndex + m.moviePreloadBatchSize - 1
+    if batchEnd >= m.movieSource.Count() then batchEnd = m.movieSource.Count() - 1
+    for i = m.moviePreloadIndex to batchEnd
+        item = m.movieSource[i]
+        name = getItemName(item)
+        m.movies.Push(item)
+        m.movieSearchCache.Push({ lowerName: LCase(name), result: { type: "movie", title: name, meta: getItemMeta(item), item: item } })
+    end for
+    m.moviePreloadIndex = batchEnd + 1
+    if m.moviePreloadIndex >= m.movieSource.Count() then
+        m.moviePreloadComplete = true
+        m.isLoading = false
+    end if
+
+    if m.searchMode = "movies" then applyFilter()
 end sub
 
 sub showMessage(message as String)
@@ -177,23 +229,39 @@ sub applyFilter()
     if m.searchMode = "series" then addMatches("series", m.series, query)
     m.selectedIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.maxRenderedResults
     if m.results.Count() = 0 then
-        clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado"
+        clearResultNodes()
+        if isCurrentSearchLoading() then
+            m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando..."
+        else if query = "" then
+            m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = getEmptySearchMessage()
+        else
+            m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado"
+        end if
     else
-        m.statusLabel.text = "" : renderResults() : updateResultFocus()
+        if isCurrentSearchLoading() then
+            m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando..."
+        else
+            m.statusLabel.text = ""
+        end if
+        renderResults() : updateResultFocus()
     end if
 end sub
 
 sub addMovieMatches(items as Dynamic, query as String)
-    sourceItems = normalizeArray(items)
-    for each item in sourceItems
+    sourceItems = m.movieSearchCache
+    if sourceItems = invalid then sourceItems = []
+    for each cachedItem in sourceItems
         if m.results.Count() >= m.maxRenderedResults then exit for
-        name = getItemName(item)
-        lowerName = LCase(name)
-        if shouldIncludeMovieResult(lowerName, query) then
-            m.results.Push({ type: "movie", title: name, meta: getItemMeta(item), item: item })
+        if shouldIncludeMovieResult(cachedItem.lowerName, query) then
+            m.results.Push(cachedItem.result)
         end if
     end for
 end sub
+
+function isCurrentSearchLoading() as Boolean
+    if m.searchMode = "movies" then return m.moviePreloadComplete <> true or m.isLoading = true
+    return m.isLoading = true
+end function
 
 function shouldIncludeMovieResult(lowerName as String, query as String) as Boolean
     if query = "" then return true

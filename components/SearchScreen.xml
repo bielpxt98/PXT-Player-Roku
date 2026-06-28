@@ -23,6 +23,7 @@
         <Label id="queryMirror" text="" color="#FFFFFF" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Timer id="searchDebounceTimer" duration="0.4" repeat="false" />
+        <Timer id="moviePreloadTimer" duration="0.01" repeat="true" />
         <Group id="keyboardGroup" focusable="true" />
         <Label id="resultsTitle" text="RESULTADOS EM GRADE" color="#D7E2F4" />
         <Group id="resultsGroup" />
