@@ -136,37 +136,28 @@ sub Init()
 end sub
 
 sub startSplashBootstrap()
-    m.splashMinimumElapsed = false
-    m.splashMaximumElapsed = false
-    m.bootstrapActive = true
-    m.appReady = false
+    ' Keep startup lightweight: Home must become navigable without waiting for
+    ' category, movie, series, favorites, recent, or search data.  Those data
+    ' loads are intentionally deferred until the user opens each section.
+    m.splashMinimumElapsed = true
+    m.splashMaximumElapsed = true
+    m.bootstrapActive = false
+    m.appReady = true
     m.moviesCacheReady = false
     m.seriesCacheReady = false
     m.liveCacheReady = false
     m.bootstrapQueue = []
 
-    m.homeScreen.callFunc("hide")
-    m.splashScreen.callFunc("show")
-    m.splashMinimumTimer.control = "stop"
-    m.splashMaximumTimer.control = "stop"
-    m.splashMinimumTimer.duration = 4
-    m.splashMaximumTimer.duration = 6
-    m.splashMinimumTimer.control = "start"
-    m.splashMaximumTimer.control = "start"
-
-    if hasAccount(m.account) then
-        m.bootstrapQueue = ["getLiveCategories", "getMovieCategories", "getSeriesCategories"]
-        processNextBootstrapRequest()
-    else
-        m.bootstrapActive = false
-    end if
+    if m.splashMinimumTimer <> invalid then m.splashMinimumTimer.control = "stop"
+    if m.splashMaximumTimer <> invalid then m.splashMaximumTimer.control = "stop"
+    if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
+    showHome()
 end sub
 
 sub processNextBootstrapRequest()
     if m.bootstrapQueue = invalid or m.bootstrapQueue.Count() = 0 then
         m.bootstrapActive = false
         finishSplashIfReady()
-        startBackgroundMoviePreload()
         return
     end if
 

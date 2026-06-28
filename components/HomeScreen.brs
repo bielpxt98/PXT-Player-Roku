@@ -130,7 +130,9 @@ sub configureHomeCard(button as Object, cardWidth as Integer, cardHeight as Inte
 end sub
 
 sub show()
-    loadContinueWatchingSection()
+    ' Do not load or render data-driven shelves automatically on Home.
+    ' The Home screen stays lightweight and only opens data sections by user action.
+    disableContinueWatchingSection()
     m.top.visible = true
     m.focusIndex = 0
     m.lastCardFocusIndex = 0
@@ -307,6 +309,13 @@ sub selectFocusedButton()
     end if
 end sub
 
+
+sub disableContinueWatchingSection()
+    clearContinueNodes()
+    m.continueItems = []
+    m.continueIndex = 0
+    m.continueGroup.visible = false
+end sub
 
 sub loadContinueWatchingSection()
     clearContinueNodes()
