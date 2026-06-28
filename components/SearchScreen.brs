@@ -225,16 +225,8 @@ sub moveVertical(direction as Integer)
     if m.focusZone = "input" then
         moveZone(direction)
     else if m.focusZone = "keyboard" then
-        if direction < 0 and m.results.Count() > 0 then
-            m.focusZone = "results"
+        if moveKeyboardFocus(direction, 0) then
             updateAllFocus()
-            return
-        end if
-        nextRow = m.selectedKeyRow + direction
-        if nextRow >= 0 and nextRow < m.keyRows.Count() then
-            m.selectedKeyRow = nextRow
-            if m.selectedKeyCol >= m.keyRows[m.selectedKeyRow].Count() then m.selectedKeyCol = m.keyRows[m.selectedKeyRow].Count() - 1
-            updateKeyboardFocus()
         else
             moveZone(direction)
         end if
@@ -278,8 +270,8 @@ end sub
 
 sub moveHorizontal(direction as Integer)
     if m.focusZone = "keyboard" then
-        moveKeyboardHorizontal(direction)
-        updateKeyboardFocus()
+        moveKeyboardFocus(0, direction)
+        updateAllFocus()
     else if m.focusZone = "results" and m.results.Count() > 0 then
         m.selectedIndex = m.selectedIndex + direction
         if m.selectedIndex < 0 then m.selectedIndex = 0
@@ -291,12 +283,32 @@ sub moveHorizontal(direction as Integer)
     end if
 end sub
 
-sub moveKeyboardHorizontal(direction as Integer)
-    m.selectedKeyCol = m.selectedKeyCol + direction
+function moveKeyboardFocus(rowDelta as Integer, colDelta as Integer) as Boolean
+    if m.keyRows = invalid or m.keyRows.Count() = 0 then return false
+
+    if m.selectedKeyRow < 0 then m.selectedKeyRow = 0
+    if m.selectedKeyRow >= m.keyRows.Count() then m.selectedKeyRow = m.keyRows.Count() - 1
+
     rowCount = m.keyRows[m.selectedKeyRow].Count()
-    if m.selectedKeyCol < 0 then m.selectedKeyCol = rowCount - 1
-    if m.selectedKeyCol >= rowCount then m.selectedKeyCol = 0
-end sub
+    if rowCount = 0 then return false
+
+    if colDelta <> 0 then
+        m.selectedKeyCol = m.selectedKeyCol + colDelta
+        if m.selectedKeyCol < 0 then m.selectedKeyCol = rowCount - 1
+        if m.selectedKeyCol >= rowCount then m.selectedKeyCol = 0
+        return true
+    end if
+
+    nextRow = m.selectedKeyRow + rowDelta
+    if nextRow < 0 or nextRow >= m.keyRows.Count() then return false
+    nextRowCount = m.keyRows[nextRow].Count()
+    if nextRowCount = 0 then return false
+
+    m.selectedKeyRow = nextRow
+    if m.selectedKeyCol < 0 then m.selectedKeyCol = 0
+    if m.selectedKeyCol >= nextRowCount then m.selectedKeyCol = nextRowCount - 1
+    return true
+end function
 
 sub activateFocused()
     if m.focusZone = "results" then openSelected() : return
@@ -335,7 +347,11 @@ end function
 
 sub updateAllFocus()
     updateKeyboardFocus() : updateResultFocus()
-    if m.focusZone = "input" then m.searchInput.SetFocus(true)
+    if m.focusZone = "input" then
+        m.searchInput.SetFocus(true)
+    else
+        m.top.SetFocus(true)
+    end if
     if m.focusZone = "input" then
         m.inputBackground.color = "#063B66"
     else
