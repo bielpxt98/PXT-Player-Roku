@@ -814,6 +814,8 @@ sub onLiveChannelSelected()
         return
     end if
 
+    print "DEBUG Live: canal selecionado = " + getChannelNameForLog(channel)
+    print "DEBUG Live: stream_id = " + getStreamId(channel)
     m.selectedLiveChannel = channel
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("show", channel)
@@ -838,11 +840,15 @@ sub onLivePlayerBack()
 end sub
 
 sub buildLiveStreamUrl(channel as Object)
+    streamId = getStreamId(channel)
+    streamExtension = getStreamExtension(channel)
+    print "DEBUG Live: montando URL para stream_id = " + streamId
+    print "DEBUG Live: extensão do canal = " + streamExtension
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "buildLiveStreamUrl"
     m.xtreamService.cacheEnabled = false
-    m.xtreamService.streamId = getStreamId(channel)
-    m.xtreamService.streamExtension = getStreamExtension(channel)
+    m.xtreamService.streamId = streamId
+    m.xtreamService.streamExtension = streamExtension
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1522,6 +1528,7 @@ sub onLiveStreamUrlResult(result as Object)
     if m.livePlayerScreen.visible <> true then return
 
     if result.success = true and result.data <> invalid and result.data.url <> invalid then
+        print "DEBUG Live: URL final = " + result.data.url
         m.livePlayerScreen.callFunc("play", result.data.url)
     else
         m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
@@ -1821,8 +1828,15 @@ end function
 
 function getStreamId(channel as Dynamic) as String
     if channel = invalid then return ""
-    if channel.stream_id <> invalid then return channel.stream_id.ToStr()
-    if channel.id <> invalid then return channel.id.ToStr()
+    if channel.stream_id <> invalid and channel.stream_id.ToStr().Trim() <> "" then return channel.stream_id.ToStr().Trim()
+    if channel.id <> invalid and channel.id.ToStr().Trim() <> "" then return channel.id.ToStr().Trim()
+    return ""
+end function
+
+function getChannelNameForLog(channel as Dynamic) as String
+    if channel = invalid then return ""
+    if channel.name <> invalid and channel.name.ToStr().Trim() <> "" then return channel.name.ToStr().Trim()
+    if channel.title <> invalid and channel.title.ToStr().Trim() <> "" then return channel.title.ToStr().Trim()
     return ""
 end function
 

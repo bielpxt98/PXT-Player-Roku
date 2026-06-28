@@ -44,7 +44,9 @@ sub show(channel as Dynamic)
     m.channel = channel
     m.channelName = getChannelName(channel)
     m.top.channelName = m.channelName
+    print "DEBUG LivePlayerScreen: canal selecionado = " + m.channelName
     m.top.visible = true
+    if m.video <> invalid then m.video.visible = true
     showLoading("Preparando " + m.channelName + "...")
     m.top.SetFocus(true)
 end sub
@@ -61,8 +63,15 @@ sub play(streamUrl as String)
     content.streamFormat = getStreamFormat(streamUrl)
     content.live = true
 
+    print "DEBUG LivePlayerScreen: URL recebida = " + content.url
+    print "DEBUG LivePlayerScreen: Video content url = " + content.url
+    print "DEBUG LivePlayerScreen: Video content streamFormat = " + content.streamFormat
+    print "DEBUG LivePlayerScreen: Video content title = " + content.title
+
+    m.video.visible = true
     m.video.content = content
     m.video.control = "play"
+    print "DEBUG LivePlayerScreen: Video control = play"
     m.isPlaying = true
     showLoading("Carregando " + m.channelName + "...")
 end sub
@@ -98,16 +107,24 @@ end sub
 
 sub onVideoStateChanged()
     state = LCase(m.video.state)
+    print "DEBUG LivePlayerScreen: estado do Video node = " + state
     if state = "playing" then
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
     else if state = "error" or state = "finished" then
+        print "DEBUG LivePlayerScreen: erro do Video node code = " + safeVideoFieldText(m.video.errorCode)
+        print "DEBUG LivePlayerScreen: erro do Video node msg = " + safeVideoFieldText(m.video.errorMsg)
         if m.top.visible = true then
             showError("O stream de " + m.channelName + " não carregou ou foi encerrado pelo servidor.")
         end if
     end if
 end sub
+
+function safeVideoFieldText(value as Dynamic) as String
+    if value = invalid then return ""
+    return value.ToStr()
+end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
