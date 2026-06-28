@@ -272,15 +272,6 @@ sub configureScene()
     m.homeScreen.SetFocus(true)
 end sub
 
-function getDisplayResolution() as Object
-    deviceInfo = CreateObject("roDeviceInfo")
-    displaySize = deviceInfo.GetDisplaySize()
-
-    return {
-        width: displaySize.w
-        height: displaySize.h
-    }
-end function
 
 sub showHome()
     if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
@@ -1820,12 +1811,6 @@ function normalizeLiveChannels(data as Dynamic) as Object
     return []
 end function
 
-function getCategoryId(category as Dynamic) as String
-    if category = invalid then return ""
-    if category.category_id <> invalid then return category.category_id.ToStr()
-    if category.id <> invalid then return category.id.ToStr()
-    return ""
-end function
 
 function normalizeLiveCategories(data as Dynamic) as Object
     if data = invalid then return []

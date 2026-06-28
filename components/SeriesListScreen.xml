@@ -14,6 +14,7 @@
         <field id="seriesSelected" type="assocarray" alwaysNotify="true" />
         <field id="seriesFavoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
+    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/SeriesListScreen.brs" />
     <children>
         <Rectangle id="background" color="#05070B" opacity="0.58" translation="[0, 0]" />

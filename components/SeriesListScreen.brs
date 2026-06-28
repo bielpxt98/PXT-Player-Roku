@@ -132,11 +132,6 @@ sub showMessage(message as String)
     m.statusLabel.color = "#FFCC66" : m.statusLabel.text = message
 end sub
 
-function normalizeArray(items as Dynamic) as Object
-    if items = invalid then return []
-    if Type(items) = "roArray" then return items
-    return []
-end function
 
 sub renderCategories()
     clearCategoryNodes()
@@ -330,19 +325,7 @@ sub clearGridNodes()
     m.itemNodes = []
 end sub
 
-function getCategoryId(category as Dynamic) as String
-    if category = invalid then return ""
-    if category.category_id <> invalid then return category.category_id.ToStr()
-    if category.id <> invalid then return category.id.ToStr()
-    return ""
-end function
 
-function getCategoryName(category as Dynamic) as String
-    if category = invalid then return "Categoria"
-    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
-    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
-    return "Categoria"
-end function
 
 function getSeriesName(item as Dynamic) as String
     if item = invalid then return "Série sem nome"
@@ -362,9 +345,4 @@ function getSeriesCover(item as Dynamic) as String
     if item.series_image <> invalid and item.series_image.ToStr().Trim() <> "" then return item.series_image.ToStr()
     if item.logo <> invalid and item.logo.ToStr().Trim() <> "" then return item.logo.ToStr()
     return ""
-end function
-
-function getDisplayResolution() as Object
-    d = CreateObject("roDeviceInfo") : s = d.GetDisplaySize()
-    return { width: s.w, height: s.h }
 end function

@@ -521,10 +521,6 @@ sub clearResultNodes()
     m.itemNodes = []
 end sub
 
-function normalizeArray(value as Dynamic) as Object
-    if value <> invalid and Type(value) = "roArray" then return value
-    return []
-end function
 
 function getItemImage(item as Dynamic) as String
     if item = invalid then return ""

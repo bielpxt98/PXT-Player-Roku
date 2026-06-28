@@ -208,13 +208,3 @@ sub updateFocus()
 
     m.focusableControls[m.focusIndex].SetFocus(true)
 end sub
-
-function getDisplayResolution() as Object
-    deviceInfo = CreateObject("roDeviceInfo")
-    displaySize = deviceInfo.GetDisplaySize()
-
-    return {
-        width: displaySize.w
-        height: displaySize.h
-    }
-end function

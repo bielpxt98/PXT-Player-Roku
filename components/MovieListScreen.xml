@@ -16,6 +16,7 @@
         <field id="movieSelected" type="assocarray" alwaysNotify="true" />
         <field id="movieFavoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
+    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/MovieListScreen.brs" />
     <children>
         <Rectangle id="background" color="#05070B" opacity="0.58" translation="[0, 0]" />
