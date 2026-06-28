@@ -343,6 +343,20 @@ sub openSearch(mode as String, backTarget as String)
 
     searchData = getSearchDataForMode(mode)
     m.searchScreen.callFunc("setData", searchData)
+
+    if needsSearchData(mode) then
+        m.searchScreen.callFunc("setLoading", true)
+        if mode = "movies" then
+            m.searchLoadStep = "movies"
+            loadSearchMovies()
+        else if mode = "live" then
+            m.searchLoadStep = "channels"
+            loadSearchChannels()
+        else if mode = "series" then
+            m.searchLoadStep = "series"
+            loadSearchSeries()
+        end if
+    end if
 end sub
 
 sub onSearchBack()
@@ -391,7 +405,10 @@ end function
 
 function needsSearchData(mode as String) as Boolean
     if mode = "live" then return m.searchChannels.Count() = 0
-    if mode = "movies" then return m.searchMovies.Count() = 0
+    if mode = "movies" then
+        if m.searchMovies.Count() > 0 then return false
+        return m.movies = invalid or m.movies.Count() = 0
+    end if
     if mode = "series" then return m.searchSeries.Count() = 0
     return m.searchChannels.Count() = 0 or m.searchMovies.Count() = 0 or m.searchSeries.Count() = 0
 end function
