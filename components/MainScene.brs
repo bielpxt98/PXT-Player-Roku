@@ -10,14 +10,11 @@ sub Init()
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
     m.recentScreen = m.top.FindNode("recentScreen")
     m.searchScreen = m.top.FindNode("searchScreen")
-    m.liveCategoriesScreen = m.top.FindNode("liveCategoriesScreen")
     m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
     m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
-    m.movieCategoriesScreen = m.top.FindNode("movieCategoriesScreen")
     m.movieListScreen = m.top.FindNode("movieListScreen")
     m.movieDetailScreen = m.top.FindNode("movieDetailScreen")
     m.moviePlayerScreen = m.top.FindNode("moviePlayerScreen")
-    m.seriesCategoriesScreen = m.top.FindNode("seriesCategoriesScreen")
     m.seriesListScreen = m.top.FindNode("seriesListScreen")
     m.seriesDetailScreen = m.top.FindNode("seriesDetailScreen")
     m.seriesSeasonsScreen = m.top.FindNode("seriesSeasonsScreen")
@@ -76,8 +73,6 @@ sub Init()
     m.moviesCacheReady = false
     m.seriesCacheReady = false
     m.liveCacheReady = false
-    m.localFavoritesCache = []
-    m.localHistoryCache = []
 
     configureScene()
 
@@ -97,18 +92,12 @@ sub Init()
     m.favoritesScreen.ObserveField("favoriteSelected", "onFavoriteSelected")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
-    m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
-    m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
-    m.liveCategoriesScreen.ObserveField("searchRequested", "onLiveSearchRequested")
     m.liveChannelsScreen.ObserveField("searchRequested", "onLiveSearchRequested")
     m.liveChannelsScreen.ObserveField("backRequested", "onLiveChannelsBack")
     m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
     m.liveChannelsScreen.ObserveField("categorySelected", "onLiveChannelsCategorySelected")
     m.liveChannelsScreen.ObserveField("channelFavoriteToggled", "onLiveChannelFavoriteToggled")
     m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
-    m.movieCategoriesScreen.ObserveField("backRequested", "onMovieCategoriesBack")
-    m.movieCategoriesScreen.ObserveField("categorySelected", "onMovieCategorySelected")
-    m.movieCategoriesScreen.ObserveField("searchRequested", "onMovieSearchRequested")
     m.movieListScreen.ObserveField("backRequested", "onMovieListBack")
     m.movieListScreen.ObserveField("categorySelected", "onMovieListCategorySelected")
     m.movieListScreen.ObserveField("searchRequested", "onMovieSearchRequested")
@@ -118,9 +107,6 @@ sub Init()
     m.movieDetailScreen.ObserveField("playRequested", "onMovieDetailPlay")
     m.movieDetailScreen.ObserveField("favoriteToggled", "onMovieDetailFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
-    m.seriesCategoriesScreen.ObserveField("backRequested", "onSeriesCategoriesBack")
-    m.seriesCategoriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
-    m.seriesCategoriesScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
     m.seriesListScreen.ObserveField("backRequested", "onSeriesListBack")
     m.seriesListScreen.ObserveField("categorySelected", "onSeriesListCategorySelected")
     m.seriesListScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
@@ -159,8 +145,6 @@ sub startSplashBootstrap()
     m.seriesCacheReady = false
     m.liveCacheReady = false
     m.bootstrapQueue = []
-    m.localFavoritesCache = LoadFavorites()
-    m.localHistoryCache = LoadViewingHistory()
 
     m.homeScreen.callFunc("hide")
     m.splashScreen.callFunc("show")
@@ -304,10 +288,8 @@ sub showHome()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
@@ -320,10 +302,8 @@ sub showLogin()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
@@ -338,10 +318,8 @@ sub openSearch(mode as String, backTarget as String)
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
@@ -393,17 +371,14 @@ sub onSearchBack()
 end sub
 
 sub onLiveSearchRequested()
-    m.liveCategoriesScreen.callFunc("hide")
     openSearch("live", "live")
 end sub
 
 sub onMovieSearchRequested()
-    m.movieCategoriesScreen.callFunc("hide")
     openSearch("movies", "movies")
 end sub
 
 sub onSeriesSearchRequested()
-    m.seriesCategoriesScreen.callFunc("hide")
     openSearch("series", "series")
 end sub
 
@@ -515,10 +490,8 @@ sub onOpenRecentRequested()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
@@ -535,10 +508,8 @@ sub onOpenFavoritesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
@@ -626,9 +597,7 @@ sub onOpenLiveCategoriesRequested()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
@@ -660,10 +629,8 @@ sub onOpenMovieCategoriesRequested()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
@@ -694,7 +661,6 @@ sub onLoginSubmit()
     end if
 
     m.pendingAccount = account
-    print "DEBUG Login: início da autenticação Xtream"
     m.loginScreen.callFunc("setLoading", true)
     startLoginTimeout()
     connectXtream(account)
@@ -705,40 +671,20 @@ sub onLoginBack()
     showHome()
 end sub
 
-sub onLiveCategoriesBack()
-    showHome()
-end sub
+
 
 sub onLiveChannelsBack()
     showHome()
 end sub
 
 
-sub onMovieCategoriesBack()
-    showHome()
-end sub
+
 
 sub onMovieListBack()
     showHome()
 end sub
 
-sub onMovieCategorySelected()
-    category = m.movieCategoriesScreen.categorySelected
-    if category = invalid then return
 
-    m.selectedMovieCategory = category
-    m.selectedMovieCategoryId = getCategoryId(category)
-    m.movies = []
-    m.moviesLoading = true
-    m.movieCategoriesScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("setCategories", m.movieCategories)
-    m.movieListScreen.callFunc("resetSelection")
-    m.movieListScreen.callFunc("show", category)
-    m.movieListScreen.callFunc("setLoading", true)
-    loadMovies(category)
-end sub
 
 sub onMovieListCategorySelected()
     category = m.movieListScreen.categorySelected
@@ -813,22 +759,7 @@ sub onMoviePlayerBack()
     end if
 end sub
 
-sub onLiveCategorySelected()
-    category = m.liveCategoriesScreen.categorySelected
-    if category = invalid then return
 
-    m.selectedLiveCategory = category
-    m.selectedLiveCategoryId = getCategoryId(category)
-    m.liveChannels = []
-    m.liveChannelsLoading = true
-    m.livePlayerScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("resetSelection")
-    m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
-    m.liveChannelsScreen.callFunc("setAccount", m.account)
-    m.liveChannelsScreen.callFunc("show", category)
-    m.liveChannelsScreen.callFunc("setLoading", true)
-    loadLiveChannels(category)
-end sub
 
 sub onLiveChannelsCategorySelected()
     category = m.liveChannelsScreen.categorySelected
@@ -859,8 +790,6 @@ sub onLiveChannelSelected()
         return
     end if
 
-    print "DEBUG Live: canal selecionado = " + getChannelNameForLog(channel)
-    print "DEBUG Live: stream_id = " + getStreamId(channel)
     m.selectedLiveChannel = channel
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("show", channel)
@@ -893,8 +822,6 @@ end sub
 sub buildLiveStreamUrl(channel as Object)
     streamId = getStreamId(channel)
     streamExtension = getStreamExtension(channel)
-    print "DEBUG Live: montando URL para stream_id = " + streamId
-    print "DEBUG Live: extensão do canal = " + streamExtension
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "buildLiveStreamUrl"
     m.xtreamService.cacheEnabled = false
@@ -931,7 +858,6 @@ sub buildMovieStreamUrl(movie as Object)
 end sub
 
 sub connectXtream(account as Object)
-    print "DEBUG Login: enviando requisição de conexão Xtream"
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "connect"
     m.xtreamService.cacheEnabled = false
@@ -969,11 +895,7 @@ end sub
 
 sub loadMovieCategories(account as Object)
     m.movieCategoriesLoading = true
-    if m.movieCategoriesScreen.visible = true then
-        m.movieCategoriesScreen.callFunc("setLoading", true)
-    else
-        m.homeScreen.callFunc("setMovieCategoriesLoading", true)
-    end if
+    m.homeScreen.callFunc("setMovieCategoriesLoading", true)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovieCategories"
     m.xtreamService.cacheEnabled = true
@@ -1010,11 +932,7 @@ end sub
 
 sub loadLiveCategories(account as Object)
     m.liveCategoriesLoading = true
-    if m.liveCategoriesScreen.visible = true then
-        m.liveCategoriesScreen.callFunc("setLoading", true)
-    else
-        m.homeScreen.callFunc("setLiveCategoriesLoading", true)
-    end if
+    m.homeScreen.callFunc("setLiveCategoriesLoading", true)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveCategories"
     m.xtreamService.cacheEnabled = true
@@ -1067,12 +985,10 @@ sub onXtreamConnectionResult()
     m.loginScreen.callFunc("setLoading", false)
 
     if m.pendingAccount = invalid then
-        print "DEBUG Login: resposta ignorada porque não há login pendente"
         return
     end if
 
     if isValidXtreamConnectionResult(result) then
-        print "DEBUG Login: autenticação Xtream concluída com sucesso"
         m.account = m.pendingAccount
         SavePlaylist(m.account)
         SavePlaylistConnectionStatus("Conectado")
@@ -1092,7 +1008,6 @@ sub onXtreamConnectionResult()
         resetSeriesData()
         showHome()
     else
-        print "DEBUG Login: erro na autenticação Xtream - " + getResultMessage(result)
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
         m.liveCategories = []
@@ -1117,7 +1032,6 @@ sub continueBootstrapIfNeeded()
 end sub
 
 sub hideSeriesScreens()
-    m.seriesCategoriesScreen.callFunc("hide")
     m.seriesListScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("hide")
     m.seriesSeasonsScreen.callFunc("hide")
@@ -1138,14 +1052,11 @@ sub onOpenSeriesCategoriesRequested()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
-    m.seriesCategoriesScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("hide")
     m.seriesSeasonsScreen.callFunc("hide")
     m.seriesEpisodesScreen.callFunc("hide")
@@ -1169,9 +1080,7 @@ sub onOpenSeriesCategoriesRequested()
     end if
 end sub
 
-sub onSeriesCategoriesBack()
-    showHome()
-end sub
+
 
 sub onSeriesListBack()
     showHome()
@@ -1198,20 +1107,7 @@ sub onSeriesPlayerBack()
     end if
 end sub
 
-sub onSeriesCategorySelected()
-    category = m.seriesCategoriesScreen.categorySelected
-    if category = invalid then return
-    m.selectedSeriesCategory = category
-    m.selectedSeriesCategoryId = getCategoryId(category)
-    m.series = []
-    m.seriesLoading = true
-    m.seriesCategoriesScreen.callFunc("hide")
-    m.seriesListScreen.callFunc("setCategories", m.seriesCategories)
-    m.seriesListScreen.callFunc("resetSelection")
-    m.seriesListScreen.callFunc("show", category)
-    m.seriesListScreen.callFunc("setLoading", true)
-    loadSeries(category)
-end sub
+
 
 sub onSeriesListCategorySelected()
     category = m.seriesListScreen.categorySelected
@@ -1312,11 +1208,7 @@ end sub
 
 sub loadSeriesCategories(account as Object)
     m.seriesCategoriesLoading = true
-    if m.seriesCategoriesScreen.visible = true then
-        m.seriesCategoriesScreen.callFunc("setLoading", true)
-    else
-        m.homeScreen.callFunc("setSeriesCategoriesLoading", true)
-    end if
+    m.homeScreen.callFunc("setSeriesCategoriesLoading", true)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeriesCategories"
     m.xtreamService.cacheEnabled = true
@@ -1399,7 +1291,6 @@ end sub
 sub onLoginTimeout()
     if m.pendingAccount = invalid then return
 
-    print "DEBUG Login: timeout ao aguardar resposta Xtream"
     m.xtreamService.control = "STOP"
     m.pendingAccount = invalid
     m.liveCategoriesLoading = false
@@ -1444,9 +1335,6 @@ sub onMovieCategoriesResult(result as Object)
         m.movieCategories = normalizeMovieCategories(result.data)
         if m.movieCategories.Count() > 0 then
             updateConnectionStatus(true, "Conectado • Categorias de filmes carregadas")
-            if m.movieCategoriesScreen.visible = true then
-                m.movieCategoriesScreen.callFunc("setCategories", m.movieCategories)
-            end if
             if m.movieListScreen.visible = true then
                 m.movieListScreen.callFunc("setCategories", m.movieCategories)
                 m.movieListScreen.callFunc("showMessage", "Escolha uma categoria para carregar os filmes.")
@@ -1454,9 +1342,6 @@ sub onMovieCategoriesResult(result as Object)
             end if
         else
             updateConnectionStatus(true, "Conectado • Nenhuma categoria de filmes encontrada")
-            if m.movieCategoriesScreen.visible = true then
-                m.movieCategoriesScreen.callFunc("showMessage", "Nenhuma categoria de filmes foi encontrada.")
-            end if
             if m.movieListScreen.visible = true then
                 m.movieListScreen.callFunc("showMessage", "Nenhuma categoria de filmes foi encontrada.")
                 m.movieListScreen.callFunc("focusCategories")
@@ -1464,9 +1349,6 @@ sub onMovieCategoriesResult(result as Object)
         end if
     else
         updateConnectionStatus(true, "Conectado • Não foi possível carregar categorias de filmes")
-        if m.movieCategoriesScreen.visible = true then
-            m.movieCategoriesScreen.callFunc("showMessage", "Não foi possível carregar as categorias de filmes. Tente novamente mais tarde.")
-        end if
         if m.movieListScreen.visible = true then
             m.movieListScreen.callFunc("showMessage", "Não foi possível carregar as categorias de filmes. Tente novamente mais tarde.")
             m.movieListScreen.callFunc("focusCategories")
@@ -1496,7 +1378,6 @@ sub onMoviesResult(result as Object)
 
     resultCategoryId = getMoviesResultCategoryId(result)
     if resultCategoryId <> "" and resultCategoryId <> m.selectedMovieCategoryId then
-        print "DEBUG Movies: resposta ignorada para categoria fora do foco: " + resultCategoryId
         return
     end if
 
@@ -1539,9 +1420,6 @@ sub onLiveCategoriesResult(result as Object)
         m.liveCategories = normalizeLiveCategories(result.data)
         if m.liveCategories.Count() > 0 then
             updateConnectionStatus(true, "Conectado • Categorias de TV ao vivo carregadas")
-            if m.liveCategoriesScreen.visible = true then
-                m.liveCategoriesScreen.callFunc("setCategories", m.liveCategories)
-            end if
             if m.liveChannelsScreen.visible = true then
                 m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
                 m.liveChannelsScreen.callFunc("showMessage", "Escolha uma categoria para carregar os canais.")
@@ -1549,9 +1427,6 @@ sub onLiveCategoriesResult(result as Object)
             end if
         else
             updateConnectionStatus(true, "Conectado • Nenhuma categoria de TV ao vivo encontrada")
-            if m.liveCategoriesScreen.visible = true then
-                m.liveCategoriesScreen.callFunc("showMessage", "Nenhuma categoria de TV ao vivo foi encontrada.")
-            end if
             if m.liveChannelsScreen.visible = true then
                 m.liveChannelsScreen.callFunc("showMessage", "Nenhuma categoria de TV ao vivo foi encontrada.")
                 m.liveChannelsScreen.callFunc("focusCategories")
@@ -1559,9 +1434,6 @@ sub onLiveCategoriesResult(result as Object)
         end if
     else
         updateConnectionStatus(true, "Conectado • Não foi possível carregar categorias de TV ao vivo")
-        if m.liveCategoriesScreen.visible = true then
-            m.liveCategoriesScreen.callFunc("showMessage", "Não foi possível carregar as categorias de TV ao vivo. Tente novamente mais tarde.")
-        end if
         if m.liveChannelsScreen.visible = true then
             m.liveChannelsScreen.callFunc("showMessage", "Não foi possível carregar as categorias de TV ao vivo. Tente novamente mais tarde.")
             m.liveChannelsScreen.callFunc("focusCategories")
@@ -1581,7 +1453,6 @@ sub onLiveChannelsResult(result as Object)
 
     resultCategoryId = getLiveStreamsResultCategoryId(result)
     if resultCategoryId <> "" and resultCategoryId <> m.selectedLiveCategoryId then
-        print "DEBUG LiveChannels: resposta ignorada para categoria fora do foco: " + resultCategoryId
         return
     end if
 
@@ -1612,7 +1483,6 @@ sub onLiveStreamUrlResult(result as Object)
     if m.livePlayerScreen.visible <> true then return
 
     if result.success = true and result.data <> invalid and result.data.url <> invalid then
-        print "DEBUG Live: URL final = " + result.data.url
         m.livePlayerScreen.callFunc("play", result.data.url)
     else
         m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
@@ -1627,7 +1497,6 @@ sub onSeriesCategoriesResult(result as Object)
         m.seriesCategories = normalizeSeriesCategories(result.data)
         if m.seriesCategories.Count() > 0 then
             updateConnectionStatus(true, "Conectado • Categorias de séries carregadas")
-            if m.seriesCategoriesScreen.visible = true then m.seriesCategoriesScreen.callFunc("setCategories", m.seriesCategories)
             if m.seriesListScreen.visible = true then
                 m.seriesListScreen.callFunc("setCategories", m.seriesCategories)
                 m.seriesListScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
@@ -1635,7 +1504,6 @@ sub onSeriesCategoriesResult(result as Object)
             end if
         else
             updateConnectionStatus(true, "Conectado • Nenhuma categoria de séries encontrada")
-            if m.seriesCategoriesScreen.visible = true then m.seriesCategoriesScreen.callFunc("showMessage", "Nenhuma categoria de séries foi encontrada.")
             if m.seriesListScreen.visible = true then
                 m.seriesListScreen.callFunc("showMessage", "Nenhuma categoria de séries foi encontrada.")
                 m.seriesListScreen.callFunc("focusCategories")
@@ -1643,7 +1511,6 @@ sub onSeriesCategoriesResult(result as Object)
         end if
     else
         updateConnectionStatus(true, "Conectado • Não foi possível carregar categorias de séries")
-        if m.seriesCategoriesScreen.visible = true then m.seriesCategoriesScreen.callFunc("showMessage", "Não foi possível carregar as categorias de séries. Tente novamente mais tarde.")
         if m.seriesListScreen.visible = true then
             m.seriesListScreen.callFunc("showMessage", "Não foi possível carregar as categorias de séries. Tente novamente mais tarde.")
             m.seriesListScreen.callFunc("focusCategories")
@@ -1665,7 +1532,6 @@ sub onSeriesResult(result as Object)
 
     resultCategoryId = getSeriesResultCategoryId(result)
     if resultCategoryId <> "" and resultCategoryId <> m.selectedSeriesCategoryId then
-        print "DEBUG Series: resposta ignorada para categoria fora do foco: " + resultCategoryId
         return
     end if
 

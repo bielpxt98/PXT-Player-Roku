@@ -257,17 +257,14 @@ sub onVideoStateChanged()
 end sub
 
 sub onVisibleChanged()
-    print "MoviePlayer visible changed"
     if m.top.visible = true then setTopFocus()
 end sub
 
 sub setTopFocus()
     m.top.SetFocus(true)
-    print "MoviePlayer SetFocus top"
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    print "MoviePlayer onKeyEvent: "; key; " press="; press
 
     if key = "right" or key = "fastforward" then
         if press then
