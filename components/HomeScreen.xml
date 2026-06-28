@@ -13,6 +13,7 @@
         <field id="openSeriesCategories" type="boolean" alwaysNotify="true" />
         <field id="openFavorites" type="boolean" alwaysNotify="true" />
         <field id="openRecent" type="boolean" alwaysNotify="true" />
+        <field id="continueSelected" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
@@ -26,6 +27,9 @@
         <HomeButton id="seriesButton" labelText="SÉRIES" iconText="▦" accentColor="#8B5CF6" />
         <HomeButton id="favoritesButton" labelText="FAVORITOS" iconText="★" accentColor="#FACC15" />
         <HomeButton id="recentButton" labelText="ÚLTIMOS ASSISTIDOS" iconText="◷" accentColor="#94A3B8" />
+        <Group id="continueGroup" visible="false">
+            <Label id="continueTitle" text="CONTINUE ASSISTINDO" color="#5CE08A" />
+        </Group>
         <Label id="accountIconLabel" text="○" color="#D8E2F3" horizAlign="center" />
         <Label id="accountFooterLabel" text="CONTA" color="#D8E2F3" horizAlign="center" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />

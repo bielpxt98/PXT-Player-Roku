@@ -11,6 +11,11 @@ sub Init()
     m.accountIconLabel = m.top.FindNode("accountIconLabel")
     m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
+    m.continueGroup = m.top.FindNode("continueGroup")
+    m.continueTitle = m.top.FindNode("continueTitle")
+    m.continueItems = []
+    m.continueNodes = []
+    m.continueIndex = 0
 
     m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
     m.focusIndex = 0
@@ -66,6 +71,11 @@ sub configureLayout()
     m.accountFooterLabel.font = "font:SmallBoldSystemFont"
     m.accountFooterLabel.translation = [Int((width - m.accountFooterLabel.width) / 2), footerY]
 
+    m.continueGroup.translation = [horizontalMargin, buttonY + buttonHeight + 32]
+    m.continueTitle.width = width - (horizontalMargin * 2)
+    m.continueTitle.height = 34
+    m.continueTitle.font = "font:MediumBoldSystemFont"
+
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:SmallSystemFont"
     m.connectionStatusLabel.translation = [0, Int(height * 0.94)]
@@ -120,6 +130,7 @@ sub configureHomeCard(button as Object, cardWidth as Integer, cardHeight as Inte
 end sub
 
 sub show()
+    loadContinueWatchingSection()
     m.top.visible = true
     m.focusIndex = 0
     m.lastCardFocusIndex = 0
@@ -192,19 +203,39 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "left" then
-        if m.focusArea = "cards" then moveFocus(-1)
+        if m.focusArea = "cards" then
+            moveFocus(-1)
+        else if m.focusArea = "continue" then
+            moveContinueFocus(-1)
+        end if
         return true
     else if key = "right" then
-        if m.focusArea = "cards" then moveFocus(1)
+        if m.focusArea = "cards" then
+            moveFocus(1)
+        else if m.focusArea = "continue" then
+            moveContinueFocus(1)
+        end if
         return true
     else if key = "down" then
-        if m.focusArea = "cards" then m.lastCardFocusIndex = m.focusIndex
-        m.focusArea = "account"
+        if m.focusArea = "cards" then
+            m.lastCardFocusIndex = m.focusIndex
+            if m.continueItems.Count() > 0 then
+                m.focusArea = "continue"
+            else
+                m.focusArea = "account"
+            end if
+        else if m.focusArea = "continue" then
+            m.focusArea = "account"
+        end if
         updateFocus()
         return true
     else if key = "up" then
-        m.focusArea = "cards"
-        m.focusIndex = m.lastCardFocusIndex
+        if m.focusArea = "account" and m.continueItems.Count() > 0 then
+            m.focusArea = "continue"
+        else
+            m.focusArea = "cards"
+            m.focusIndex = m.lastCardFocusIndex
+        end if
         updateFocus()
         return true
     else if key = "OK" then
@@ -231,6 +262,8 @@ sub updateFocus()
         m.buttons[i].SetFocus(isCardFocused)
     end for
 
+    updateContinueFocus()
+
     if m.focusArea = "account" then
         m.accountIconLabel.text = "◉"
         m.accountIconLabel.color = "#FFFFFF"
@@ -249,8 +282,15 @@ sub updateFocus()
 end sub
 
 sub selectFocusedButton()
+    updateContinueFocus()
+
     if m.focusArea = "account" then
         onPlaylistSelected()
+        return
+    else if m.focusArea = "continue" then
+        if m.continueItems.Count() > 0 then
+            m.top.continueSelected = m.continueItems[m.continueIndex]
+        end if
         return
     end if
 
@@ -265,4 +305,91 @@ sub selectFocusedButton()
     else if m.focusIndex = 4 then
         onRecentSelected()
     end if
+end sub
+
+
+sub loadContinueWatchingSection()
+    clearContinueNodes()
+    m.continueItems = buildContinueItems(LoadViewingHistory())
+    m.continueIndex = 0
+    m.continueGroup.visible = m.continueItems.Count() > 0
+    if m.continueItems.Count() = 0 then return
+
+    itemWidth = 210
+    itemGap = 18
+    for i = 0 to m.continueItems.Count() - 1
+        label = CreateObject("roSGNode", "Label")
+        label.width = itemWidth
+        label.height = 72
+        label.translation = [i * (itemWidth + itemGap), 48]
+        label.wrap = true
+        label.font = "font:SmallBoldSystemFont"
+        label.text = continueItemTitle(m.continueItems[i])
+        m.continueGroup.AppendChild(label)
+        m.continueNodes.Push(label)
+    end for
+end sub
+
+function buildContinueItems(history as Dynamic) as Object
+    result = []
+    if history = invalid or history.continueWatching = invalid or Type(history.continueWatching) <> "roArray" then return result
+    for each item in history.continueWatching
+        if result.Count() >= 10 then exit for
+        if item <> invalid and item.position <> invalid and item.position > 0 and not isContinueItemComplete(item) then result.Push(item)
+    end for
+    return result
+end function
+
+function isContinueItemComplete(item as Dynamic) as Boolean
+    duration = getContinueDuration(item)
+    if duration <= 0 or item.position = invalid then return false
+    return (item.position / duration) >= 0.95
+end function
+
+function getContinueDuration(item as Dynamic) as Float
+    content = item.content
+    if content <> invalid and Type(content) = "roAssociativeArray" then
+        for each key in ["duration_secs", "duration", "episode_run_time"]
+            if content.DoesExist(key) and content[key] <> invalid then
+                value = Val(content[key].ToStr())
+                if value > 0 then
+                    if value < item.position and value < 1000 then value = value * 60
+                    return value
+                end if
+            end if
+        end for
+    end if
+    return 0
+end function
+
+function continueItemTitle(item as Dynamic) as String
+    if item = invalid then return "Item sem título"
+    if item.seriesTitle <> invalid and item.seriesTitle.ToStr().Trim() <> "" then return item.seriesTitle.ToStr() + Chr(10) + item.title.ToStr()
+    if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
+    return "Item sem título"
+end function
+
+sub clearContinueNodes()
+    while m.continueGroup.GetChildCount() > 1
+        m.continueGroup.RemoveChildIndex(1)
+    end while
+    m.continueNodes = []
+end sub
+
+sub moveContinueFocus(direction as Integer)
+    if m.continueItems.Count() = 0 then return
+    m.continueIndex = m.continueIndex + direction
+    if m.continueIndex < 0 then m.continueIndex = m.continueItems.Count() - 1
+    if m.continueIndex >= m.continueItems.Count() then m.continueIndex = 0
+    updateFocus()
+end sub
+
+sub updateContinueFocus()
+    for i = 0 to m.continueNodes.Count() - 1
+        if m.focusArea = "continue" and i = m.continueIndex then
+            m.continueNodes[i].color = "#FFFFFF"
+        else
+            m.continueNodes[i].color = "#D8E2F3"
+        end if
+    end for
 end sub
