@@ -26,6 +26,7 @@
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="categoriesGroup" />
         <Group id="seriesGroup" />
+        <Timer id="progressiveLoadTimer" duration="0.03" repeat="true" />
         <Label id="hintLabel" text="←/→ alternar painel • OK selecionar • * favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

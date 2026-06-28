@@ -11,6 +11,9 @@ sub Init()
     m.moviesGrid = m.top.FindNode("moviesGrid")
     m.movieTitlesGroup = m.top.FindNode("movieTitlesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
+    m.progressiveLoadTimer = m.top.FindNode("progressiveLoadTimer")
+    m.progressiveLoadTimer.ObserveField("fire", "onProgressiveLoadTimerFire")
+    m.initialRenderLimit = 50 : m.progressiveBatchSize = 25 : m.renderLimit = 50
     m.categories = [] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.itemNodes = []
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
@@ -99,17 +102,42 @@ sub setCategories(categories as Object)
 end sub
 
 sub setLoading(isLoading as Boolean)
+    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
     clearGridNodes()
-    m.movies = [] : m.allMovie = []
+    m.movies = [] : m.allMovie = [] : m.renderLimit = m.initialRenderLimit
     if isLoading then m.statusLabel.text = "Carregando filmes..." else m.statusLabel.text = ""
 end sub
 
 sub setMovies(items as Object)
+    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
     clearGridNodes()
     m.statusLabel.text = ""
-    m.allMovie = normalizeArray(items) : m.movies = m.allMovie
+    m.allMovie = normalizeArray(items) : m.renderLimit = m.initialRenderLimit
+    rebuildVisibleMovies()
     if m.movies.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
     m.statusLabel.text = "" : resetGridFocusToFirstItem() : renderGrid() : updateFocus()
+    if m.movies.Count() < m.allMovie.Count() and m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "start"
+end sub
+
+sub onProgressiveLoadTimerFire()
+    if m.allMovie = invalid or m.movies.Count() >= m.allMovie.Count() then
+        if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
+        return
+    end if
+    m.renderLimit = m.renderLimit + m.progressiveBatchSize
+    rebuildVisibleMovies()
+    renderGrid() : updateFocus()
+end sub
+
+sub rebuildVisibleMovies()
+    m.movies = []
+    if m.allMovie = invalid then return
+    last = m.renderLimit - 1
+    if last >= m.allMovie.Count() then last = m.allMovie.Count() - 1
+    if last < 0 then return
+    for i = 0 to last
+        if i >= 0 then m.movies.Push(m.allMovie[i])
+    end for
 end sub
 
 sub showMessage(message as String)

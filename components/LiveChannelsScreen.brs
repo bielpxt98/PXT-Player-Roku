@@ -10,10 +10,14 @@ sub Init()
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.channelsGroup = m.top.FindNode("channelsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
+    m.progressiveLoadTimer = m.top.FindNode("progressiveLoadTimer")
+    m.progressiveLoadTimer.ObserveField("fire", "onProgressiveLoadTimerFire")
 
     m.account = invalid
     m.categories = []
     m.channels = []
+    m.allChannels = []
+    m.initialRenderLimit = 50 : m.progressiveBatchSize = 25 : m.renderLimit = 50
     m.categoryNodes = []
     m.channelNodes = []
     m.selectedCategoryIndex = 0
@@ -105,8 +109,9 @@ sub setCategories(categories as Object)
 end sub
 
 sub setLoading(isLoading as Boolean)
+    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
     clearChannelNodes()
-    m.channels = []
+    m.channels = [] : m.allChannels = [] : m.renderLimit = m.initialRenderLimit
     m.selectedChannelIndex = 0 : m.firstVisibleChannelIndex = 0
     if isLoading then
         m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando canais..."
@@ -117,7 +122,9 @@ sub setLoading(isLoading as Boolean)
 end sub
 
 sub setChannels(channels as Object)
-    m.channels = normalizeArray(channels)
+    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
+    m.allChannels = normalizeArray(channels) : m.renderLimit = m.initialRenderLimit
+    rebuildVisibleChannels()
     m.selectedChannelIndex = 0 : m.firstVisibleChannelIndex = 0
     if m.channels.Count() = 0 then
         showMessage("Nenhum canal foi encontrado nesta categoria.")
@@ -126,6 +133,28 @@ sub setChannels(channels as Object)
     m.statusLabel.text = ""
     renderChannels()
     updateFocus()
+    if m.channels.Count() < m.allChannels.Count() and m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "start"
+end sub
+
+sub onProgressiveLoadTimerFire()
+    if m.allChannels = invalid or m.channels.Count() >= m.allChannels.Count() then
+        if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
+        return
+    end if
+    m.renderLimit = m.renderLimit + m.progressiveBatchSize
+    rebuildVisibleChannels()
+    renderChannels() : updateFocus()
+end sub
+
+sub rebuildVisibleChannels()
+    m.channels = []
+    if m.allChannels = invalid then return
+    last = m.renderLimit - 1
+    if last >= m.allChannels.Count() then last = m.allChannels.Count() - 1
+    if last < 0 then return
+    for i = 0 to last
+        if i >= 0 then m.channels.Push(m.allChannels[i])
+    end for
 end sub
 
 sub showMessage(message as String)

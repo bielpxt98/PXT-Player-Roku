@@ -10,6 +10,9 @@ sub Init()
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.seriesGroup = m.top.FindNode("seriesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
+    m.progressiveLoadTimer = m.top.FindNode("progressiveLoadTimer")
+    m.progressiveLoadTimer.ObserveField("fire", "onProgressiveLoadTimerFire")
+    m.initialRenderLimit = 50 : m.progressiveBatchSize = 25 : m.renderLimit = 50
     m.categories = [] : m.series = [] : m.allSeries = []
     m.categoryNodes = [] : m.itemNodes = []
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
@@ -84,14 +87,40 @@ sub setCategories(categories as Object)
 end sub
 
 sub setLoading(isLoading as Boolean)
+    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
     clearGridNodes()
+    m.series = [] : m.allSeries = [] : m.renderLimit = m.initialRenderLimit
     if isLoading then m.statusLabel.text = "Carregando séries..." else m.statusLabel.text = ""
 end sub
 
 sub setSeries(items as Object)
-    m.allSeries = normalizeArray(items) : m.series = m.allSeries
+    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
+    m.allSeries = normalizeArray(items) : m.renderLimit = m.initialRenderLimit
+    rebuildVisibleSeries()
     if m.series.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
     m.statusLabel.text = "" : resetGridSelection() : renderGrid() : updateFocus()
+    if m.series.Count() < m.allSeries.Count() and m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "start"
+end sub
+
+sub onProgressiveLoadTimerFire()
+    if m.allSeries = invalid or m.series.Count() >= m.allSeries.Count() then
+        if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
+        return
+    end if
+    m.renderLimit = m.renderLimit + m.progressiveBatchSize
+    rebuildVisibleSeries()
+    renderGrid() : updateFocus()
+end sub
+
+sub rebuildVisibleSeries()
+    m.series = []
+    if m.allSeries = invalid then return
+    last = m.renderLimit - 1
+    if last >= m.allSeries.Count() then last = m.allSeries.Count() - 1
+    if last < 0 then return
+    for i = 0 to last
+        if i >= 0 then m.series.Push(m.allSeries[i])
+    end for
 end sub
 
 sub showMessage(message as String)
