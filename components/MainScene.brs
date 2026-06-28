@@ -55,9 +55,7 @@ sub Init()
     m.selectedSeason = invalid
     m.selectedEpisode = invalid
     m.selectedSeriesSeasons = []
-    m.openedFromFavorites = false
-    m.openedFromSearch = false
-    m.openedFromRecent = false
+    m.entryPoint = "home"
     m.searchChannels = []
     m.searchMovies = []
     m.searchSeries = []
@@ -396,6 +394,26 @@ sub onSearchBack()
     end if
 end sub
 
+function returnToEntryPoint() as Boolean
+    if m.entryPoint = "favorites" then
+        m.entryPoint = "home"
+        m.favoritesScreen.callFunc("setFavorites", LoadFavorites())
+        m.favoritesScreen.callFunc("show")
+        return true
+    else if m.entryPoint = "recent" then
+        m.entryPoint = "home"
+        m.recentScreen.callFunc("setHistory", LoadViewingHistory())
+        m.recentScreen.callFunc("show")
+        return true
+    else if m.entryPoint = "search" then
+        m.entryPoint = "home"
+        m.searchScreen.callFunc("show", m.searchMode)
+        return true
+    end if
+
+    return false
+end function
+
 sub onLiveSearchRequested()
     openSearch("live", "live")
 end sub
@@ -432,7 +450,7 @@ sub onSearchChannelSelected()
     channel = m.searchScreen.channelSelected
     if channel = invalid then return
     m.selectedLiveChannel = channel
-    m.openedFromSearch = true
+    m.entryPoint = "search"
     m.searchScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("show", channel)
     buildLiveStreamUrl(channel)
@@ -442,7 +460,7 @@ sub onSearchMovieSelected()
     movie = m.searchScreen.movieSelected
     if movie = invalid then return
     m.selectedMovie = movie
-    m.openedFromSearch = true
+    m.entryPoint = "search"
     m.searchScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("show", movie)
     m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
@@ -453,7 +471,7 @@ sub onSearchSeriesSelected()
     series = m.searchScreen.seriesSelected
     if series = invalid then return
     m.selectedSeries = series
-    m.openedFromSearch = true
+    m.entryPoint = "search"
     m.searchScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("show", series)
     m.seriesDetailScreen.callFunc("setLoading", true)
@@ -535,7 +553,7 @@ sub onHistorySelected()
     item = m.recentScreen.historySelected
     if item = invalid then return
     m.recentScreen.callFunc("hide")
-    m.openedFromRecent = true
+    m.entryPoint = "recent"
     if item.type = "movie" then
         m.selectedMovie = item.content
         m.moviePlayerScreen.callFunc("show", item.content)
@@ -557,7 +575,7 @@ sub onFavoriteSelected()
     if favorite = invalid or favorite.content = invalid then return
     content = favorite.content
     m.favoritesScreen.callFunc("hide")
-    m.openedFromFavorites = true
+    m.entryPoint = "favorites"
     if favorite.type = "live" then
         m.selectedLiveChannel = content
         m.livePlayerScreen.callFunc("show", content)
@@ -705,6 +723,7 @@ sub onMovieSelected()
     end if
 
     m.selectedMovie = movie
+    m.entryPoint = "home"
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("show", movie)
     m.movieDetailScreen.callFunc("setLoading", true)
@@ -736,15 +755,8 @@ end sub
 sub onMoviePlayerBack()
     UpsertMovieHistory(m.selectedMovie, m.moviePlayerScreen.callFunc("getPlaybackPosition"))
     m.moviePlayerScreen.callFunc("hide")
-    if m.openedFromFavorites = true then
-        m.openedFromFavorites = false
-        showHome()
-    else if m.openedFromRecent = true then
-        m.openedFromRecent = false
-        showHome()
-    else if m.openedFromSearch = true then
-        m.openedFromSearch = false
-        showHome()
+    if returnToEntryPoint() then
+        return
     else
         m.movieDetailScreen.callFunc("show", m.selectedMovie)
     end if
@@ -782,6 +794,7 @@ sub onLiveChannelSelected()
     end if
 
     m.selectedLiveChannel = channel
+    m.entryPoint = "home"
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("show", channel)
     buildLiveStreamUrl(channel)
@@ -789,15 +802,8 @@ end sub
 
 sub onLivePlayerBack()
     m.livePlayerScreen.callFunc("hide")
-    if m.openedFromFavorites = true then
-        m.openedFromFavorites = false
-        showHome()
-    else if m.openedFromRecent = true then
-        m.openedFromRecent = false
-        showHome()
-    else if m.openedFromSearch = true then
-        m.openedFromSearch = false
-        showHome()
+    if returnToEntryPoint() then
+        return
     else
         m.liveChannelsScreen.callFunc("setAccount", m.account)
         m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
@@ -1069,9 +1075,8 @@ end sub
 sub onSeriesPlayerBack()
     UpsertSeriesHistory(m.selectedSeries, m.selectedSeason, m.selectedEpisode, m.seriesPlayerScreen.callFunc("getPlaybackPosition"))
     m.seriesPlayerScreen.callFunc("hide")
-    if m.openedFromRecent = true then
-        m.openedFromRecent = false
-        showHome()
+    if returnToEntryPoint() then
+        return
     else
         m.seriesEpisodesScreen.callFunc("show", m.selectedSeason)
     end if
@@ -1101,6 +1106,7 @@ sub onSeriesSelected()
     series = m.seriesListScreen.seriesSelected
     if series = invalid then return
     m.selectedSeries = series
+    m.entryPoint = "home"
     m.selectedSeriesSeasons = []
     m.seriesListScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("show", series)
@@ -1110,12 +1116,8 @@ end sub
 
 sub onSeriesDetailBack()
     m.seriesDetailScreen.callFunc("hide")
-    if m.openedFromFavorites = true then
-        m.openedFromFavorites = false
-        showHome()
-    else if m.openedFromSearch = true then
-        m.openedFromSearch = false
-        showHome()
+    if returnToEntryPoint() then
+        return
     else
         m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
     end if
