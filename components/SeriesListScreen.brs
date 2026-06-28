@@ -241,7 +241,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.activePane = "categories" then
             if m.categories.Count() > 0 and m.selectedCategoryIndex >= 0 and m.selectedCategoryIndex < m.categories.Count() then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
         else if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then
-            print "OK opening selectedIndex="; m.selectedIndex : print "OK opening item="; getSeriesLogTitle(m.series[m.selectedIndex])
             m.top.seriesSelected = m.series[m.selectedIndex]
         end if
         return true

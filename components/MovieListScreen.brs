@@ -263,7 +263,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.activePane = "categories" then
             if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
         else if m.movies.Count() > 0 then
-            print "OK opening selectedIndex="; m.selectedIndex : print "OK opening item="; getMovieLogTitle(m.movies[m.selectedIndex])
             m.top.movieSelected = m.movies[m.selectedIndex]
         end if
         return true

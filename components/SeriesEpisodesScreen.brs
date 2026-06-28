@@ -116,8 +116,6 @@ sub resetSelection()
 end sub
 
 sub logInitialSelection()
-    print "INIT selectedIndex="; m.selectedIndex
-    print "INIT firstVisibleIndex="; m.firstVisibleIndex
 end sub
 
 sub setLoading(isLoading as Boolean)
@@ -285,8 +283,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.episodes.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.episodes.Count() then
-            print "OK opening selectedIndex="; m.selectedIndex
-            print "OK opening item="; getEpisodeLogTitle(m.episodes[m.selectedIndex])
             m.top.episodeSelected = m.episodes[m.selectedIndex]
         end if
         return true
