@@ -197,6 +197,29 @@ sub focusCategories()
     updateFocus()
 end sub
 
+sub focusChannels()
+    m.focusColumn = "channels"
+    updateFocus()
+end sub
+
+sub restoreSelectedChannel(channel as Dynamic)
+    if channel <> invalid and m.channels.Count() > 0 then
+        channelId = getChannelId(channel)
+        channelName = getChannelName(channel)
+        for i = 0 to m.channels.Count() - 1
+            if getChannelId(m.channels[i]) = channelId or getChannelName(m.channels[i]) = channelName then
+                m.selectedIndex = i
+                updateVisibleWindow()
+                renderList()
+                exit for
+            end if
+        end for
+    end if
+
+    m.focusColumn = "channels"
+    updateFocus()
+end sub
+
 sub hide()
     m.top.visible = false
 end sub
@@ -296,13 +319,15 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
-    background.width = m.leftPanelWidth - 28
+    background.translation = [8, 0]
+    background.width = m.leftPanelWidth - 44
     background.height = m.cardHeight
     background.color = "#111827"
     background.opacity = 0.86
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
+    accent.translation = [8, 0]
     accent.width = 6
     accent.height = m.cardHeight
     accent.color = "#009DFF"
@@ -346,13 +371,15 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
-    background.width = m.middlePanelWidth - 28
+    background.translation = [m.logoSize + 20, 0]
+    background.width = m.middlePanelWidth - m.logoSize - 56
     background.height = m.cardHeight
     background.color = "#111827"
     background.opacity = 0.86
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
+    accent.translation = [m.logoSize + 20, 0]
     accent.width = 6
     accent.height = m.cardHeight
     accent.color = "#009DFF"
@@ -663,6 +690,13 @@ function getCategoryName(category as Dynamic) as String
     if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
     if category.title <> invalid and category.title.ToStr().Trim() <> "" then return category.title.ToStr()
     return "Categoria"
+end function
+
+function getChannelId(channel as Dynamic) as String
+    if channel = invalid then return ""
+    if channel.stream_id <> invalid then return channel.stream_id.ToStr()
+    if channel.id <> invalid then return channel.id.ToStr()
+    return ""
 end function
 
 function getChannelName(channel as Dynamic) as String
