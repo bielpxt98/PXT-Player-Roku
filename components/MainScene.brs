@@ -259,6 +259,70 @@ sub focusActiveScreen()
     m.top.SetFocus(true)
 end sub
 
+
+sub hideScreen(screen as Object)
+    if screen <> invalid then screen.callFunc("hide")
+end sub
+
+sub hidePlaybackScreens()
+    hideScreen(m.livePlayerScreen)
+    hideScreen(m.moviePlayerScreen)
+    hideScreen(m.seriesPlayerScreen)
+end sub
+
+sub hideScreenUnless(screen as Object, activeScreen as Object)
+    if screen <> activeScreen then hideScreen(screen)
+end sub
+
+sub hidePlaybackScreensExcept(activeScreen as Object)
+    hideScreenUnless(m.livePlayerScreen, activeScreen)
+    hideScreenUnless(m.moviePlayerScreen, activeScreen)
+    hideScreenUnless(m.seriesPlayerScreen, activeScreen)
+end sub
+
+sub hideSeriesScreens()
+    hideScreen(m.seriesListScreen)
+    hideScreen(m.seriesDetailScreen)
+    hideScreen(m.seriesSeasonsScreen)
+    hideScreen(m.seriesEpisodesScreen)
+    hideScreen(m.seriesPlayerScreen)
+end sub
+
+sub hideContentScreens()
+    hideContentScreensExcept(invalid)
+end sub
+
+sub hideContentScreensExcept(activeScreen as Object)
+    hideScreenUnless(m.homeScreen, activeScreen)
+    hideScreenUnless(m.loginScreen, activeScreen)
+    hideScreenUnless(m.favoritesScreen, activeScreen)
+    hideScreenUnless(m.recentScreen, activeScreen)
+    hideScreenUnless(m.searchScreen, activeScreen)
+    hideScreenUnless(m.liveChannelsScreen, activeScreen)
+    hideScreenUnless(m.movieListScreen, activeScreen)
+    hideScreenUnless(m.movieDetailScreen, activeScreen)
+    hideScreenUnless(m.seriesListScreen, activeScreen)
+    hideScreenUnless(m.seriesDetailScreen, activeScreen)
+    hideScreenUnless(m.seriesSeasonsScreen, activeScreen)
+    hideScreenUnless(m.seriesEpisodesScreen, activeScreen)
+    hideScreenUnless(m.seriesPlayerScreen, activeScreen)
+end sub
+
+sub hideAllScreens()
+    hideAllScreensExcept(invalid)
+end sub
+
+sub hideAllScreensExcept(activeScreen as Object)
+    hideScreenUnless(m.splashScreen, activeScreen)
+    hideContentScreensExcept(activeScreen)
+    hidePlaybackScreensExcept(activeScreen)
+end sub
+
+sub showOnlyScreen(screen as Object)
+    hideAllScreensExcept(screen)
+    if screen <> invalid then screen.callFunc("show")
+end sub
+
 sub configureScene()
     m.top.backgroundColor = "#000000"
     m.top.backgroundURI = ""
@@ -274,47 +338,18 @@ end sub
 
 
 sub showHome()
-    if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.recentScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
-    m.homeScreen.callFunc("show")
+    showOnlyScreen(m.homeScreen)
 end sub
 
 sub showLogin()
-    m.homeScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.recentScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
+    hideAllScreensExcept(m.loginScreen)
     m.loginScreen.callFunc("show", m.account)
 end sub
 
 
 
 sub openSearch(mode as String, backTarget as String)
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.recentScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
+    hideAllScreensExcept(m.searchScreen)
     m.searchMode = mode
     m.searchBackTarget = backTarget
     m.searchScreen.callFunc("show", mode)
@@ -477,16 +512,7 @@ sub loadSearchSeries()
 end sub
 
 sub onOpenRecentRequested()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
+    hideAllScreensExcept(m.recentScreen)
     m.recentScreen.callFunc("setHistory", LoadViewingHistory())
     m.recentScreen.callFunc("show")
 end sub
@@ -496,15 +522,7 @@ sub onRecentBack()
 end sub
 
 sub onOpenFavoritesRequested()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
+    hideAllScreensExcept(m.favoritesScreen)
     m.favoritesScreen.callFunc("setFavorites", LoadFavorites())
     m.favoritesScreen.callFunc("show")
 end sub
@@ -583,16 +601,7 @@ sub onOpenPlaylistRequested()
 end sub
 
 sub onOpenLiveCategoriesRequested()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.recentScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
+    hideAllScreensExcept(m.liveChannelsScreen)
     m.liveChannelsScreen.callFunc("resetSelection")
     m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", invalid)
@@ -615,16 +624,7 @@ end sub
 
 
 sub onOpenMovieCategoriesRequested()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.recentScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
+    hideAllScreensExcept(m.movieListScreen)
     m.movieListScreen.callFunc("resetSelection")
     m.movieListScreen.callFunc("show", invalid)
     m.movieListScreen.callFunc("focusCategories")
@@ -1022,14 +1022,6 @@ sub continueBootstrapIfNeeded()
     if m.bootstrapActive = true and m.splashMaximumElapsed <> true then processNextBootstrapRequest()
 end sub
 
-sub hideSeriesScreens()
-    m.seriesListScreen.callFunc("hide")
-    m.seriesDetailScreen.callFunc("hide")
-    m.seriesSeasonsScreen.callFunc("hide")
-    m.seriesEpisodesScreen.callFunc("hide")
-    m.seriesPlayerScreen.callFunc("hide")
-end sub
-
 sub resetSeriesData()
     m.seriesCategories = []
     m.series = []
@@ -1038,20 +1030,7 @@ sub resetSeriesData()
 end sub
 
 sub onOpenSeriesCategoriesRequested()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.recentScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    m.seriesDetailScreen.callFunc("hide")
-    m.seriesSeasonsScreen.callFunc("hide")
-    m.seriesEpisodesScreen.callFunc("hide")
-    m.seriesPlayerScreen.callFunc("hide")
+    hideAllScreensExcept(m.seriesListScreen)
     m.seriesListScreen.callFunc("resetSelection")
     m.seriesListScreen.callFunc("show", invalid)
     m.seriesListScreen.callFunc("focusCategories")
