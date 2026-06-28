@@ -1006,7 +1006,10 @@ sub onXtreamConnectionResult()
     result = m.xtreamService.result
     if result = invalid then return
 
-    if result.request = "getSeriesCategories" then
+    if isSeriesInfoResult(result) then
+        onSeriesInfoResult(result)
+        return
+    else if result.request = "getSeriesCategories" then
         onSeriesCategoriesResult(result)
         return
     else if Left(result.request, 9) = "getSeries" then
@@ -1249,7 +1252,8 @@ sub onSeriesDetailPlay()
     else if m.pendingDetailRequest = "series" then
         m.seriesSeasonsScreen.callFunc("setLoading", true)
     else
-        m.seriesSeasonsScreen.callFunc("showMessage", "Temporadas indisponíveis para esta série. Volte e tente novamente.")
+        m.seriesSeasonsScreen.callFunc("setLoading", true)
+        loadSeriesInfo(m.selectedSeries)
     end if
 end sub
 
@@ -1624,11 +1628,6 @@ sub onSeriesCategoriesResult(result as Object)
 end sub
 
 sub onSeriesResult(result as Object)
-    if isSeriesInfoResult(result) then
-        onSeriesInfoResult(result)
-        return
-    end if
-
     if m.searchLoadStep = "series" and getSeriesResultCategoryId(result) = "" then
         if result.success = true then m.searchSeries = normalizeSeries(result.data)
         m.searchLoadStep = ""
@@ -1734,6 +1733,7 @@ function normalizeSeriesCategories(data as Dynamic) as Object
 end function
 
 function normalizeSeriesSeasons(data as Dynamic) as Object
+    data = unwrapSeriesInfoData(data)
     if data = invalid or Type(data) <> "roAssociativeArray" then return []
 
     episodesBySeason = invalid
@@ -1776,6 +1776,16 @@ function normalizeSeriesSeasons(data as Dynamic) as Object
     end if
 
     return sortSeasons(normalizedSeasons)
+end function
+
+function unwrapSeriesInfoData(data as Dynamic) as Dynamic
+    if data = invalid or Type(data) <> "roAssociativeArray" then return data
+    if (not data.DoesExist("seasons")) and (not data.DoesExist("episodes")) then
+        if data.DoesExist("data") and data.data <> invalid then return unwrapSeriesInfoData(data.data)
+        if data.DoesExist("result") and data.result <> invalid then return unwrapSeriesInfoData(data.result)
+        if data.DoesExist("response") and data.response <> invalid then return unwrapSeriesInfoData(data.response)
+    end if
+    return data
 end function
 
 function getEpisodesForSeason(episodesBySeason as Dynamic, seasonNumber as Dynamic) as Object

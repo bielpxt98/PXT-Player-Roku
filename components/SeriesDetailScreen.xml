@@ -20,9 +20,9 @@
         <Label id="castLabel" color="#E5E7EB" wrap="true" />
         <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
         <Label id="synopsisLabel" color="#D1D5DB" wrap="true" />
-        <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" />
+        <Label id="loadingLabel" text="Carregando temporadas..." color="#B8C3D6" />
         <Group id="buttonsGroup">
-            <Label id="watchButton" text="▶ ASSISTIR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="watchButton" text="▶ TEMPORADAS" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             <Label id="favoriteButton" text="★ FAVORITAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         </Group>

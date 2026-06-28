@@ -57,7 +57,8 @@ sub show(category as Dynamic)
     if category <> invalid then syncSelectedCategory(category)
     resetGridSelection()
     renderCategories() : renderGrid() : updateFocus()
-    m.top.visible = true : m.top.SetFocus(true)
+    m.top.visible = true
+    if m.top.visible = true then m.top.SetFocus(true)
 end sub
 
 sub focusCategories()
