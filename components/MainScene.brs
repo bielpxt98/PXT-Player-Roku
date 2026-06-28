@@ -121,7 +121,6 @@ sub Init()
     m.seriesListScreen.ObserveField("seriesFavoriteToggled", "onSeriesFavoriteToggled")
     m.seriesDetailScreen.ObserveField("backRequested", "onSeriesDetailBack")
     m.seriesDetailScreen.ObserveField("playRequested", "onSeriesDetailPlay")
-    m.seriesDetailScreen.ObserveField("episodeSelected", "onSeriesDetailEpisodeSelected")
     m.seriesDetailScreen.ObserveField("favoriteToggled", "onSeriesDetailFavoriteToggled")
     m.seriesSeasonsScreen.ObserveField("backRequested", "onSeriesSeasonsBack")
     m.seriesSeasonsScreen.ObserveField("seasonSelected", "onSeriesSeasonSelected")
@@ -443,9 +442,8 @@ sub onSearchSeriesSelected()
     m.selectedSeries = series
     m.openedFromSearch = true
     m.searchScreen.callFunc("hide")
-    m.seriesSeasonsScreen.callFunc("resetSelection")
-    m.seriesSeasonsScreen.callFunc("show", series)
-    m.seriesSeasonsScreen.callFunc("setLoading", true)
+    m.seriesDetailScreen.callFunc("show", series)
+    m.seriesDetailScreen.callFunc("setLoading", true)
     loadSeriesInfo(series)
 end sub
 
@@ -579,9 +577,8 @@ sub onFavoriteSelected()
         buildMovieStreamUrl(content)
     else if favorite.type = "series" then
         m.selectedSeries = content
-        m.seriesSeasonsScreen.callFunc("resetSelection")
-        m.seriesSeasonsScreen.callFunc("show", content)
-        m.seriesSeasonsScreen.callFunc("setLoading", true)
+        m.seriesDetailScreen.callFunc("show", content)
+        m.seriesDetailScreen.callFunc("setLoading", true)
         loadSeriesInfo(content)
     else if favorite.type = "episode" then
         m.selectedEpisode = content
@@ -1154,18 +1151,7 @@ end sub
 
 sub onSeriesSeasonsBack()
     m.seriesSeasonsScreen.callFunc("hide")
-    if m.openedFromFavorites = true then
-        m.openedFromFavorites = false
-        showHome()
-    else if m.openedFromRecent = true then
-        m.openedFromRecent = false
-        showHome()
-    else if m.openedFromSearch = true then
-        m.openedFromSearch = false
-        showHome()
-    else
-        m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
-    end if
+    m.seriesDetailScreen.callFunc("show", m.selectedSeries)
 end sub
 
 sub onSeriesEpisodesBack()
@@ -1176,14 +1162,8 @@ end sub
 sub onSeriesPlayerBack()
     UpsertSeriesHistory(m.selectedSeries, m.selectedSeason, m.selectedEpisode, m.seriesPlayerScreen.callFunc("getPlaybackPosition"))
     m.seriesPlayerScreen.callFunc("hide")
-    if m.openedFromFavorites = true then
-        m.openedFromFavorites = false
-        showHome()
-    else if m.openedFromRecent = true then
+    if m.openedFromRecent = true then
         m.openedFromRecent = false
-        showHome()
-    else if m.openedFromSearch = true then
-        m.openedFromSearch = false
         showHome()
     else
         m.seriesEpisodesScreen.callFunc("show", m.selectedSeason)
@@ -1236,7 +1216,15 @@ end sub
 
 sub onSeriesDetailBack()
     m.seriesDetailScreen.callFunc("hide")
-    m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
+    if m.openedFromFavorites = true then
+        m.openedFromFavorites = false
+        showHome()
+    else if m.openedFromSearch = true then
+        m.openedFromSearch = false
+        showHome()
+    else
+        m.seriesListScreen.callFunc("show", m.selectedSeriesCategory)
+    end if
 end sub
 
 sub onSeriesDetailPlay()
@@ -1254,18 +1242,6 @@ sub onSeriesDetailPlay()
     end if
 end sub
 
-
-sub onSeriesDetailEpisodeSelected()
-    episode = m.seriesDetailScreen.episodeSelected
-    if episode = invalid then return
-    if not hasAccount(m.account) then return
-    m.selectedEpisode = episode
-    m.selectedSeason = invalid
-    m.seriesDetailScreen.callFunc("hide")
-    m.seriesPlayerScreen.callFunc("show", episode)
-    m.seriesPlayerScreen.callFunc("setResumePosition", GetHistoryPosition("episode", episode))
-    buildSeriesStreamUrl(episode)
-end sub
 
 sub onSeriesDetailFavoriteToggled()
     ToggleFavorite("series", m.seriesDetailScreen.favoriteToggled)
