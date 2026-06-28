@@ -210,8 +210,56 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if m.splashScreen <> invalid and m.splashScreen.visible = true then return true
+    if not press then return false
+
+    if key = "back" then
+        return handleBackKeySafely()
+    end if
+
     return false
 end function
+
+function handleBackKeySafely() as Boolean
+    if closeActivePlayerScreen() then return true
+
+    if m.movieDetailScreen <> invalid and m.movieDetailScreen.visible = true then
+        onMovieDetailBack()
+        return true
+    else if m.seriesDetailScreen <> invalid and m.seriesDetailScreen.visible = true then
+        onSeriesDetailBack()
+        return true
+    end if
+
+    focusActiveScreen()
+    return false
+end function
+
+function closeActivePlayerScreen() as Boolean
+    if m.moviePlayerScreen <> invalid and m.moviePlayerScreen.visible = true then
+        onMoviePlayerBack()
+        return true
+    else if m.seriesPlayerScreen <> invalid and m.seriesPlayerScreen.visible = true then
+        onSeriesPlayerBack()
+        return true
+    else if m.livePlayerScreen <> invalid and m.livePlayerScreen.visible = true then
+        onLivePlayerBack()
+        return true
+    end if
+
+    return false
+end function
+
+sub focusActiveScreen()
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.seriesListScreen, m.seriesDetailScreen, m.seriesSeasonsScreen, m.seriesEpisodesScreen]
+    for each screen in screens
+        if screen <> invalid and screen.visible = true then
+            screen.SetFocus(true)
+            return
+        end if
+    end for
+
+    m.top.SetFocus(true)
+end sub
 
 sub configureScene()
     m.top.backgroundColor = "#000000"
