@@ -14,6 +14,7 @@ sub Init()
 
     m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
     m.focusIndex = 0
+    m.lastCardFocusIndex = 0
     m.focusArea = "cards"
     configureLayout()
 end sub
@@ -29,29 +30,39 @@ sub configureLayout()
     m.overlay.height = height
 
     m.title.width = width
+    m.title.height = 110
     m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.18)]
+    m.title.translation = [0, Int(height * 0.105)]
 
-    buttonWidth = 176
-    buttonGap = 24
-    if width > 1500 then
-        buttonWidth = 192
-        buttonGap = 30
+    buttonCount = m.buttons.Count()
+    horizontalMargin = Int(width * 0.055)
+    buttonGap = 22
+    buttonWidth = Int((width - (horizontalMargin * 2) - (buttonGap * (buttonCount - 1))) / buttonCount)
+    if buttonWidth > 212 then buttonWidth = 212
+    if buttonWidth < 158 then
+        buttonGap = 12
+        horizontalMargin = 24
+        buttonWidth = Int((width - (horizontalMargin * 2) - (buttonGap * (buttonCount - 1))) / buttonCount)
     end if
-    totalWidth = (buttonWidth * m.buttons.Count()) + (buttonGap * (m.buttons.Count() - 1))
-    startX = Int((width - totalWidth) / 2)
-    buttonY = Int(height * 0.46)
 
-    for i = 0 to m.buttons.Count() - 1
+    buttonHeight = 178
+    buttonY = Int(height * 0.405)
+    totalWidth = (buttonWidth * buttonCount) + (buttonGap * (buttonCount - 1))
+    startX = Int((width - totalWidth) / 2)
+
+    for i = 0 to buttonCount - 1
+        configureHomeCard(m.buttons[i], buttonWidth, buttonHeight, i = 4)
         m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), buttonY]
     end for
 
-    footerY = Int(height * 0.78)
-    m.accountIconLabel.width = 220
+    footerY = Int(height * 0.745)
+    m.accountIconLabel.width = 260
+    m.accountIconLabel.height = 44
     m.accountIconLabel.font = "font:LargeBoldSystemFont"
-    m.accountIconLabel.translation = [Int((width - m.accountIconLabel.width) / 2), footerY - 42]
+    m.accountIconLabel.translation = [Int((width - m.accountIconLabel.width) / 2), footerY - 46]
 
-    m.accountFooterLabel.width = 220
+    m.accountFooterLabel.width = 260
+    m.accountFooterLabel.height = 36
     m.accountFooterLabel.font = "font:SmallBoldSystemFont"
     m.accountFooterLabel.translation = [Int((width - m.accountFooterLabel.width) / 2), footerY]
 
@@ -60,9 +71,58 @@ sub configureLayout()
     m.connectionStatusLabel.translation = [0, Int(height * 0.94)]
 end sub
 
+sub configureHomeCard(button as Object, cardWidth as Integer, cardHeight as Integer, isRecent as Boolean)
+    glow = button.FindNode("focusGlow")
+    group = button.FindNode("buttonGroup")
+    shadow = button.FindNode("buttonShadow")
+    background = button.FindNode("buttonBackground")
+    accent = button.FindNode("buttonAccent")
+    icon = button.FindNode("buttonIcon")
+    label = button.FindNode("buttonLabel")
+
+    if glow <> invalid then
+        glow.width = cardWidth + 18
+        glow.height = cardHeight + 18
+        glow.translation = [-9, -9]
+    end if
+    if group <> invalid then group.scaleRotateCenter = [Int(cardWidth / 2), Int(cardHeight / 2)]
+    if shadow <> invalid then
+        shadow.width = cardWidth
+        shadow.height = cardHeight
+        shadow.translation = [7, 9]
+        shadow.opacity = 0.5
+    end if
+    if background <> invalid then
+        background.width = cardWidth
+        background.height = cardHeight
+        background.opacity = 0.88
+    end if
+    if accent <> invalid then
+        accent.width = cardWidth
+        accent.height = cardHeight
+        accent.opacity = 0.2
+    end if
+    if icon <> invalid then
+        icon.width = cardWidth
+        icon.height = 70
+        icon.translation = [0, 34]
+        icon.font = "font:LargeBoldSystemFont"
+    end if
+    if label <> invalid then
+        label.width = cardWidth - 18
+        label.height = 58
+        label.translation = [9, 112]
+        label.font = "font:SmallBoldSystemFont"
+        if isRecent then
+            label.text = "ÚLTIMOS" + Chr(10) + "ASSISTIDOS"
+        end if
+    end if
+end sub
+
 sub show()
     m.top.visible = true
     m.focusIndex = 0
+    m.lastCardFocusIndex = 0
     m.focusArea = "cards"
     updateFocus()
 end sub
@@ -138,11 +198,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if m.focusArea = "cards" then moveFocus(1)
         return true
     else if key = "down" then
+        if m.focusArea = "cards" then m.lastCardFocusIndex = m.focusIndex
         m.focusArea = "account"
         updateFocus()
         return true
     else if key = "up" then
         m.focusArea = "cards"
+        m.focusIndex = m.lastCardFocusIndex
         updateFocus()
         return true
     else if key = "OK" then
@@ -158,6 +220,7 @@ sub moveFocus(direction as Integer)
     if nextIndex < 0 then nextIndex = m.buttons.Count() - 1
     if nextIndex >= m.buttons.Count() then nextIndex = 0
     m.focusIndex = nextIndex
+    m.lastCardFocusIndex = nextIndex
     updateFocus()
 end sub
 
@@ -169,12 +232,14 @@ sub updateFocus()
     end for
 
     if m.focusArea = "account" then
+        m.accountIconLabel.text = "◉"
         m.accountIconLabel.color = "#FFFFFF"
         m.accountIconLabel.opacity = 1.0
         m.accountFooterLabel.color = "#FFFFFF"
         m.accountFooterLabel.opacity = 1.0
         m.accountFooterLabel.SetFocus(true)
     else
+        m.accountIconLabel.text = "○"
         m.accountIconLabel.color = "#D8E2F3"
         m.accountIconLabel.opacity = 0.78
         m.accountFooterLabel.color = "#D8E2F3"
