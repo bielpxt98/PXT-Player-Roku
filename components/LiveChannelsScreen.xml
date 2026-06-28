@@ -30,6 +30,10 @@
         <Rectangle id="divider" color="#1F324A" opacity="0.88" />
         <Label id="leftPanelTitle" text="Categorias" color="#B8C3D6" horizAlign="left" />
         <Label id="middlePanelTitle" text="Canais" color="#B8C3D6" horizAlign="left" />
+        <Rectangle id="categorySectionIndicator" color="#061F36" opacity="1.0" />
+        <Rectangle id="categorySectionAccent" color="#009DFF" opacity="1.0" />
+        <Rectangle id="channelSectionIndicator" color="#061F36" opacity="1.0" />
+        <Rectangle id="channelSectionAccent" color="#009DFF" opacity="1.0" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="categoriesGroup" />
         <Group id="channelsGroup" />
