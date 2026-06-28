@@ -91,7 +91,7 @@ sub show()
     renderList()
     updateFocus()
     m.top.visible = true
-    m.top.SetFocus(true)
+    if m.top.visible = true then m.top.SetFocus(true)
 end sub
 
 sub hide()

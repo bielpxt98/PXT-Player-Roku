@@ -67,9 +67,9 @@ sub configureLayout()
     m.loadingLabel.width = contentW
     m.loadingLabel.font = "font:MediumSystemFont"
     m.buttonsGroup.translation = [marginX, h - 105]
-    setupButton(m.watchButton, 0, 190)
-    setupButton(m.favoriteButton, 220, 220)
-    setupButton(m.backButton, 470, 170)
+    setupButton(m.watchButton, 0, 240)
+    setupButton(m.favoriteButton, 270, 220)
+    setupButton(m.backButton, 520, 170)
 end sub
 
 sub setupButton(button as Object, x as Integer, width as Integer)
@@ -87,7 +87,7 @@ sub show(item as Dynamic)
     setLoading(false)
     updateButtons()
     m.top.visible = true
-    m.top.SetFocus(true)
+    if m.top.visible = true then m.top.SetFocus(true)
 end sub
 
 sub hide()
