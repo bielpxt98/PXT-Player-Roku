@@ -1,17 +1,11 @@
-' Live TV channel list screen.
-' This screen displays channels for one category and notifies MainScene when a
-' channel is selected for live playback.
+' Clean Live TV screen: title, categories panel and channels panel only.
 sub Init()
     m.background = m.top.FindNode("background")
-    m.topBar = m.top.FindNode("topBar")
-    m.currentCategoryLabel = m.top.FindNode("currentCategoryLabel")
-    m.dateLabel = m.top.FindNode("dateLabel")
-    m.timeLabel = m.top.FindNode("timeLabel")
-    m.leftPanelBackground = m.top.FindNode("leftPanelBackground")
-    m.rightPanelBackground = m.top.FindNode("rightPanelBackground")
-    m.divider = m.top.FindNode("divider")
-    m.leftPanelTitle = m.top.FindNode("leftPanelTitle")
-    m.middlePanelTitle = m.top.FindNode("middlePanelTitle")
+    m.title = m.top.FindNode("title")
+    m.leftPanel = m.top.FindNode("leftPanel")
+    m.rightPanel = m.top.FindNode("rightPanel")
+    m.categoriesTitle = m.top.FindNode("categoriesTitle")
+    m.channelsTitle = m.top.FindNode("channelsTitle")
     m.statusLabel = m.top.FindNode("statusLabel")
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.channelsGroup = m.top.FindNode("channelsGroup")
@@ -19,201 +13,60 @@ sub Init()
 
     m.account = invalid
     m.categories = []
-    m.categoryNodes = []
-    m.categorySelectedIndex = 0
-    m.categoryFirstVisibleIndex = 0
-    m.focusColumn = "categories"
     m.channels = []
-    m.allChannels = []
-    m.searchQuery = ""
-    m.itemNodes = []
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
+    m.categoryNodes = []
+    m.channelNodes = []
+    m.selectedCategoryIndex = 0
+    m.firstVisibleCategoryIndex = 0
+    m.selectedChannelIndex = 0
+    m.firstVisibleChannelIndex = 0
+    m.activePane = "categories"
 
     configureLayout()
 end sub
 
 sub configureLayout()
-    resolution = getDisplayResolution()
-    width = resolution.width
-    height = resolution.height
+    r = getDisplayResolution() : w = r.width : h = r.height
+    m.margin = 72 : m.titleH = 118 : m.footerH = 54 : m.gap = 18
+    if h <= 720 then m.margin = 48 : m.titleH = 92 : m.footerH = 42 : m.gap = 14
 
-    m.safeMarginX = 44
-    m.safeMarginY = 28
-    m.topBarHeight = 70
-    m.footerReservedHeight = 46
-    if height <= 720 then
-        m.safeMarginX = 30
-        m.safeMarginY = 18
-        m.topBarHeight = 58
-        m.footerReservedHeight = 36
-    end if
+    m.panelY = m.titleH
+    m.panelH = h - m.titleH - m.footerH - 18
+    m.contentW = w - (m.margin * 2)
+    m.leftW = Int(m.contentW * 0.34)
+    if m.leftW < 280 then m.leftW = 280
+    m.rightX = m.margin + m.leftW + m.gap
+    m.rightW = m.contentW - m.leftW - m.gap
+    m.headerH = 58
+    m.itemH = 54
+    if h <= 720 then m.headerH = 48 : m.itemH = 44
+    m.listY = m.panelY + m.headerH
+    m.listH = m.panelH - m.headerH
+    m.visibleCount = Int(m.listH / m.itemH)
+    if m.visibleCount < 1 then m.visibleCount = 1
 
-    m.contentX = m.safeMarginX
-    m.contentY = m.safeMarginY + m.topBarHeight
-    m.contentWidth = width - (m.safeMarginX * 2)
-    m.contentHeight = height - m.contentY - m.footerReservedHeight - m.safeMarginY
-    if m.contentWidth < 360 then
-        m.contentX = 0
-        m.contentWidth = width
-    end if
-    if m.contentHeight < 300 then m.contentHeight = height - m.contentY - m.footerReservedHeight
+    m.background.width = w : m.background.height = h
+    m.title.translation = [0, 34] : m.title.width = w : m.title.font = "font:LargeBoldSystemFont"
+    if h <= 720 then m.title.translation = [0, 24]
 
-    m.leftPanelWidth = Int(m.contentWidth * 0.32)
-    if m.leftPanelWidth < 260 then m.leftPanelWidth = 260
-    if m.leftPanelWidth > 430 then m.leftPanelWidth = 430
-    m.dividerWidth = 2
-    m.middlePanelX = m.contentX + m.leftPanelWidth + m.dividerWidth
-    m.middlePanelWidth = m.contentWidth - m.leftPanelWidth - m.dividerWidth
-    m.leftTitleHeight = 44
-    m.listY = m.contentY + m.leftTitleHeight
-    m.listHeight = m.contentHeight - m.leftTitleHeight
-    if m.listHeight < 96 then m.listHeight = 96
-
-    if height <= 720 then
-        m.itemHeight = 54
-        m.cardHeight = 46
-        m.logoSize = 32
-        m.logoInset = 7
-    else
-        m.itemHeight = 64
-        m.cardHeight = 54
-        m.logoSize = 38
-        m.logoInset = 8
-    end if
-
-    m.visibleItemCount = Int(m.listHeight / m.itemHeight)
-    if m.visibleItemCount < 1 then m.visibleItemCount = 1
-
-    m.background.width = width
-    m.background.height = height
-
-    m.topBar.width = m.contentWidth
-    m.topBar.height = m.topBarHeight
-    m.topBar.translation = [m.contentX, m.safeMarginY]
-
-    m.currentCategoryLabel.width = Int(m.contentWidth * 0.55)
-    m.currentCategoryLabel.height = m.topBarHeight
-    m.currentCategoryLabel.font = "font:MediumBoldSystemFont"
-    m.currentCategoryLabel.translation = [m.contentX + 22, m.safeMarginY]
-
-    m.dateLabel.width = 210
-    m.dateLabel.height = m.topBarHeight
-    m.dateLabel.font = "font:SmallSystemFont"
-    m.dateLabel.translation = [width - m.safeMarginX - 320, m.safeMarginY]
-
-    m.timeLabel.width = 92
-    m.timeLabel.height = m.topBarHeight
-    m.timeLabel.font = "font:MediumBoldSystemFont"
-    m.timeLabel.translation = [width - m.safeMarginX - 110, m.safeMarginY]
-    updateHeaderClock()
-
-    m.leftPanelBackground.width = m.leftPanelWidth
-    m.leftPanelBackground.height = m.contentHeight
-    m.leftPanelBackground.translation = [m.contentX, m.contentY]
-
-    m.rightPanelBackground.width = m.middlePanelWidth
-    m.rightPanelBackground.height = m.contentHeight
-    m.rightPanelBackground.translation = [m.middlePanelX, m.contentY]
-
-    m.divider.width = m.dividerWidth
-    m.divider.height = m.contentHeight
-    m.divider.translation = [m.middlePanelX - m.dividerWidth, m.contentY]
-
-    m.leftPanelTitle.width = m.leftPanelWidth - 36
-    m.leftPanelTitle.font = "font:MediumBoldSystemFont"
-    m.leftPanelTitle.translation = [m.contentX + 18, m.contentY + 12]
-
-    m.middlePanelTitle.width = m.middlePanelWidth - 36
-    m.middlePanelTitle.font = "font:MediumBoldSystemFont"
-    m.middlePanelTitle.translation = [m.middlePanelX + 18, m.contentY + 12]
-
-    m.statusLabel.width = m.middlePanelWidth - 36
-    m.statusLabel.font = "font:MediumSystemFont"
-    m.statusLabel.translation = [m.middlePanelX + 18, m.listY + Int(m.listHeight / 2)]
-
-    m.categoriesGroup.translation = [m.contentX + 14, m.listY]
-    m.channelsGroup.translation = [m.middlePanelX + 14, m.listY]
-
-    m.hintLabel.width = width
-    m.hintLabel.font = "font:SmallSystemFont"
-    m.hintLabel.translation = [0, height - m.footerReservedHeight + 12]
+    m.leftPanel.translation = [m.margin, m.panelY] : m.leftPanel.width = m.leftW : m.leftPanel.height = m.panelH
+    m.rightPanel.translation = [m.rightX, m.panelY] : m.rightPanel.width = m.rightW : m.rightPanel.height = m.panelH
+    m.categoriesTitle.translation = [m.margin + 18, m.panelY + 18] : m.categoriesTitle.font = "font:MediumBoldSystemFont"
+    m.channelsTitle.translation = [m.rightX + 18, m.panelY + 18] : m.channelsTitle.font = "font:MediumBoldSystemFont"
+    m.statusLabel.translation = [m.rightX + 18, m.listY + Int(m.listH / 2)] : m.statusLabel.width = m.rightW - 36 : m.statusLabel.font = "font:MediumSystemFont"
+    m.categoriesGroup.translation = [m.margin + 18, m.listY]
+    m.channelsGroup.translation = [m.rightX + 18, m.listY]
+    m.hintLabel.translation = [0, h - 38] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
 end sub
-
-sub updateHeaderClock()
-    dateTime = CreateObject("roDateTime")
-    dateTime.ToLocalTime()
-    m.dateLabel.text = twoDigits(dateTime.GetDayOfMonth()) + "/" + twoDigits(dateTime.GetMonth()) + "/" + dateTime.GetYear().ToStr()
-    m.timeLabel.text = twoDigits(dateTime.GetHours()) + ":" + twoDigits(dateTime.GetMinutes())
-end sub
-
-function twoDigits(value as Integer) as String
-    text = value.ToStr()
-    if value < 10 then text = "0" + text
-    return text
-end function
 
 sub show(category as Dynamic)
-    if category <> invalid then
-        m.currentCategoryLabel.text = getCategoryName(category)
-    else
-        m.currentCategoryLabel.text = "Categoria Atual"
-    end if
-
-    m.searchQuery = ""
-    m.focusColumn = "categories"
     configureLayout()
-    selectCategory(category)
-    updateVisibleWindow()
-    renderList()
+    if category <> invalid then syncSelectedCategory(category)
     renderCategories()
+    renderChannels()
+    updateFocus()
     m.top.visible = true
-    updateFocus()
     m.top.SetFocus(true)
-end sub
-
-sub selectCategory(category as Dynamic)
-    if category = invalid or m.categories.Count() = 0 then
-        m.categorySelectedIndex = 0
-        updateCategoryVisibleWindow()
-        return
-    end if
-    categoryId = getCategoryId(category)
-    for i = 0 to m.categories.Count() - 1
-        if getCategoryId(m.categories[i]) = categoryId then
-            m.categorySelectedIndex = i
-            updateCategoryVisibleWindow()
-            return
-        end if
-    end for
-end sub
-
-sub focusCategories()
-    m.focusColumn = "categories"
-    updateFocus()
-end sub
-
-sub focusChannels()
-    m.focusColumn = "channels"
-    updateFocus()
-end sub
-
-sub restoreSelectedChannel(channel as Dynamic)
-    if channel <> invalid and m.channels.Count() > 0 then
-        channelId = getChannelId(channel)
-        channelName = getChannelName(channel)
-        for i = 0 to m.channels.Count() - 1
-            if getChannelId(m.channels[i]) = channelId or getChannelName(m.channels[i]) = channelName then
-                m.selectedIndex = i
-                updateVisibleWindow()
-                renderList()
-                exit for
-            end if
-        end for
-    end if
-
-    m.focusColumn = "channels"
-    updateFocus()
 end sub
 
 sub hide()
@@ -225,363 +78,222 @@ sub setAccount(account as Object)
 end sub
 
 sub resetSelection()
-    m.selectedIndex = 0
-    m.firstVisibleIndex = 0
-    logInitialSelection()
+    m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
+    m.selectedChannelIndex = 0 : m.firstVisibleChannelIndex = 0
 end sub
 
-sub logInitialSelection()
-    print "INIT selectedIndex="; m.selectedIndex
-    print "INIT firstVisibleIndex="; m.firstVisibleIndex
+sub focusCategories()
+    m.activePane = "categories" : updateFocus()
 end sub
 
-sub setLoading(isLoading as Boolean)
-    clearChannelNodes()
-    if isLoading then
-        m.channels = []
-        m.allChannels = []
-        resetSelection()
-        m.statusLabel.text = "Carregando canais de TV ao vivo..."
-        m.statusLabel.color = "#B8C3D6"
-    else
-        m.statusLabel.text = ""
-    end if
-end sub
-
-sub setChannels(channels as Object)
-    m.allChannels = normalizeChannels(channels)
-    applySearchFilter()
-
-    if m.allChannels.Count() = 0 then
-        showMessage("Nenhum canal foi encontrado nesta categoria.")
-        return
-    end if
-
-    m.statusLabel.text = ""
-    m.focusColumn = "channels"
-    updateVisibleWindow()
-    renderList()
+sub focusChannels()
+    if m.channels.Count() > 0 then m.activePane = "channels"
     updateFocus()
 end sub
 
 sub setCategories(categories as Object)
-    m.categories = normalizeCategories(categories)
+    m.categories = normalizeArray(categories)
+    updateCategoryWindow()
     renderCategories()
+    updateFocus()
+end sub
+
+sub setLoading(isLoading as Boolean)
+    clearChannelNodes()
+    m.channels = []
+    m.selectedChannelIndex = 0 : m.firstVisibleChannelIndex = 0
+    if isLoading then
+        m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando canais..."
+    else
+        m.statusLabel.text = ""
+    end if
+    updateFocus()
+end sub
+
+sub setChannels(channels as Object)
+    m.channels = normalizeArray(channels)
+    m.selectedChannelIndex = 0 : m.firstVisibleChannelIndex = 0
+    if m.channels.Count() = 0 then
+        showMessage("Nenhum canal foi encontrado nesta categoria.")
+        return
+    end if
+    m.statusLabel.text = ""
+    renderChannels()
+    m.activePane = "channels"
     updateFocus()
 end sub
 
 sub showMessage(message as String)
     clearChannelNodes()
     m.channels = []
-    m.allChannels = []
-    resetSelection()
-    m.statusLabel.text = message
-    m.statusLabel.color = "#FFCC66"
+    m.selectedChannelIndex = 0 : m.firstVisibleChannelIndex = 0
+    m.statusLabel.color = "#FFCC66" : m.statusLabel.text = message
     updateFocus()
 end sub
 
-function normalizeChannels(channels as Dynamic) as Object
-    if channels = invalid then return []
-    if Type(channels) = "roArray" then return channels
-    return []
-end function
-
-function normalizeCategories(categories as Dynamic) as Object
-    if categories = invalid then return []
-    if Type(categories) = "roArray" then return categories
-    return []
-end function
+sub restoreSelectedChannel(channel as Dynamic)
+    if channel <> invalid and m.channels.Count() > 0 then
+        id = getChannelId(channel) : name = getChannelName(channel)
+        for i = 0 to m.channels.Count() - 1
+            if getChannelId(m.channels[i]) = id or getChannelName(m.channels[i]) = name then m.selectedChannelIndex = i : exit for
+        end for
+        updateChannelWindow() : renderChannels() : m.activePane = "channels"
+    end if
+    updateFocus()
+end sub
 
 sub renderCategories()
     clearCategoryNodes()
-    totalRows = m.categories.Count()
-    if totalRows = 0 then return
-
-    lastIndex = m.categoryFirstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= totalRows then lastIndex = totalRows - 1
-
-    for visualIndex = 0 to lastIndex - m.categoryFirstVisibleIndex
-        realIndex = m.categoryFirstVisibleIndex + visualIndex
-        item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
-        m.categoriesGroup.AppendChild(item)
-        m.categoryNodes.Push(item)
+    if m.categories.Count() = 0 then return
+    updateCategoryWindow()
+    lastIndex = m.firstVisibleCategoryIndex + m.visibleCount - 1
+    if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
+    for visualIndex = 0 to lastIndex - m.firstVisibleCategoryIndex
+        realIndex = m.firstVisibleCategoryIndex + visualIndex
+        node = createTextItem(getCategoryName(m.categories[realIndex]), visualIndex, m.leftW - 36)
+        m.categoriesGroup.AppendChild(node) : m.categoryNodes.Push(node)
     end for
 end sub
 
-function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "liveCategoryItem" + absoluteIndex.ToStr()
-
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.translation = [16, 0]
-    label.width = m.leftPanelWidth - 54
-    label.height = m.cardHeight
-    label.font = "font:SmallSystemFont"
-    label.color = "#F8FAFC"
-    label.vertAlign = "center"
-    label.text = getCategoryName(category)
-
-    item.AppendChild(label)
-    return item
-end function
-
-sub renderList()
+sub renderChannels()
     clearChannelNodes()
     if m.channels.Count() = 0 then return
-
-    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
+    updateChannelWindow()
+    lastIndex = m.firstVisibleChannelIndex + m.visibleCount - 1
     if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
-
-    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
-        realIndex = m.firstVisibleIndex + visualIndex
-        item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
-        m.channelsGroup.AppendChild(item)
-        m.itemNodes.Push(item)
+    for visualIndex = 0 to lastIndex - m.firstVisibleChannelIndex
+        realIndex = m.firstVisibleChannelIndex + visualIndex
+        node = createTextItem(getChannelName(m.channels[realIndex]), visualIndex, m.rightW - 36)
+        m.channelsGroup.AppendChild(node) : m.channelNodes.Push(node)
     end for
 end sub
 
-function createChannelItem(channel as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group")
-    item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "liveChannelItem" + absoluteIndex.ToStr()
-
-    logoBackground = CreateObject("roSGNode", "Rectangle")
-    logoBackground.id = "logoBackground"
-    logoBackground.translation = [14, m.logoInset]
-    logoBackground.width = m.logoSize
-    logoBackground.height = m.logoSize
-    logoBackground.color = "#1F2937"
-    logoBackground.opacity = 1.0
-
-    label = CreateObject("roSGNode", "Label")
-    label.id = "itemLabel"
-    label.translation = [m.logoSize + 28, 0]
-    label.width = m.middlePanelWidth - m.logoSize - 64
-    label.height = m.cardHeight
-    label.font = "font:SmallSystemFont"
-    label.color = "#F8FAFC"
-    label.vertAlign = "center"
-    label.text = getChannelName(channel)
-
-    item.AppendChild(logoBackground)
-    item.AppendChild(label)
+function createTextItem(text as String, visibleIndex as Integer, itemW as Integer) as Object
+    item = CreateObject("roSGNode", "Group") : item.translation = [0, visibleIndex * m.itemH]
+    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = itemW : bg.height = m.itemH - 8 : bg.color = "#111827" : bg.opacity = 0.0
+    label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [14, 0] : label.width = itemW - 28 : label.height = m.itemH - 8 : label.vertAlign = "center" : label.font = "font:SmallSystemFont" : label.color = "#C9D4E5" : label.text = text
+    item.AppendChild(bg) : item.AppendChild(label)
     return item
 end function
-
-sub clearChannelNodes()
-    while m.channelsGroup.GetChildCount() > 0
-        m.channelsGroup.RemoveChildIndex(0)
-    end while
-    m.itemNodes = []
-end sub
-
-
-
-
-
-sub clearCategoryNodes()
-    while m.categoriesGroup.GetChildCount() > 0
-        m.categoriesGroup.RemoveChildIndex(0)
-    end while
-    m.categoryNodes = []
-end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-
     if key = "back" then
-        if m.focusColumn = "channels" then
-            m.focusColumn = "categories"
-            updateFocus()
-        else if m.searchQuery <> "" then
-            m.searchQuery = ""
-            applySearchFilter()
-        else
-            m.top.backRequested = true
-        end if
+        if m.activePane = "channels" then m.activePane = "categories" : updateFocus() else m.top.backRequested = true
+        return true
+    else if key = "left" then
+        if m.activePane = "channels" then m.activePane = "categories" : updateFocus()
+        return true
+    else if key = "right" then
+        if m.activePane = "categories" and m.channels.Count() > 0 then m.activePane = "channels" : updateFocus()
         return true
     else if key = "up" then
-        moveFocus(-1)
+        if m.activePane = "categories" then moveCategory(-1) else moveChannel(-1)
         return true
     else if key = "down" then
-        moveFocus(1)
-        return true
-    else if key = "options" then
-        if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
-            m.top.channelFavoriteToggled = m.channels[m.selectedIndex]
-            m.statusLabel.color = "#5CE08A"
-            m.statusLabel.text = "Canal atualizado nos favoritos."
-        end if
+        if m.activePane = "categories" then moveCategory(1) else moveChannel(1)
         return true
     else if key = "OK" then
-        if m.focusColumn = "categories" then
-            if m.categories.Count() > 0 and m.categorySelectedIndex >= 0 and m.categorySelectedIndex < m.categories.Count() then
-                m.top.categorySelected = m.categories[m.categorySelectedIndex]
-                m.focusColumn = "channels"
-                resetSelection()
-                updateFocus()
-            end if
-        else if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
-            itemIndex = m.selectedIndex
-            print "OK opening selectedIndex="; itemIndex
-            print "OK opening item="; getChannelLogTitle(m.channels[itemIndex])
-                    m.top.channelSelected = m.channels[itemIndex]
+        if m.activePane = "categories" then
+            if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
+        else if m.channels.Count() > 0 then
+            m.top.channelSelected = m.channels[m.selectedChannelIndex]
         end if
         return true
     end if
-
     return false
 end function
 
-sub moveFocus(direction as Integer)
-    if m.focusColumn = "categories" then
-        handleCategoryUpDown(direction)
-    else
-        handleUpDown(direction)
-    end if
-end sub
-
-sub handleCategoryUpDown(direction as Integer)
+sub moveCategory(direction as Integer)
     if m.categories.Count() = 0 then return
-
-    if direction > 0 then
-        m.categorySelectedIndex = m.categorySelectedIndex + 1
-    else if direction < 0 then
-        m.categorySelectedIndex = m.categorySelectedIndex - 1
-    else
-        return
-    end if
-
-    previousFirstVisibleIndex = m.categoryFirstVisibleIndex
-    updateCategoryVisibleWindow()
-
-    if m.categoryFirstVisibleIndex <> previousFirstVisibleIndex then
-        renderCategories()
-    end if
-
+    oldId = "" : if m.selectedCategoryIndex >= 0 and m.selectedCategoryIndex < m.categories.Count() then oldId = getCategoryId(m.categories[m.selectedCategoryIndex])
+    m.selectedCategoryIndex = m.selectedCategoryIndex + direction
+    updateCategoryWindow()
+    renderCategories()
     updateFocus()
+    newId = getCategoryId(m.categories[m.selectedCategoryIndex])
+    if newId <> oldId then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
 end sub
 
-sub updateCategoryVisibleWindow()
-    totalRows = m.categories.Count()
-    if totalRows = 0 then
-        m.categorySelectedIndex = 0
-        m.categoryFirstVisibleIndex = 0
-        return
-    end if
-    if m.categorySelectedIndex < 0 then m.categorySelectedIndex = 0
-    if m.categorySelectedIndex >= totalRows then m.categorySelectedIndex = totalRows - 1
-    maxFirstIndex = totalRows - m.visibleItemCount
-    if maxFirstIndex < 0 then maxFirstIndex = 0
-    if m.categorySelectedIndex < m.categoryFirstVisibleIndex then
-        m.categoryFirstVisibleIndex = m.categorySelectedIndex
-    else if m.categorySelectedIndex >= m.categoryFirstVisibleIndex + m.visibleItemCount then
-        m.categoryFirstVisibleIndex = m.categorySelectedIndex - m.visibleItemCount + 1
-    end if
-    if m.categoryFirstVisibleIndex > maxFirstIndex then m.categoryFirstVisibleIndex = maxFirstIndex
-end sub
-
-sub handleUpDown(direction as Integer)
+sub moveChannel(direction as Integer)
     if m.channels.Count() = 0 then return
-
-    if direction > 0 then
-        m.selectedIndex = m.selectedIndex + 1
-    else if direction < 0 then
-        m.selectedIndex = m.selectedIndex - 1
-    else
-        return
-    end if
-
-    previousFirstVisibleIndex = m.firstVisibleIndex
-    updateVisibleWindow()
-
-    if m.firstVisibleIndex <> previousFirstVisibleIndex then
-        renderList()
-    end if
-
+    m.selectedChannelIndex = m.selectedChannelIndex + direction
+    updateChannelWindow()
+    renderChannels()
     updateFocus()
 end sub
 
-sub updateVisibleWindow()
-    totalRows = m.channels.Count()
-    if totalRows = 0 then
-        m.selectedIndex = 0
-        m.firstVisibleIndex = 0
-        return
+sub updateCategoryWindow()
+    updateWindow("category")
+end sub
+
+sub updateChannelWindow()
+    updateWindow("channel")
+end sub
+
+sub updateWindow(kind as String)
+    if kind = "category" then
+        count = m.categories.Count() : selected = m.selectedCategoryIndex : first = m.firstVisibleCategoryIndex
+    else
+        count = m.channels.Count() : selected = m.selectedChannelIndex : first = m.firstVisibleChannelIndex
     end if
-
-    if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= totalRows then m.selectedIndex = totalRows - 1
-    if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
-
-    maxFirstIndex = totalRows - m.visibleItemCount
-    if maxFirstIndex < 0 then maxFirstIndex = 0
-
-    if m.selectedIndex < m.firstVisibleIndex then
-        m.firstVisibleIndex = m.selectedIndex
-    else if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then
-        m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
+    if count = 0 then selected = 0 : first = 0 else
+        if selected < 0 then selected = 0
+        if selected >= count then selected = count - 1
+        if selected < first then first = selected
+        if selected >= first + m.visibleCount then first = selected - m.visibleCount + 1
+        maxFirst = count - m.visibleCount : if maxFirst < 0 then maxFirst = 0
+        if first > maxFirst then first = maxFirst
     end if
-
-    if m.firstVisibleIndex > maxFirstIndex then m.firstVisibleIndex = maxFirstIndex
+    if kind = "category" then
+        m.selectedCategoryIndex = selected : m.firstVisibleCategoryIndex = first
+    else
+        m.selectedChannelIndex = selected : m.firstVisibleChannelIndex = first
+    end if
 end sub
 
 sub updateFocus()
     for i = 0 to m.categoryNodes.Count() - 1
-        realIndex = m.categoryFirstVisibleIndex + i
-        label = m.categoryNodes[i].FindNode("itemLabel")
-
-        label.color = "#AAAAAABB"
-
-        if realIndex = m.categorySelectedIndex then label.color = "#FFFFFF"
+        applyItemFocus(m.categoryNodes[i], m.firstVisibleCategoryIndex + i = m.selectedCategoryIndex, m.activePane = "categories")
     end for
-
-    for i = 0 to m.itemNodes.Count() - 1
-        realIndex = m.firstVisibleIndex + i
-        label = m.itemNodes[i].FindNode("itemLabel")
-        logoBackground = m.itemNodes[i].FindNode("logoBackground")
-
-        label.color = "#AAAAAABB"
-        if logoBackground <> invalid then logoBackground.color = "#1F2937"
-
-        if realIndex = m.selectedIndex then
-            label.color = "#FFFFFF"
-            if logoBackground <> invalid then logoBackground.color = "#063B66"
-        end if
+    for i = 0 to m.channelNodes.Count() - 1
+        applyItemFocus(m.channelNodes[i], m.firstVisibleChannelIndex + i = m.selectedChannelIndex, m.activePane = "channels")
     end for
+    m.top.SetFocus(true)
 end sub
 
-
-
-
-
-
-sub applySearchFilter()
-    query = LCase(m.searchQuery.Trim())
-    m.channels = []
-    if query = "" then
-        for each item in m.allChannels
-            m.channels.Push(item)
-        end for
-    else
-        for each item in m.allChannels
-            if Instr(1, LCase(getChannelName(item)), query) > 0 then m.channels.Push(item)
-        end for
+sub applyItemFocus(node as Object, selected as Boolean, active as Boolean)
+    bg = node.FindNode("itemBackground") : label = node.FindNode("itemLabel")
+    bg.opacity = 0.0 : label.color = "#C9D4E5" : node.scale = [1.0, 1.0]
+    if selected then
+        bg.opacity = 1.0 : bg.color = "#0B5CAD" : label.color = "#FFFFFF"
+        if active then node.scale = [1.03, 1.03]
     end if
-    resetSelection()
-    if m.allChannels.Count() > 0 and m.channels.Count() = 0 then
-        m.statusLabel.color = "#FFCC66"
-        m.statusLabel.text = "Nenhum resultado encontrado para esta busca."
-    else
-        m.statusLabel.text = ""
-    end if
-    updateVisibleWindow()
-    renderList()
-    updateFocus()
 end sub
 
+sub clearCategoryNodes()
+    while m.categoriesGroup.GetChildCount() > 0 : m.categoriesGroup.RemoveChildIndex(0) : end while
+    m.categoryNodes = []
+end sub
+
+sub clearChannelNodes()
+    while m.channelsGroup.GetChildCount() > 0 : m.channelsGroup.RemoveChildIndex(0) : end while
+    m.channelNodes = []
+end sub
+
+sub syncSelectedCategory(category as Dynamic)
+    id = getCategoryId(category)
+    for i = 0 to m.categories.Count() - 1
+        if getCategoryId(m.categories[i]) = id then m.selectedCategoryIndex = i : exit for
+    end for
+    updateCategoryWindow()
+end sub
+
+function normalizeArray(items as Dynamic) as Object
+    if items = invalid then return []
+    if Type(items) = "roArray" then return items
+    return []
+end function
 
 function getCategoryId(category as Dynamic) as String
     if category = invalid then return ""
@@ -612,16 +324,8 @@ function getChannelName(channel as Dynamic) as String
     return "Canal sem nome"
 end function
 
-function getChannelLogTitle(channel as Dynamic) as String
-    return getChannelName(channel)
-end function
-
 function getDisplayResolution() as Object
     deviceInfo = CreateObject("roDeviceInfo")
     displaySize = deviceInfo.GetDisplaySize()
-
-    return {
-        width: displaySize.w
-        height: displaySize.h
-    }
+    return { width: displaySize.w, height: displaySize.h }
 end function

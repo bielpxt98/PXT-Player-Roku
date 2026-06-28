@@ -20,19 +20,15 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/LiveChannelsScreen.brs" />
     <children>
-        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0, 0]" />
-        <Rectangle id="topBar" color="#07111F" opacity="0.82" />
-        <Label id="currentCategoryLabel" text="Categoria Atual" color="#FFFFFF" horizAlign="left" vertAlign="center" />
-        <Label id="dateLabel" text="" color="#B8C3D6" horizAlign="right" vertAlign="center" />
-        <Label id="timeLabel" text="" color="#FFFFFF" horizAlign="right" vertAlign="center" />
-        <Rectangle id="leftPanelBackground" color="#0B1626" opacity="0.82" />
-        <Rectangle id="rightPanelBackground" color="#050A12" opacity="0.82" />
-        <Rectangle id="divider" color="#1F324A" opacity="0.88" />
-        <Label id="leftPanelTitle" text="Categorias" color="#B8C3D6" horizAlign="left" />
-        <Label id="middlePanelTitle" text="Canais" color="#B8C3D6" horizAlign="left" />
+        <Rectangle id="background" color="#05070B" opacity="0.58" translation="[0, 0]" />
+        <Label id="title" text="TV AO VIVO" color="#FFFFFF" horizAlign="center" />
+        <Rectangle id="leftPanel" color="#0B111B" opacity="0.82" />
+        <Rectangle id="rightPanel" color="#0B111B" opacity="0.82" />
+        <Label id="categoriesTitle" text="Categorias" color="#FFFFFF" />
+        <Label id="channelsTitle" text="Canais" color="#FFFFFF" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="categoriesGroup" />
         <Group id="channelsGroup" />
-        <Label id="hintLabel" text="↑/↓ navegar • OK selecionar/assistir • * favoritar • Voltar categorias" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="←/→ alternar painel • ↑/↓ navegar • OK assistir • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

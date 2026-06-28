@@ -13,16 +13,15 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/LiveCategoriesScreen.brs" />
     <children>
-        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0, 0]" />
+        <Rectangle id="background" color="#05070B" opacity="0.58" translation="[0, 0]" />
         <Label id="title" text="TV AO VIVO" color="#FFFFFF" horizAlign="center" />
-        <Label id="subtitle" text="Categorias" color="#B8C3D6" horizAlign="center" />
+        <Rectangle id="leftPanel" color="#0B111B" opacity="0.82" />
+        <Rectangle id="rightPanel" color="#0B111B" opacity="0.82" />
+        <Label id="categoriesTitle" text="Categorias" color="#FFFFFF" />
+        <Label id="channelsTitle" text="Canais" color="#FFFFFF" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
-        <Rectangle id="categoriesPanel" color="#0B1626" opacity="0.82" />
-        <Rectangle id="channelsPanel" color="#0B1626" opacity="0.72" />
-        <Label id="categoriesTitle" text="CATEGORIAS" color="#B8C3D6" horizAlign="left" />
-        <Label id="channelsTitle" text="CANAIS" color="#B8C3D6" horizAlign="left" />
-        <Label id="emptyChannelsLabel" text="Selecione uma categoria" color="#7D8CA3" horizAlign="center" />
         <Group id="categoriesGroup" />
-        <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para selecionar • Voltar para Home" color="#7D8CA3" horizAlign="center" />
+        <Label id="emptyChannelsLabel" text="Selecione uma categoria" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="↑/↓ navegar • OK selecionar • Voltar para Home" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
