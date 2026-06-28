@@ -113,9 +113,12 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     content.live = false
 
     m.lastPosition = startPosition
+    if startPosition > 0 then
+        content.PlayStart = startPosition
+    end if
+
     m.video.visible = true
     m.video.content = content
-    if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
     m.top.SetFocus(true)
@@ -254,6 +257,12 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
 
     return false
+end function
+
+function handleBackKeySafely() as Boolean
+    stopPlayback()
+    m.top.backRequested = true
+    return true
 end function
 
 sub beginSeekHold(key as String)

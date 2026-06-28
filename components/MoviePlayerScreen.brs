@@ -131,9 +131,12 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     m.lastPosition = startPosition
     m.pendingSeekPosition = invalid
     m.pendingSeekTimer = invalid
+    if startPosition > 0 then
+        content.PlayStart = startPosition
+    end if
+
     m.video.visible = true
     m.video.content = content
-    if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
     setTopFocus()
