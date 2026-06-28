@@ -248,12 +248,6 @@ function getEpisodeCover(episode as Dynamic) as String
     return ""
 end function
 
-function getCategoryName(category as Dynamic) as String
-    if category = invalid then return "Categoria"
-    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
-    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
-    return "Categoria"
-end function
 
 sub clearEpisodeNodes()
     while m.episodesGroup.GetChildCount() > 0
@@ -375,13 +369,3 @@ sub updateFocus()
         coverBackground.color = "#0F4F7A"
     end if
 end sub
-
-function getDisplayResolution() as Object
-    deviceInfo = CreateObject("roDeviceInfo")
-    displaySize = deviceInfo.GetDisplaySize()
-
-    return {
-        width: displaySize.w
-        height: displaySize.h
-    }
-end function

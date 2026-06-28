@@ -10,6 +10,7 @@
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="episodeName" type="string" />
     </interface>
+    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/SeriesPlayerScreen.brs" />
     <children>
         <Video id="video" translation="[0, 0]" showPlaybackInfo="false" />

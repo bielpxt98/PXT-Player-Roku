@@ -371,13 +371,3 @@ function getStreamFormat(streamUrl as String) as String
     if Instr(1, lowerUrl, ".mp4") > 0 then return "mp4"
     return "ts"
 end function
-
-function getDisplayResolution() as Object
-    deviceInfo = CreateObject("roDeviceInfo")
-    displaySize = deviceInfo.GetDisplaySize()
-
-    return {
-        width: displaySize.w,
-        height: displaySize.h
-    }
-end function
