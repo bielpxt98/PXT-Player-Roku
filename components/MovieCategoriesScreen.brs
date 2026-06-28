@@ -120,7 +120,7 @@ sub setLoading(isLoading as Boolean)
 end sub
 
 sub setCategories(categories as Object)
-    m.categories = normalizeCategories(categories)
+    m.categories = addSearchEntry(normalizeCategories(categories), "PESQUISAR")
     resetSelection()
 
     if m.categories.Count() = 0 then
@@ -191,10 +191,28 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     label.color = "#F8FAFC"
     label.font = "font:MediumSystemFont"
     label.text = getCategoryName(category)
+    if isSearchEntry(category) then
+        background.color = "#0B3A5E"
+        accent.opacity = 1.0
+        label.text = "Pesquisar"
+    end if
     item.AppendChild(background)
     item.AppendChild(accent)
     item.AppendChild(label)
     return item
+end function
+
+function addSearchEntry(categories as Object, label as String) as Object
+    items = []
+    items.Push({ isSearch: true, category_name: label, name: label })
+    for each category in categories
+        items.Push(category)
+    end for
+    return items
+end function
+
+function isSearchEntry(category as Dynamic) as Boolean
+    return category <> invalid and category.isSearch = true
 end function
 
 function getCategoryName(category as Dynamic) as String
@@ -233,7 +251,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
             print "OK opening selectedIndex="; m.selectedIndex
             print "OK opening item="; getCategoryLogTitle(m.categories[m.selectedIndex])
-            m.top.categorySelected = m.categories[m.selectedIndex]
+            if isSearchEntry(m.categories[m.selectedIndex]) then
+                m.top.searchRequested = true
+            else
+                m.top.categorySelected = m.categories[m.selectedIndex]
+            end if
         end if
         return true
     end if
@@ -315,10 +337,10 @@ sub updateFocus()
         label = selectedNode.FindNode("itemLabel")
 
         selectedNode.scale = [1.02, 1.02]
-        background.color = "#0B3A5E"
+        background.color = "#FFFFFF"
         background.opacity = 1.0
-        accent.opacity = 0.0
-        label.color = "#FFFFFF"
+        accent.opacity = 1.0
+        label.color = "#05070B"
     end if
 end sub
 

@@ -18,10 +18,13 @@
             <Label id="loadingLabel" text="Carregando filme..." color="#FFFFFF" horizAlign="center" />
         </Group>
         <Group id="controlsGroup" visible="false">
-            <Rectangle id="controlsBackground" color="#000000" opacity="0.55" />
-            <Label id="rewindIcon" text="◀" color="#FFFFFF" horizAlign="center" vertAlign="center" />
-            <Label id="playPauseIcon" text="Ⅱ" color="#FFFFFF" horizAlign="center" vertAlign="center" />
-            <Label id="forwardIcon" text="▶" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Rectangle id="controlsBackground" color="#05070B" opacity="0.86" />
+            <Label id="controlsTitle" text="" color="#FFFFFF" />
+            <Label id="seekStatusLabel" text="" color="#9FD8FF" horizAlign="center" />
+            <Label id="currentTimeLabel" text="00:00" color="#FFFFFF" />
+            <Label id="durationLabel" text="00:00" color="#FFFFFF" horizAlign="right" />
+            <Rectangle id="progressTrack" color="#314155" />
+            <Rectangle id="progressFill" color="#FFFFFF" />
         </Group>
         <Timer id="seekHoldTimer" duration="0.25" repeat="true" />
         <Group id="errorGroup" visible="false">

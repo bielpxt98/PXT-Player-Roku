@@ -10,9 +10,12 @@ sub Init()
     m.errorMessage = m.top.FindNode("errorMessage")
     m.controlsGroup = m.top.FindNode("controlsGroup")
     m.controlsBackground = m.top.FindNode("controlsBackground")
-    m.rewindIcon = m.top.FindNode("rewindIcon")
-    m.playPauseIcon = m.top.FindNode("playPauseIcon")
-    m.forwardIcon = m.top.FindNode("forwardIcon")
+    m.controlsTitle = m.top.FindNode("controlsTitle")
+    m.seekStatusLabel = m.top.FindNode("seekStatusLabel")
+    m.currentTimeLabel = m.top.FindNode("currentTimeLabel")
+    m.durationLabel = m.top.FindNode("durationLabel")
+    m.progressTrack = m.top.FindNode("progressTrack")
+    m.progressFill = m.top.FindNode("progressFill")
     m.seekHoldTimer = m.top.FindNode("seekHoldTimer")
 
     m.movie = invalid
@@ -58,25 +61,35 @@ sub configureLayout()
     m.errorMessage.font = "font:MediumSystemFont"
     m.errorMessage.translation = [0, 78]
 
-    controlsWidth = 420
-    controlsHeight = 140
-    iconSize = 92
-    iconGap = 24
-    m.controlsGroup.translation = [Int((width - controlsWidth) / 2), Int((height - controlsHeight) / 2)]
+    controlsWidth = width - 160
+    if controlsWidth > 980 then controlsWidth = 980
+    if controlsWidth < 520 then controlsWidth = width - 64
+    controlsHeight = 150
+    controlsX = Int((width - controlsWidth) / 2)
+    controlsY = height - controlsHeight - 64
+    m.controlsGroup.translation = [controlsX, controlsY]
     m.controlsBackground.width = controlsWidth
     m.controlsBackground.height = controlsHeight
-    m.rewindIcon.translation = [24, 24]
-    m.rewindIcon.width = iconSize
-    m.rewindIcon.height = iconSize
-    m.rewindIcon.font = "font:LargeBoldSystemFont"
-    m.playPauseIcon.translation = [24 + iconSize + iconGap, 24]
-    m.playPauseIcon.width = iconSize
-    m.playPauseIcon.height = iconSize
-    m.playPauseIcon.font = "font:LargeBoldSystemFont"
-    m.forwardIcon.translation = [24 + ((iconSize + iconGap) * 2), 24]
-    m.forwardIcon.width = iconSize
-    m.forwardIcon.height = iconSize
-    m.forwardIcon.font = "font:LargeBoldSystemFont"
+    m.controlsTitle.translation = [28, 18]
+    m.controlsTitle.width = controlsWidth - 56
+    m.controlsTitle.height = 34
+    m.controlsTitle.font = "font:MediumBoldSystemFont"
+    m.seekStatusLabel.translation = [28, 54]
+    m.seekStatusLabel.width = controlsWidth - 56
+    m.seekStatusLabel.height = 30
+    m.seekStatusLabel.font = "font:SmallSystemFont"
+    m.currentTimeLabel.translation = [28, 92]
+    m.currentTimeLabel.width = 120
+    m.currentTimeLabel.font = "font:SmallSystemFont"
+    m.durationLabel.translation = [controlsWidth - 148, 92]
+    m.durationLabel.width = 120
+    m.durationLabel.font = "font:SmallSystemFont"
+    m.progressTrack.translation = [28, 124]
+    m.progressTrack.width = controlsWidth - 56
+    m.progressTrack.height = 8
+    m.progressFill.translation = [28, 124]
+    m.progressFill.width = 0
+    m.progressFill.height = 8
 end sub
 
 sub show(movie as Dynamic)
@@ -310,17 +323,31 @@ sub togglePause()
         m.isPlaying = true
         hideControls()
     end if
-    updatePlayPauseIcon()
+    updateControls()
 end sub
 
 sub seekBy(delta as Integer)
-    seekTo(getPlaybackPosition() + delta)
+    seekToWithDelta(getPlaybackPosition() + delta, delta)
 end sub
 
 sub seekTo(position as Integer)
+    seekToWithDelta(position, 0)
+end sub
+
+sub seekToWithDelta(position as Integer, delta as Integer)
     if m.video = invalid then return
     if position < 0 then position = 0
+    duration = getPlaybackDuration()
+    if duration > 0 and position > duration then position = duration
     m.video.seek = position
+    m.lastPosition = position
+    if delta > 0 then
+        m.seekStatusLabel.text = "+" + delta.ToStr() + "s  " + formatTime(position)
+    else if delta < 0 then
+        m.seekStatusLabel.text = delta.ToStr() + "s  " + formatTime(position)
+    else
+        m.seekStatusLabel.text = formatTime(position)
+    end if
     showControls()
 end sub
 
@@ -334,17 +361,24 @@ sub hideControls()
 end sub
 
 sub updateControls()
-    updatePlayPauseIcon()
-end sub
-
-sub updatePlayPauseIcon()
-    if m.playPauseIcon = invalid then return
-    if m.isPlaying = true then
-        m.playPauseIcon.text = "Ⅱ"
-    else
-        m.playPauseIcon.text = "▶"
+    if m.controlsTitle <> invalid then m.controlsTitle.text = m.movieName
+    position = getPlaybackPosition()
+    duration = getPlaybackDuration()
+    if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = formatTime(position)
+    if m.durationLabel <> invalid then m.durationLabel.text = formatTime(duration)
+    if m.progressTrack <> invalid and m.progressFill <> invalid then
+        fillWidth = 0
+        if duration > 0 then fillWidth = Int((m.progressTrack.width * position) / duration)
+        if fillWidth < 0 then fillWidth = 0
+        if fillWidth > m.progressTrack.width then fillWidth = m.progressTrack.width
+        m.progressFill.width = fillWidth
     end if
 end sub
+
+function getPlaybackDuration() as Integer
+    if m.video <> invalid and m.video.duration <> invalid then return Int(m.video.duration)
+    return 0
+end function
 
 function formatTime(seconds as Integer) as String
     if seconds < 0 then seconds = 0
