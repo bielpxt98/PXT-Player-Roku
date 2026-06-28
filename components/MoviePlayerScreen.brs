@@ -26,11 +26,8 @@ sub Init()
     m.resumePosition = 0
     m.lastPosition = 0
     m.seekStep = 10
-    m.longSeekStep = 10
-    m.holdThresholdMs = 450
+    m.seekHoldDelta = 0
     m.heldSeekKey = ""
-    m.seekHoldHandled = false
-    m.seekPressTimer = invalid
     m.pendingStreamUrl = ""
     m.pendingSeekPosition = invalid
     m.pendingSeekTimer = invalid
@@ -272,31 +269,25 @@ end sub
 function onKeyEvent(key as String, press as Boolean) as Boolean
     print "MoviePlayer onKeyEvent: "; key; " press="; press
 
-    if key = "right" or key = "left" then
+    if key = "right" or key = "fastforward" then
         if press then
-            if key = "right" then
-                seekBy(m.seekStep)
-            else
-                seekBy(-m.seekStep)
-            end if
+            beginSeekHold(key, m.seekStep)
         else
-            stopSeekHold()
+            finishSeekHold(key)
         end if
         setTopFocus()
         updateControls()
         return true
     end if
 
-    if key = "fastforward" or key = "rewind" then
+    if key = "left" or key = "rewind" then
         if press then
-            if key = "fastforward" then
-                seekBy(m.seekStep)
-            else
-                seekBy(-m.seekStep)
-            end if
-            setTopFocus()
-            updateControls()
+            beginSeekHold(key, -m.seekStep)
+        else
+            finishSeekHold(key)
         end if
+        setTopFocus()
+        updateControls()
         return true
     end if
 
@@ -346,47 +337,35 @@ function handleBackKeySafely() as Boolean
     return true
 end function
 
-sub beginSeekHold(key as String)
-    if m.heldSeekKey = key then return
+sub beginSeekHold(key as String, delta as Integer)
+    if m.heldSeekKey = key then
+        if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "start"
+        showControls()
+        return
+    end if
+
+    stopSeekHold()
     m.heldSeekKey = key
-    m.seekHoldHandled = false
-    m.seekPressTimer = CreateObject("roTimespan")
-    m.seekPressTimer.Mark()
+    m.seekHoldDelta = delta
+    seekBy(delta)
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "start"
     showControls()
 end sub
 
 sub finishSeekHold(key as String)
     if m.heldSeekKey <> key then return
-    elapsedMs = 0
-    if m.seekPressTimer <> invalid then elapsedMs = m.seekPressTimer.TotalMilliseconds()
-    wasLongPress = m.seekHoldHandled = true or elapsedMs >= m.holdThresholdMs
     stopSeekHold()
-    if not wasLongPress then
-        if key = "right" then
-            seekBy(m.seekStep)
-        else
-            seekBy(-m.seekStep)
-        end if
-    end if
 end sub
 
 sub stopSeekHold()
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "stop"
     m.heldSeekKey = ""
-    m.seekHoldHandled = false
-    m.seekPressTimer = invalid
+    m.seekHoldDelta = 0
 end sub
 
 sub onSeekHoldTimerFire()
-    if m.heldSeekKey = "" or m.seekPressTimer = invalid then return
-    if m.seekPressTimer.TotalMilliseconds() < m.holdThresholdMs then return
-    m.seekHoldHandled = true
-    if m.heldSeekKey = "right" then
-        seekBy(m.longSeekStep)
-    else
-        seekBy(-m.longSeekStep)
-    end if
+    if m.heldSeekKey = "" or m.seekHoldDelta = 0 then return
+    seekBy(m.seekHoldDelta)
 end sub
 
 sub togglePause()
