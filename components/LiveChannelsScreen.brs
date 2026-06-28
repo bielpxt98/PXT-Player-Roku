@@ -24,7 +24,7 @@ sub Init()
     m.categoryFirstVisibleIndex = 0
     m.focusColumn = "categories"
     m.channels = []
-    m.allChannel = []
+    m.allChannels = []
     m.searchQuery = ""
     m.itemNodes = []
     m.selectedIndex = 0
@@ -166,11 +166,13 @@ sub show(category as Dynamic)
 
     m.searchQuery = ""
     m.focusColumn = "categories"
-    selectCategory(category)
     configureLayout()
-    applySearchFilter()
+    selectCategory(category)
+    updateVisibleWindow()
+    renderList()
     renderCategories()
     m.top.visible = true
+    updateFocus()
     m.top.SetFocus(true)
 end sub
 
@@ -218,7 +220,7 @@ sub setLoading(isLoading as Boolean)
     clearChannelNodes()
     if isLoading then
         m.channels = []
-        m.allChannel = []
+        m.allChannels = []
         resetSelection()
         m.statusLabel.text = "Carregando canais de TV ao vivo..."
         m.statusLabel.color = "#B8C3D6"
@@ -228,10 +230,10 @@ sub setLoading(isLoading as Boolean)
 end sub
 
 sub setChannels(channels as Object)
-    m.allChannel = normalizeChannels(channels)
+    m.allChannels = normalizeChannels(channels)
     applySearchFilter()
 
-    if m.allChannel.Count() = 0 then
+    if m.allChannels.Count() = 0 then
         showMessage("Nenhum canal foi encontrado nesta categoria.")
         return
     end if
@@ -252,10 +254,11 @@ end sub
 sub showMessage(message as String)
     clearChannelNodes()
     m.channels = []
-    m.allChannel = []
+    m.allChannels = []
     resetSelection()
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
+    updateFocus()
 end sub
 
 function normalizeChannels(channels as Dynamic) as Object
@@ -284,6 +287,107 @@ sub renderCategories()
         m.categoriesGroup.AppendChild(item)
         m.categoryNodes.Push(item)
     end for
+end sub
+
+function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group")
+    item.translation = [0, visibleIndex * m.itemHeight]
+    item.id = "liveCategoryItem" + absoluteIndex.ToStr()
+
+    background = CreateObject("roSGNode", "Rectangle")
+    background.id = "itemBackground"
+    background.width = m.leftPanelWidth - 28
+    background.height = m.cardHeight
+    background.color = "#111827"
+    background.opacity = 0.86
+
+    accent = CreateObject("roSGNode", "Rectangle")
+    accent.id = "itemAccent"
+    accent.width = 6
+    accent.height = m.cardHeight
+    accent.color = "#009DFF"
+    accent.opacity = 0.0
+
+    label = CreateObject("roSGNode", "Label")
+    label.id = "itemLabel"
+    label.translation = [16, 0]
+    label.width = m.leftPanelWidth - 54
+    label.height = m.cardHeight
+    label.font = "font:SmallSystemFont"
+    label.color = "#F8FAFC"
+    label.vertAlign = "center"
+    label.text = getCategoryName(category)
+
+    item.AppendChild(background)
+    item.AppendChild(accent)
+    item.AppendChild(label)
+    return item
+end function
+
+sub renderList()
+    clearChannelNodes()
+    if m.channels.Count() = 0 then return
+
+    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
+    if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
+
+    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
+        realIndex = m.firstVisibleIndex + visualIndex
+        item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
+        m.channelsGroup.AppendChild(item)
+        m.itemNodes.Push(item)
+    end for
+end sub
+
+function createChannelItem(channel as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
+    item = CreateObject("roSGNode", "Group")
+    item.translation = [0, visibleIndex * m.itemHeight]
+    item.id = "liveChannelItem" + absoluteIndex.ToStr()
+
+    background = CreateObject("roSGNode", "Rectangle")
+    background.id = "itemBackground"
+    background.width = m.middlePanelWidth - 28
+    background.height = m.cardHeight
+    background.color = "#111827"
+    background.opacity = 0.86
+
+    accent = CreateObject("roSGNode", "Rectangle")
+    accent.id = "itemAccent"
+    accent.width = 6
+    accent.height = m.cardHeight
+    accent.color = "#009DFF"
+    accent.opacity = 0.0
+
+    logoBackground = CreateObject("roSGNode", "Rectangle")
+    logoBackground.id = "logoBackground"
+    logoBackground.translation = [14, m.logoInset]
+    logoBackground.width = m.logoSize
+    logoBackground.height = m.logoSize
+    logoBackground.color = "#1F2937"
+    logoBackground.opacity = 1.0
+
+    label = CreateObject("roSGNode", "Label")
+    label.id = "itemLabel"
+    label.translation = [m.logoSize + 28, 0]
+    label.width = m.middlePanelWidth - m.logoSize - 64
+    label.height = m.cardHeight
+    label.font = "font:SmallSystemFont"
+    label.color = "#F8FAFC"
+    label.vertAlign = "center"
+    label.text = getChannelName(channel)
+
+    item.AppendChild(background)
+    item.AppendChild(accent)
+    item.AppendChild(logoBackground)
+    item.AppendChild(label)
+    return item
+end function
+
+sub clearChannelNodes()
+    while m.channelsGroup.GetChildCount() > 0
+        m.channelsGroup.RemoveChildIndex(0)
+    end while
+    m.itemNodes = []
 end sub
 
 
@@ -525,16 +629,16 @@ sub applySearchFilter()
     query = LCase(m.searchQuery.Trim())
     m.channels = []
     if query = "" then
-        for each item in m.allChannel
+        for each item in m.allChannels
             m.channels.Push(item)
         end for
     else
-        for each item in m.allChannel
+        for each item in m.allChannels
             if Instr(1, LCase(getChannelName(item)), query) > 0 then m.channels.Push(item)
         end for
     end if
     resetSelection()
-    if m.allChannel.Count() > 0 and m.channels.Count() = 0 then
+    if m.allChannels.Count() > 0 and m.channels.Count() = 0 then
         m.statusLabel.color = "#FFCC66"
         m.statusLabel.text = "Nenhum resultado encontrado para esta busca."
     else
@@ -544,6 +648,33 @@ sub applySearchFilter()
     renderList()
     updateFocus()
 end sub
+
+
+function getCategoryId(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.category_id <> invalid then return category.category_id.ToStr()
+    if category.id <> invalid then return category.id.ToStr()
+    return ""
+end function
+
+function getCategoryName(category as Dynamic) as String
+    if category = invalid then return "Categoria"
+    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
+    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
+    if category.title <> invalid and category.title.ToStr().Trim() <> "" then return category.title.ToStr()
+    return "Categoria"
+end function
+
+function getChannelName(channel as Dynamic) as String
+    if channel = invalid then return "Canal sem nome"
+    if channel.name <> invalid and channel.name.ToStr().Trim() <> "" then return channel.name.ToStr()
+    if channel.title <> invalid and channel.title.ToStr().Trim() <> "" then return channel.title.ToStr()
+    return "Canal sem nome"
+end function
+
+function getChannelLogTitle(channel as Dynamic) as String
+    return getChannelName(channel)
+end function
 
 function getDisplayResolution() as Object
     deviceInfo = CreateObject("roDeviceInfo")

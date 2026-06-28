@@ -8,6 +8,8 @@
         <function name="showMessage" />
         <function name="setCategories" />
         <function name="setAccount" />
+        <function name="resetSelection" />
+        <function name="focusCategories" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="channelSelected" type="assocarray" alwaysNotify="true" />
         <field id="categorySelected" type="assocarray" alwaysNotify="true" />
