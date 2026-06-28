@@ -13,10 +13,6 @@ sub Init()
     m.leftPanelTitle = m.top.FindNode("leftPanelTitle")
     m.middlePanelTitle = m.top.FindNode("middlePanelTitle")
     m.statusLabel = m.top.FindNode("statusLabel")
-    m.categorySectionIndicator = m.top.FindNode("categorySectionIndicator")
-    m.categorySectionAccent = m.top.FindNode("categorySectionAccent")
-    m.channelSectionIndicator = m.top.FindNode("channelSectionIndicator")
-    m.channelSectionAccent = m.top.FindNode("channelSectionAccent")
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.channelsGroup = m.top.FindNode("channelsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
@@ -136,20 +132,6 @@ sub configureLayout()
     m.statusLabel.font = "font:MediumSystemFont"
     m.statusLabel.translation = [m.middlePanelX + 18, m.listY + Int(m.listHeight / 2)]
 
-    m.categorySectionIndicator.translation = [m.contentX + 22, m.listY]
-    m.categorySectionIndicator.width = m.leftPanelWidth - 44
-    m.categorySectionIndicator.height = m.cardHeight
-    m.categorySectionAccent.translation = [m.contentX + 22, m.listY]
-    m.categorySectionAccent.width = 6
-    m.categorySectionAccent.height = m.cardHeight
-
-    m.channelSectionIndicator.translation = [m.middlePanelX + m.logoSize + 34, m.listY]
-    m.channelSectionIndicator.width = m.middlePanelWidth - m.logoSize - 56
-    m.channelSectionIndicator.height = m.cardHeight
-    m.channelSectionAccent.translation = [m.middlePanelX + m.logoSize + 34, m.listY]
-    m.channelSectionAccent.width = 6
-    m.channelSectionAccent.height = m.cardHeight
-
     m.categoriesGroup.translation = [m.contentX + 14, m.listY]
     m.channelsGroup.translation = [m.middlePanelX + 14, m.listY]
 
@@ -157,10 +139,6 @@ sub configureLayout()
     m.hintLabel.font = "font:SmallSystemFont"
     m.hintLabel.translation = [0, height - m.footerReservedHeight + 12]
 end sub
-
-
-
-
 
 sub updateHeaderClock()
     dateTime = CreateObject("roDateTime")
@@ -335,23 +313,6 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     item.translation = [0, visibleIndex * m.itemHeight]
     item.id = "liveCategoryItem" + absoluteIndex.ToStr()
 
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.translation = [8, 0]
-    background.width = m.leftPanelWidth - 44
-    background.height = m.cardHeight
-    background.color = "#0B3A5E"
-    background.opacity = 0.0
-    background.visible = false
-
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.translation = [8, 0]
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#009DFF"
-    accent.opacity = 0.0
-
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
     label.translation = [16, 0]
@@ -362,8 +323,6 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     label.vertAlign = "center"
     label.text = getCategoryName(category)
 
-    item.AppendChild(background)
-    item.AppendChild(accent)
     item.AppendChild(label)
     return item
 end function
@@ -388,23 +347,6 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     item.translation = [0, visibleIndex * m.itemHeight]
     item.id = "liveChannelItem" + absoluteIndex.ToStr()
 
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.translation = [m.logoSize + 20, 0]
-    background.width = m.middlePanelWidth - m.logoSize - 56
-    background.height = m.cardHeight
-    background.color = "#0B3A5E"
-    background.opacity = 0.0
-    background.visible = false
-
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.translation = [m.logoSize + 20, 0]
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#009DFF"
-    accent.opacity = 0.0
-
     logoBackground = CreateObject("roSGNode", "Rectangle")
     logoBackground.id = "logoBackground"
     logoBackground.translation = [14, m.logoInset]
@@ -423,8 +365,6 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     label.vertAlign = "center"
     label.text = getChannelName(channel)
 
-    item.AppendChild(background)
-    item.AppendChild(accent)
     item.AppendChild(logoBackground)
     item.AppendChild(label)
     return item
@@ -593,7 +533,6 @@ sub updateFocus()
         realIndex = m.categoryFirstVisibleIndex + i
         label = m.categoryNodes[i].FindNode("itemLabel")
 
-        m.categoryNodes[i].scale = [1.0, 1.0]
         label.color = "#AAAAAABB"
 
         if realIndex = m.categorySelectedIndex then label.color = "#FFFFFF"
@@ -604,7 +543,6 @@ sub updateFocus()
         label = m.itemNodes[i].FindNode("itemLabel")
         logoBackground = m.itemNodes[i].FindNode("logoBackground")
 
-        m.itemNodes[i].scale = [1.0, 1.0]
         label.color = "#AAAAAABB"
         if logoBackground <> invalid then logoBackground.color = "#1F2937"
 

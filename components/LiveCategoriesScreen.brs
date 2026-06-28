@@ -215,23 +215,6 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     item.translation = [0, visibleIndex * m.itemHeight]
     item.id = "categoryItem" + absoluteIndex.ToStr()
 
-    background = CreateObject("roSGNode", "Rectangle")
-    background.id = "itemBackground"
-    background.translation = [14, 0]
-    background.width = m.categoryPanelWidth - 42
-    background.height = m.cardHeight
-    background.color = "#0B3A5E"
-    background.opacity = 1.0
-    background.visible = false
-
-    accent = CreateObject("roSGNode", "Rectangle")
-    accent.id = "itemAccent"
-    accent.translation = [14, 0]
-    accent.width = 6
-    accent.height = m.cardHeight
-    accent.color = "#009DFF"
-    accent.opacity = 0.0
-
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
     label.width = m.categoryPanelWidth - 54
@@ -242,13 +225,9 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     label.font = "font:MediumSystemFont"
     label.text = getCategoryName(category)
     if isSearchEntry(category) then
-        background.color = "#0B3A5E"
-        accent.opacity = 1.0
         label.text = "🔎  " + label.text
     end if
 
-    item.AppendChild(background)
-    item.AppendChild(accent)
     item.AppendChild(label)
     return item
 end function
@@ -370,38 +349,14 @@ sub updateVisibleWindow()
 end sub
 
 sub updateFocus()
-    selectedNode = invalid
-
-    ' Keep a single manual highlight: reset every visible item before
-    ' applying the selectedIndex state to exactly one realIndex.
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
-        background = m.itemNodes[i].FindNode("itemBackground")
-        accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
 
-        m.itemNodes[i].scale = [1.0, 1.0]
-        background.visible = false
-        background.color = "#0B3A5E"
-        background.opacity = 1.0
-        accent.opacity = 0.0
         label.color = "#AAAAAABB"
 
-        if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
+        if realIndex = m.selectedIndex then label.color = "#FFFFFF"
     end for
-
-    if selectedNode <> invalid then
-        background = selectedNode.FindNode("itemBackground")
-        accent = selectedNode.FindNode("itemAccent")
-        label = selectedNode.FindNode("itemLabel")
-
-        selectedNode.scale = [1.02, 1.02]
-        background.visible = true
-        background.color = "#0B3A5E"
-        background.opacity = 1.0
-        accent.opacity = 0.0
-        label.color = "#FFFFFF"
-    end if
 end sub
 
 function getDisplayResolution() as Object
