@@ -90,7 +90,11 @@ sub setLoading(isLoading as Boolean)
     if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
     clearGridNodes()
     m.series = [] : m.allSeries = [] : m.renderLimit = m.initialRenderLimit
-    if isLoading then m.statusLabel.text = "Carregando séries..." else m.statusLabel.text = ""
+    if isLoading then
+        m.statusLabel.text = "Carregando séries..."
+    else
+        m.statusLabel.text = ""
+    end if
 end sub
 
 sub setSeries(items as Object)
@@ -292,7 +296,11 @@ sub updateFocus()
         realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
         bg.opacity = 0.0 : label.color = "#C9D4E5"
         if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#061F36" : label.color = "#FFFFFF"
-        if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
+        if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then
+            m.categoryNodes[i].scale = [1.03, 1.03]
+        else
+            m.categoryNodes[i].scale = [1.0, 1.0]
+        end if
     end for
     first = m.firstVisibleRow * m.columns
     for i = 0 to m.itemNodes.Count() - 1

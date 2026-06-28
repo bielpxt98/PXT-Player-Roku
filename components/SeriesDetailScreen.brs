@@ -47,7 +47,11 @@ sub hide()
 end sub
 
 sub setLoading(isLoading as Boolean)
-    if isLoading then m.statusLabel.text = "Carregando temporadas em segundo plano..." else m.statusLabel.text = ""
+    if isLoading then
+        m.statusLabel.text = "Carregando temporadas em segundo plano..."
+    else
+        m.statusLabel.text = ""
+    end if
 end sub
 
 sub setDetails(details as Dynamic)
