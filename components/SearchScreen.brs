@@ -18,7 +18,7 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
-    m.resultBatchSize = 20 : m.renderedResultLimit = 20
+    m.initialResultLimit = 30 : m.maxRenderedResults = 30 : m.resultBatchSize = 30 : m.renderedResultLimit = 30
     m.searchMode = "live"
     m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
     m.keyNodes = [] : m.itemNodes = []
@@ -147,40 +147,41 @@ sub applyFilter()
     query = LCase(m.searchInput.text.Trim())
     m.results = []
     if m.searchMode = "live" then addMatches("channel", m.channels, query)
-    if m.searchMode = "movies" then addMatches("movie", m.movies, query)
+    if m.searchMode = "movies" then addMovieMatches(m.movies, query)
     if m.searchMode = "series" then addMatches("series", m.series, query)
-    m.selectedIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.resultBatchSize
+    m.selectedIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.maxRenderedResults
     if m.results.Count() = 0 then
-        clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado. Tente outro nome."
+        clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado"
     else
         m.statusLabel.text = "" : renderResults() : updateResultFocus()
     end if
 end sub
 
-sub addMatches(kind as String, items as Dynamic, query as String)
-    startsWithEntries = []
-    containsEntries = []
-    for each item in normalizeArray(items)
+sub addMovieMatches(items as Dynamic, query as String)
+    sourceItems = normalizeArray(items)
+    for each item in sourceItems
+        if m.results.Count() >= m.maxRenderedResults then exit for
         name = getItemName(item)
-        meta = getItemMeta(item)
         lowerName = LCase(name)
-        if query = "" then
-            startsWithEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
-        else if Left(lowerName, Len(query)) = query then
-            startsWithEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
-        else if Instr(1, lowerName, query) > 0 then
-            containsEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
+        if shouldIncludeMovieResult(lowerName, query) then
+            m.results.Push({ type: "movie", title: name, meta: getItemMeta(item), item: item })
         end if
     end for
-    startsWithEntries.SortBy("sortKey")
-    containsEntries.SortBy("sortKey")
-    appendSearchEntries(startsWithEntries)
-    appendSearchEntries(containsEntries)
 end sub
 
-sub appendSearchEntries(entries as Object)
-    for each entry in entries
-        m.results.Push({ type: entry.type, title: entry.title, meta: entry.meta, item: entry.item })
+function shouldIncludeMovieResult(lowerName as String, query as String) as Boolean
+    if query = "" then return true
+    return Left(lowerName, Len(query)) = query
+end function
+
+sub addMatches(kind as String, items as Dynamic, query as String)
+    for each item in normalizeArray(items)
+        if m.results.Count() >= m.maxRenderedResults then exit for
+        name = getItemName(item)
+        lowerName = LCase(name)
+        if query = "" or Left(lowerName, Len(query)) = query then
+            m.results.Push({ type: kind, title: name, meta: getItemMeta(item), item: item })
+        end if
     end for
 end sub
 
@@ -406,11 +407,7 @@ function getLoadedResultCount() as Integer
 end function
 
 sub maybeLoadMoreResults()
-    if m.results.Count() <= m.renderedResultLimit then return
-    if m.selectedIndex >= m.renderedResultLimit - 4 then
-        m.renderedResultLimit = m.renderedResultLimit + m.resultBatchSize
-        if m.renderedResultLimit > m.results.Count() then m.renderedResultLimit = m.results.Count()
-    end if
+    if m.renderedResultLimit > m.maxRenderedResults then m.renderedResultLimit = m.maxRenderedResults
 end sub
 
 sub openSelected()
