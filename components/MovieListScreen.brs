@@ -185,7 +185,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     if key = "left" then
         if m.activePane = "grid" then
-            m.activePane = "categories" : updateFocus()
+            if (m.selectedIndex mod m.columns) = 0 then
+                m.activePane = "categories" : updateFocus()
+            else
+                moveGrid(-1, 0)
+            end if
         else if m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         end if
@@ -278,7 +282,7 @@ sub updateFocus()
         if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#0B5CAD" : label.color = "#FFFFFF"
         if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
-    if m.activePane = "grid" and m.movies.Count() > 0 then m.moviesGrid.SetFocus(true) else m.top.SetFocus(true)
+    m.top.SetFocus(true)
 end sub
 
 sub resetGridFocusToFirstItem()
