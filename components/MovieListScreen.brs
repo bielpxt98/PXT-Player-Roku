@@ -73,6 +73,13 @@ sub focusCategories()
     updateFocus()
 end sub
 
+sub focusMovies()
+    if m.movies.Count() > 0 then
+        m.activePane = "grid"
+        updateFocus()
+    end if
+end sub
+
 sub hide()
     m.top.visible = false
 end sub
@@ -82,7 +89,7 @@ sub resetSelection()
 end sub
 
 sub resetGridSelection()
-    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "grid"
+    m.selectedIndex = 0 : m.firstVisibleRow = 0
     resetGridFocusToFirstItem()
 end sub
 
@@ -102,11 +109,11 @@ sub setMovies(items as Object)
     m.statusLabel.text = ""
     m.allMovie = normalizeArray(items) : m.movies = m.allMovie
     if m.movies.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
-    m.statusLabel.text = "" : resetGridSelection() : renderGrid() : updateFocus()
+    m.statusLabel.text = "" : resetGridFocusToFirstItem() : renderGrid() : updateFocus()
 end sub
 
 sub showMessage(message as String)
-    clearGridNodes() : m.movies = [] : m.allMovie = [] : resetGridSelection()
+    clearGridNodes() : m.movies = [] : m.allMovie = [] : resetGridFocusToFirstItem()
     m.statusLabel.color = "#FFCC66" : m.statusLabel.text = message
 end sub
 
@@ -178,11 +185,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     if key = "left" then
         if m.activePane = "grid" then
-            if (m.selectedIndex mod m.columns) = 0 then
-                m.activePane = "categories" : updateFocus()
-            else
-                moveGrid(-1, 0)
-            end if
+            m.activePane = "categories" : updateFocus()
         else if m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         end if
@@ -272,7 +275,7 @@ sub updateFocus()
     for i = 0 to m.categoryNodes.Count() - 1
         realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
         bg.opacity = 0.0 : label.color = "#C9D4E5"
-        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#FFFFFF" : label.color = "#05070B"
+        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#0B5CAD" : label.color = "#FFFFFF"
         if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
     if m.activePane = "grid" and m.movies.Count() > 0 then m.moviesGrid.SetFocus(true) else m.top.SetFocus(true)
