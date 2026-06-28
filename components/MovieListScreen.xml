@@ -35,6 +35,7 @@
             itemSpacing="[149, 54]"
             posterShape="portrait" />
         <Group id="movieTitlesGroup" />
+        <Timer id="progressiveLoadTimer" duration="0.03" repeat="true" />
         <Label id="hintLabel" text="←/→ alternar painel • OK selecionar • * favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

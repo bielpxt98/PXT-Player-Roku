@@ -34,6 +34,7 @@ sub Init()
     m.liveCategories = []
     m.liveCategoriesLoading = false
     m.liveChannels = []
+    m.liveChannelsByCategory = {}
     m.liveChannelsLoading = false
     m.selectedLiveCategory = invalid
     m.selectedLiveCategoryId = ""
@@ -41,6 +42,7 @@ sub Init()
     m.movieCategories = []
     m.movieCategoriesLoading = false
     m.movies = []
+    m.moviesByCategory = {}
     m.moviesLoading = false
     m.selectedMovieCategory = invalid
     m.selectedMovieCategoryId = ""
@@ -48,6 +50,7 @@ sub Init()
     m.seriesCategories = []
     m.seriesCategoriesLoading = false
     m.series = []
+    m.seriesByCategory = {}
     m.seriesLoading = false
     m.selectedSeriesCategory = invalid
     m.selectedSeriesCategoryId = ""
@@ -69,6 +72,10 @@ sub Init()
     m.splashMaximumElapsed = false
     m.bootstrapActive = false
     m.bootstrapQueue = []
+    m.appReady = false
+    m.moviesCacheReady = false
+    m.seriesCacheReady = false
+    m.liveCacheReady = false
     m.localFavoritesCache = []
     m.localHistoryCache = []
 
@@ -148,6 +155,10 @@ sub startSplashBootstrap()
     m.splashMinimumElapsed = false
     m.splashMaximumElapsed = false
     m.bootstrapActive = true
+    m.appReady = false
+    m.moviesCacheReady = false
+    m.seriesCacheReady = false
+    m.liveCacheReady = false
     m.bootstrapQueue = []
     m.localFavoritesCache = LoadFavorites()
     m.localHistoryCache = LoadViewingHistory()
@@ -207,6 +218,7 @@ sub finishSplashIfReady()
 
     m.splashMinimumTimer.control = "stop"
     m.splashMaximumTimer.control = "stop"
+    m.appReady = true
     m.splashScreen.callFunc("hide")
     showHome()
 end sub
@@ -940,10 +952,18 @@ sub loadMovies(category as Object)
         return
     end if
 
+    categoryId = getCategoryId(category)
+    if m.moviesByCategory <> invalid and m.moviesByCategory.DoesExist(categoryId) then
+        m.movies = m.moviesByCategory[categoryId]
+        m.moviesLoading = false
+        m.movieListScreen.callFunc("setMovies", m.movies)
+        return
+    end if
+
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.categoryId = categoryId
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -973,10 +993,18 @@ sub loadLiveChannels(category as Object)
         return
     end if
 
+    categoryId = getCategoryId(category)
+    if m.liveChannelsByCategory <> invalid and m.liveChannelsByCategory.DoesExist(categoryId) then
+        m.liveChannels = m.liveChannelsByCategory[categoryId]
+        m.liveChannelsLoading = false
+        m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+        return
+    end if
+
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveStreams"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.categoryId = categoryId
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1328,10 +1356,17 @@ sub loadSeries(category as Object)
         m.seriesListScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as séries.")
         return
     end if
+    categoryId = getCategoryId(category)
+    if m.seriesByCategory <> invalid and m.seriesByCategory.DoesExist(categoryId) then
+        m.series = m.seriesByCategory[categoryId]
+        m.seriesLoading = false
+        m.seriesListScreen.callFunc("setSeries", m.series)
+        return
+    end if
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeries"
-    m.xtreamService.cacheEnabled = false
-    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.cacheEnabled = true
+    m.xtreamService.categoryId = categoryId
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1466,7 +1501,7 @@ end sub
 
 sub onMoviesResult(result as Object)
     if m.searchLoadStep = "movies" and getMoviesResultCategoryId(result) = "" then
-        if result.success = true then m.searchMovies = normalizeMovies(result.data)
+        if result.success = true then m.searchMovies = normalizeMovies(result.data) : m.moviesCacheReady = true
         m.searchLoadStep = "series"
         if m.searchScreen.visible = true then m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
         loadSearchSeries()
@@ -1475,7 +1510,7 @@ sub onMoviesResult(result as Object)
 
     if m.searchMoviesBackgroundLoading = true and getMoviesResultCategoryId(result) = "" then
         m.searchMoviesBackgroundLoading = false
-        if result.success = true then m.searchMovies = normalizeMovies(result.data)
+        if result.success = true then m.searchMovies = normalizeMovies(result.data) : m.moviesCacheReady = true
         if m.searchScreen.visible = true then
             m.searchScreen.callFunc("setLoading", false)
             m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
@@ -1493,6 +1528,8 @@ sub onMoviesResult(result as Object)
 
     if result.success = true then
         m.movies = normalizeMovies(result.data)
+        if m.moviesByCategory = invalid then m.moviesByCategory = {}
+        m.moviesByCategory[resultCategoryId] = m.movies
         if m.movies.Count() > 0 then
             if m.movieListScreen.visible = true then
                 m.movieListScreen.callFunc("setMovies", m.movies)
@@ -1559,7 +1596,7 @@ end sub
 
 sub onLiveChannelsResult(result as Object)
     if m.searchLoadStep = "channels" and getLiveStreamsResultCategoryId(result) = "" then
-        if result.success = true then m.searchChannels = normalizeLiveChannels(result.data)
+        if result.success = true then m.searchChannels = normalizeLiveChannels(result.data) : m.liveCacheReady = true
         m.searchLoadStep = "movies"
         if m.searchScreen.visible = true then m.searchScreen.callFunc("setData", { channels: m.searchChannels, movies: m.searchMovies, series: m.searchSeries })
         loadSearchMovies()
@@ -1576,6 +1613,8 @@ sub onLiveChannelsResult(result as Object)
 
     if result.success = true then
         m.liveChannels = normalizeLiveChannels(result.data)
+        if m.liveChannelsByCategory = invalid then m.liveChannelsByCategory = {}
+        m.liveChannelsByCategory[resultCategoryId] = m.liveChannels
         if m.liveChannels.Count() > 0 then
             if m.liveChannelsScreen.visible = true then
                 m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
@@ -1639,7 +1678,7 @@ end sub
 
 sub onSeriesResult(result as Object)
     if m.searchLoadStep = "series" and getSeriesResultCategoryId(result) = "" then
-        if result.success = true then m.searchSeries = normalizeSeries(result.data)
+        if result.success = true then m.searchSeries = normalizeSeries(result.data) : m.seriesCacheReady = true
         m.searchLoadStep = ""
         if m.searchScreen.visible = true then
             m.searchScreen.callFunc("setLoading", false)
@@ -1657,6 +1696,8 @@ sub onSeriesResult(result as Object)
     m.seriesLoading = false
     if result.success = true then
         m.series = normalizeSeries(result.data)
+        if m.seriesByCategory = invalid then m.seriesByCategory = {}
+        m.seriesByCategory[resultCategoryId] = m.series
         if m.series.Count() > 0 then
             if m.seriesListScreen.visible = true then m.seriesListScreen.callFunc("setSeries", m.series)
         else
