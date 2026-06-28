@@ -179,23 +179,44 @@ end function
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then
-        if m.activePane = "channels" then m.activePane = "categories" : updateFocus() else m.top.backRequested = true
+        if m.activePane = "channels" then
+            m.activePane = "categories"
+            updateFocus()
+        else
+            m.top.backRequested = true
+        end if
         return true
     else if key = "left" then
-        if m.activePane = "channels" then m.activePane = "categories" : updateFocus()
+        if m.activePane = "channels" then
+            m.activePane = "categories"
+            updateFocus()
+        end if
         return true
     else if key = "right" then
-        if m.activePane = "categories" and m.channels.Count() > 0 then m.activePane = "channels" : updateFocus()
+        if m.activePane = "categories" and m.channels.Count() > 0 then
+            m.activePane = "channels"
+            updateFocus()
+        end if
         return true
     else if key = "up" then
-        if m.activePane = "categories" then moveCategory(-1) else moveChannel(-1)
+        if m.activePane = "categories" then
+            moveCategory(-1)
+        else
+            moveChannel(-1)
+        end if
         return true
     else if key = "down" then
-        if m.activePane = "categories" then moveCategory(1) else moveChannel(1)
+        if m.activePane = "categories" then
+            moveCategory(1)
+        else
+            moveChannel(1)
+        end if
         return true
     else if key = "OK" then
         if m.activePane = "categories" then
-            if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
+            if m.categories.Count() > 0 then
+                m.top.categorySelected = m.categories[m.selectedCategoryIndex]
+            end if
         else if m.channels.Count() > 0 then
             m.top.channelSelected = m.channels[m.selectedChannelIndex]
         end if
@@ -206,7 +227,10 @@ end function
 
 sub moveCategory(direction as Integer)
     if m.categories.Count() = 0 then return
-    oldId = "" : if m.selectedCategoryIndex >= 0 and m.selectedCategoryIndex < m.categories.Count() then oldId = getCategoryId(m.categories[m.selectedCategoryIndex])
+    oldId = ""
+    if m.selectedCategoryIndex >= 0 and m.selectedCategoryIndex < m.categories.Count() then
+        oldId = getCategoryId(m.categories[m.selectedCategoryIndex])
+    end if
     m.selectedCategoryIndex = m.selectedCategoryIndex + direction
     updateCategoryWindow()
     renderCategories()
@@ -237,7 +261,10 @@ sub updateWindow(kind as String)
     else
         count = m.channels.Count() : selected = m.selectedChannelIndex : first = m.firstVisibleChannelIndex
     end if
-    if count = 0 then selected = 0 : first = 0 else
+    if count = 0 then
+        selected = 0
+        first = 0
+    else
         if selected < 0 then selected = 0
         if selected >= count then selected = count - 1
         if selected < first then first = selected
