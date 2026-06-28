@@ -322,8 +322,9 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     background.translation = [8, 0]
     background.width = m.leftPanelWidth - 44
     background.height = m.cardHeight
-    background.color = "#111827"
-    background.opacity = 0.86
+    background.color = "#0B3A5E"
+    background.opacity = 1.0
+    background.visible = false
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
@@ -374,8 +375,9 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     background.translation = [m.logoSize + 20, 0]
     background.width = m.middlePanelWidth - m.logoSize - 56
     background.height = m.cardHeight
-    background.color = "#111827"
-    background.opacity = 0.86
+    background.color = "#0B3A5E"
+    background.opacity = 1.0
+    background.visible = false
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
@@ -579,10 +581,11 @@ sub updateFocus()
         label = m.categoryNodes[i].FindNode("itemLabel")
 
         m.categoryNodes[i].scale = [1.0, 1.0]
-        background.color = "#111827"
-        background.opacity = 0.86
+        background.visible = false
+        background.color = "#0B3A5E"
+        background.opacity = 1.0
         accent.opacity = 0.0
-        label.color = "#F8FAFC"
+        label.color = "#AAAAAABB"
 
         if realIndex = m.categorySelectedIndex then selectedCategoryNode = m.categoryNodes[i]
     end for
@@ -592,16 +595,14 @@ sub updateFocus()
         accent = selectedCategoryNode.FindNode("itemAccent")
         label = selectedCategoryNode.FindNode("itemLabel")
 
-        selectedCategoryNode.scale = [1.02, 1.02]
         if m.focusColumn = "categories" then
+            selectedCategoryNode.scale = [1.02, 1.02]
+            background.visible = true
             background.color = "#061F36"
+            background.opacity = 1.0
+            accent.opacity = 1.0
             label.color = "#FFFFFF"
-        else
-            background.color = "#101A2C"
-            label.color = "#B8C3D6"
         end if
-        background.opacity = 1.0
-        accent.opacity = 1.0
     end if
 
     ' Keep a single manual highlight: reset every visible item before
@@ -614,10 +615,11 @@ sub updateFocus()
         logoBackground = m.itemNodes[i].FindNode("logoBackground")
 
         m.itemNodes[i].scale = [1.0, 1.0]
-        background.color = "#111827"
-        background.opacity = 0.86
+        background.visible = false
+        background.color = "#0B3A5E"
+        background.opacity = 1.0
         accent.opacity = 0.0
-        label.color = "#F8FAFC"
+        label.color = "#AAAAAABB"
         if logoBackground <> invalid then logoBackground.color = "#1F2937"
 
         if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
@@ -629,20 +631,15 @@ sub updateFocus()
         label = selectedNode.FindNode("itemLabel")
         logoBackground = selectedNode.FindNode("logoBackground")
 
-        selectedNode.scale = [1.02, 1.02]
         if m.focusColumn = "channels" then
+            selectedNode.scale = [1.02, 1.02]
+            background.visible = true
             background.color = "#061F36"
-        else
-            background.color = "#101A2C"
-        end if
-        background.opacity = 1.0
-        accent.opacity = 1.0
-        if m.focusColumn = "channels" then
+            background.opacity = 1.0
+            accent.opacity = 1.0
             label.color = "#FFFFFF"
-        else
-            label.color = "#B8C3D6"
+            if logoBackground <> invalid then logoBackground.color = "#063B66"
         end if
-        if logoBackground <> invalid then logoBackground.color = "#063B66"
     end if
 
 end sub

@@ -220,8 +220,9 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     background.translation = [14, 0]
     background.width = m.categoryPanelWidth - 42
     background.height = m.cardHeight
-    background.color = "#111827"
-    background.opacity = 0.86
+    background.color = "#0B3A5E"
+    background.opacity = 1.0
+    background.visible = false
 
     accent = CreateObject("roSGNode", "Rectangle")
     accent.id = "itemAccent"
@@ -380,10 +381,11 @@ sub updateFocus()
         label = m.itemNodes[i].FindNode("itemLabel")
 
         m.itemNodes[i].scale = [1.0, 1.0]
-        background.color = "#111827"
-        background.opacity = 0.86
+        background.visible = false
+        background.color = "#0B3A5E"
+        background.opacity = 1.0
         accent.opacity = 0.0
-        label.color = "#F8FAFC"
+        label.color = "#AAAAAABB"
 
         if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
     end for
@@ -394,6 +396,7 @@ sub updateFocus()
         label = selectedNode.FindNode("itemLabel")
 
         selectedNode.scale = [1.02, 1.02]
+        background.visible = true
         background.color = "#0B3A5E"
         background.opacity = 1.0
         accent.opacity = 0.0
