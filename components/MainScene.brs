@@ -856,6 +856,7 @@ end sub
 
 sub connectXtream(account as Object)
     m.xtreamService.control = "STOP"
+    m.xtreamService.callFunc("clearCache")
     m.xtreamService.action = "connect"
     m.xtreamService.cacheEnabled = false
     m.xtreamService.dns = account.dns
@@ -993,10 +994,12 @@ sub onXtreamConnectionResult()
         m.pendingAccount = invalid
         m.liveCategories = []
         m.liveChannels = []
+        m.liveChannelsByCategory = {}
         m.liveCategoriesLoading = false
         m.liveChannelsLoading = false
         m.movieCategories = []
         m.movies = []
+        m.moviesByCategory = {}
         m.searchChannels = []
         m.searchMovies = []
         m.searchSeries = []
@@ -1009,10 +1012,12 @@ sub onXtreamConnectionResult()
         m.pendingAccount = invalid
         m.liveCategories = []
         m.liveChannels = []
+        m.liveChannelsByCategory = {}
         m.liveCategoriesLoading = false
         m.liveChannelsLoading = false
         m.movieCategories = []
         m.movies = []
+        m.moviesByCategory = {}
         m.searchChannels = []
         m.searchMovies = []
         m.searchSeries = []
@@ -1031,6 +1036,7 @@ end sub
 sub resetSeriesData()
     m.seriesCategories = []
     m.series = []
+    m.seriesByCategory = {}
     m.seriesCategoriesLoading = false
     m.seriesLoading = false
 end sub

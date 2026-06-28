@@ -7,6 +7,10 @@ sub Init()
     m.cache = {}
 end sub
 
+sub clearCache()
+    m.cache = {}
+end sub
+
 sub executeRequest()
     action = LCase(m.top.action)
     if action = "" then action = "connect"

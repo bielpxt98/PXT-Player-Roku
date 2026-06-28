@@ -11,6 +11,7 @@
         <field id="seriesId" type="string" />
         <field id="streamExtension" type="string" />
         <field id="result" type="assocarray" alwaysNotify="true" />
+        <function name="clearCache" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/XtreamService.brs" />
 </component>
