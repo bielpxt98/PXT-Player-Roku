@@ -32,6 +32,7 @@
             itemSize="[178, 264]"
             itemSpacing="[149, 54]"
             posterShape="portrait" />
+        <Group id="movieTitlesGroup" />
         <Label id="hintLabel" text="←/→ alternar painel • OK selecionar • * favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

@@ -9,6 +9,7 @@ sub Init()
     m.statusLabel = m.top.FindNode("statusLabel")
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.moviesGrid = m.top.FindNode("moviesGrid")
+    m.movieTitlesGroup = m.top.FindNode("movieTitlesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
     m.categories = [] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.itemNodes = []
@@ -51,6 +52,7 @@ sub configureLayout()
     m.statusLabel.translation = [m.gridX, m.gridY + Int(m.gridH / 2)] : m.statusLabel.width = m.gridW : m.statusLabel.font = "font:MediumSystemFont"
     m.categoriesGroup.translation = [m.categoryX, m.categoryY]
     m.moviesGrid.translation = [m.gridX, m.gridY]
+    m.movieTitlesGroup.translation = [m.gridX, m.gridY]
     m.moviesGrid.itemSize = [m.posterW, m.posterH]
     m.moviesGrid.itemSpacing = [m.posterGapX, m.posterGapY]
     m.moviesGrid.numColumns = m.columns
@@ -126,7 +128,7 @@ end sub
 
 function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group") : item.translation = [0, visibleIndex * m.categoryItemH]
-    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.categoryW : bg.height = m.categoryItemH - 8 : bg.color = "#111827" : bg.opacity = 0.0
+    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.categoryW : bg.height = m.categoryItemH - 8 : bg.color = "#111827" : bg.opacity = 0.35
     label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [14, 0] : label.width = m.categoryW - 24 : label.height = m.categoryItemH - 8 : label.vertAlign = "center" : label.font = "font:SmallSystemFont" : label.color = "#C9D4E5" : label.text = getCategoryName(category)
     item.AppendChild(bg) : item.AppendChild(label) : return item
 end function
@@ -146,6 +148,7 @@ sub renderGrid()
     m.moviesGrid.content = content
     m.moviesGrid.visible = true
     resetGridFocusToFirstItem()
+    renderMovieTitles()
 end sub
 
 function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
@@ -234,7 +237,7 @@ end sub
 
 sub moveGrid(dx as Integer, dy as Integer)
     if m.movies.Count() = 0 then return
-    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx : updateGridWindow() : m.moviesGrid.jumpToItem = m.selectedIndex : updateFocus()
+    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx : updateGridWindow() : m.moviesGrid.jumpToItem = m.selectedIndex : renderMovieTitles() : updateFocus()
 end sub
 
 sub updateCategoryWindow()
@@ -263,7 +266,7 @@ sub updateFocus()
     for i = 0 to m.categoryNodes.Count() - 1
         realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
         bg.opacity = 0.0 : label.color = "#C9D4E5"
-        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#061F36" : label.color = "#FFFFFF"
+        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#FFFFFF" : label.color = "#05070B"
         if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
     if m.activePane = "grid" and m.movies.Count() > 0 then m.moviesGrid.SetFocus(true) else m.top.SetFocus(true)
@@ -276,6 +279,43 @@ sub resetGridFocusToFirstItem()
         m.moviesGrid.jumpToItem = 0
     end if
 end sub
+
+sub renderMovieTitles()
+    clearMovieTitleNodes()
+    if m.movies.Count() = 0 then return
+    startIndex = m.firstVisibleRow * m.columns
+    maxItems = m.columns * m.rows
+    for visualIndex = 0 to maxItems - 1
+        movieIndex = startIndex + visualIndex
+        if movieIndex >= m.movies.Count() then exit for
+        col = visualIndex mod m.columns
+        row = Int(visualIndex / m.columns)
+        label = CreateObject("roSGNode", "Label")
+        label.translation = [col * (m.posterW + m.posterGapX), row * (m.posterH + m.posterGapY) + m.posterH + m.titleOffsetY]
+        label.width = m.posterW
+        label.height = m.titleH
+        label.font = "font:SmallSystemFont"
+        label.color = "#FFFFFF"
+        label.horizAlign = "center"
+        label.vertAlign = "top"
+        label.maxLines = 1
+        label.text = getEllipsizedText(getMovieName(m.movies[movieIndex]), 24)
+        m.movieTitlesGroup.AppendChild(label)
+    end for
+end sub
+
+sub clearMovieTitleNodes()
+    if m.movieTitlesGroup = invalid then return
+    while m.movieTitlesGroup.GetChildCount() > 0
+        m.movieTitlesGroup.RemoveChildIndex(0)
+    end while
+end sub
+
+function getEllipsizedText(value as String, maxChars as Integer) as String
+    if value.Len() <= maxChars then return value
+    if maxChars <= 3 then return Left(value, maxChars)
+    return Left(value, maxChars - 3) + "..."
+end function
 
 sub syncSelectedCategory(category as Dynamic)
     id = getCategoryId(category)
@@ -294,6 +334,7 @@ end sub
 sub clearGridNodes()
     m.moviesGrid.content = invalid
     m.moviesGrid.visible = false
+    clearMovieTitleNodes()
     m.itemNodes = []
 end sub
 
