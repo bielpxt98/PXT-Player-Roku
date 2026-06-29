@@ -2,19 +2,14 @@
 sub Init()
     m.overlay = m.top.FindNode("homeOverlay")
     m.title = m.top.FindNode("homeTitle")
-    m.liveTvButton = m.top.FindNode("liveTvButton")
-    m.moviesButton = m.top.FindNode("moviesButton")
+    m.accountButton = m.top.FindNode("accountButton")
     m.seriesButton = m.top.FindNode("seriesButton")
-    m.favoritesButton = m.top.FindNode("favoritesButton")
-    m.recentButton = m.top.FindNode("recentButton")
-    m.accountIconLabel = m.top.FindNode("accountIconLabel")
-    m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
+    m.buttons = [m.accountButton, m.seriesButton]
     m.focusIndex = 0
     m.lastCardFocusIndex = 0
-    m.focusArea = "cards"
+    m.focusArea = "buttons"
     configureLayout()
 end sub
 
@@ -42,30 +37,19 @@ sub configureLayout()
         buttonWidth = Int((width - (horizontalMargin * 2) - (buttonGap * (buttonCount - 1))) / buttonCount)
     end if
 
-    buttonHeight = 178
-    buttonY = Int(height * 0.405)
+    buttonHeight = 150
+    buttonY = Int(height * 0.39)
     totalWidth = (buttonWidth * buttonCount) + (buttonGap * (buttonCount - 1))
     startX = Int((width - totalWidth) / 2)
 
     for i = 0 to buttonCount - 1
-        configureHomeCard(m.buttons[i], buttonWidth, buttonHeight, i = 4)
+        configureHomeCard(m.buttons[i], buttonWidth, buttonHeight, false)
         m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), buttonY]
     end for
 
-    footerY = Int(height * 0.745)
-    m.accountIconLabel.width = 260
-    m.accountIconLabel.height = 44
-    m.accountIconLabel.font = "font:LargeBoldSystemFont"
-    m.accountIconLabel.translation = [Int((width - m.accountIconLabel.width) / 2), footerY - 46]
-
-    m.accountFooterLabel.width = 260
-    m.accountFooterLabel.height = 36
-    m.accountFooterLabel.font = "font:SmallBoldSystemFont"
-    m.accountFooterLabel.translation = [Int((width - m.accountFooterLabel.width) / 2), footerY]
-
     m.connectionStatusLabel.width = width
     m.connectionStatusLabel.font = "font:SmallSystemFont"
-    m.connectionStatusLabel.translation = [0, Int(height * 0.94)]
+    m.connectionStatusLabel.translation = [0, Int(height * 0.88)]
 end sub
 
 sub configureHomeCard(button as Object, cardWidth as Integer, cardHeight as Integer, isRecent as Boolean)
@@ -122,7 +106,7 @@ sub show()
     m.top.visible = true
     m.focusIndex = 0
     m.lastCardFocusIndex = 0
-    m.focusArea = "cards"
+    m.focusArea = "buttons"
     updateFocus()
 end sub
 
@@ -191,22 +175,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "left" then
-        if m.focusArea = "cards" then moveFocus(-1)
+        if m.focusArea = "buttons" then moveFocus(-1)
         return true
     else if key = "right" then
-        if m.focusArea = "cards" then moveFocus(1)
+        if m.focusArea = "buttons" then moveFocus(1)
         return true
     else if key = "down" then
-        if m.focusArea = "cards" then
-            m.lastCardFocusIndex = m.focusIndex
-            m.focusArea = "account"
-        end if
-        updateFocus()
         return true
     else if key = "up" then
-        m.focusArea = "cards"
-        m.focusIndex = m.lastCardFocusIndex
-        updateFocus()
         return true
     else if key = "OK" then
         selectFocusedButton()
@@ -227,43 +203,16 @@ end sub
 
 sub updateFocus()
     for i = 0 to m.buttons.Count() - 1
-        isCardFocused = (m.focusArea = "cards" and i = m.focusIndex)
-        m.buttons[i].selected = isCardFocused
-        m.buttons[i].SetFocus(isCardFocused)
+        isFocused = (i = m.focusIndex)
+        m.buttons[i].selected = isFocused
+        m.buttons[i].SetFocus(isFocused)
     end for
-
-    if m.focusArea = "account" then
-        m.accountIconLabel.text = "◉"
-        m.accountIconLabel.color = "#FFFFFF"
-        m.accountIconLabel.opacity = 1.0
-        m.accountFooterLabel.color = "#FFFFFF"
-        m.accountFooterLabel.opacity = 1.0
-        m.accountFooterLabel.SetFocus(true)
-    else
-        m.accountIconLabel.text = "○"
-        m.accountIconLabel.color = "#D8E2F3"
-        m.accountIconLabel.opacity = 0.78
-        m.accountFooterLabel.color = "#D8E2F3"
-        m.accountFooterLabel.opacity = 0.78
-        m.accountFooterLabel.SetFocus(false)
-    end if
 end sub
 
 sub selectFocusedButton()
-    if m.focusArea = "account" then
-        onPlaylistSelected()
-        return
-    end if
-
     if m.focusIndex = 0 then
-        onLiveTvSelected()
+        onPlaylistSelected()
     else if m.focusIndex = 1 then
-        onMoviesSelected()
-    else if m.focusIndex = 2 then
         onSeriesSelected()
-    else if m.focusIndex = 3 then
-        onFavoritesSelected()
-    else if m.focusIndex = 4 then
-        onRecentSelected()
     end if
 end sub
