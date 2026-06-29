@@ -1,34 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="MainScene" extends="Scene">
     <script type="text/brightscript" uri="pkg:/source/PlaylistStorage.brs" />
-    <script type="text/brightscript" uri="pkg:/source/FavoritesStorage.brs" />
-    <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
         <Rectangle id="globalBackground" color="#000000" opacity="1" translation="[0, 0]" />
-        <Rectangle id="globalBackgroundOverlay" color="#000000" opacity="0" translation="[0, 0]" />
-        <HomeScreen id="homeScreen" visible="false" />
-        <SplashScreen id="splashScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
-        <FavoritesScreen id="favoritesScreen" visible="false" />
-        <RecentScreen id="recentScreen" visible="false" />
-        <SearchScreen id="searchScreen" visible="false" />
         <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
         <LivePlayerScreen id="livePlayerScreen" visible="false" />
-        <MovieListScreen id="movieListScreen" visible="false" />
-        <MovieDetailScreen id="movieDetailScreen" visible="false" />
-        <MoviePlayerScreen id="moviePlayerScreen" visible="false" />
-        <SeriesListScreen id="seriesListScreen" visible="false" />
-        <SeriesDetailScreen id="seriesDetailScreen" visible="false" />
-        <SeriesSeasonsScreen id="seriesSeasonsScreen" visible="false" />
-        <SeriesEpisodesScreen id="seriesEpisodesScreen" visible="false" />
-        <SeriesPlayerScreen id="seriesPlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
-        <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
-        <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
-        <Timer id="splashMinimumTimer" duration="4" repeat="false" />
-        <Timer id="splashMaximumTimer" duration="6" repeat="false" />
+        <Timer id="requestTimeoutTimer" duration="15" repeat="false" />
     </children>
 </component>

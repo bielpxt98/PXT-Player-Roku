@@ -11,11 +11,3 @@ build_version=00002
 # Runtime settings
 main_scene=MainScene
 bs_const=DEBUG=false
-
-# Channel artwork
-mm_icon_focus_hd=pkg:/images/background.jpeg
-mm_icon_side_hd=pkg:/images/background.jpeg
-
-# Splash defaults
-splash_color=#000000
-splash_min_time=0

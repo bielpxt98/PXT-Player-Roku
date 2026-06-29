@@ -245,12 +245,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             moveChannel(1)
         end if
         return true
-    else if key = "options" then
-        m.top.searchRequested = true
-        return true
-    else if key = "play" or key = "pause" or key = "replay" then
-        toggleSelectedChannelFavorite()
-        return true
     else if key = "OK" then
         if m.activePane = "categories" then
             if m.channels.Count() > 0 then
@@ -265,12 +259,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
 end function
-
-sub toggleSelectedChannelFavorite()
-    if m.channels.Count() = 0 then return
-    if m.selectedChannelIndex < 0 or m.selectedChannelIndex >= m.channels.Count() then return
-    m.top.channelFavoriteToggled = m.channels[m.selectedChannelIndex]
-end sub
 
 sub moveCategory(direction as Integer)
     if m.categories.Count() = 0 then return
