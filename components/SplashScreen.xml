@@ -8,7 +8,7 @@
     <children>
         <Rectangle id="background" color="#020713" opacity="1" translation="[0,0]" />
         <Group id="content" translation="[640,330]">
-            <Label id="iconLabel" text="📺" color="#FFFFFF" font="font:LargeBoldSystemFont" horizAlign="center" vertAlign="center" translation="[-80,-110]" width="160" height="120" />
+            <Label id="iconLabel" text="▣" color="#FFFFFF" font="font:LargeBoldSystemFont" horizAlign="center" vertAlign="center" translation="[-80,-110]" width="160" height="120" />
             <Label id="phaseLabel" text="TV AO VIVO" color="#EAF2FF" font="font:MediumBoldSystemFont" horizAlign="center" translation="[-280,25]" width="560" height="52" opacity="0" />
             <Label id="brandLabel" text="PXT PLAYER" color="#FFFFFF" font="font:LargeBoldSystemFont" horizAlign="center" translation="[-300,105]" width="600" height="80" opacity="0" />
             <Label id="statusLabel" text="Preparando sua experiência..." color="#8EA4C7" font="font:SmallSystemFont" horizAlign="center" translation="[-300,190]" width="600" height="38" />
