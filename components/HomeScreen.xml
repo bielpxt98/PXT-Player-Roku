@@ -18,14 +18,9 @@
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
         <Rectangle id="homeOverlay" color="#000000" opacity="0.24" translation="[0, 0]" />
-        <Label id="homeTitle" text="PXT&#10;P L A Y E R" color="#FFFFFF" horizAlign="center" vertAlign="center" />
-        <HomeButton id="liveTvButton" labelText="TV AO VIVO" iconText="▣" accentColor="#E50914" />
-        <HomeButton id="moviesButton" labelText="FILMES" iconText="▶" accentColor="#208CFF" />
+        <Label id="homeTitle" text="PXT PLAYER" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+        <HomeButton id="accountButton" labelText="ENTRAR / CONTA" iconText="○" accentColor="#E50914" />
         <HomeButton id="seriesButton" labelText="SÉRIES" iconText="▦" accentColor="#8B5CF6" />
-        <HomeButton id="favoritesButton" labelText="FAVORITOS" iconText="★" accentColor="#FACC15" />
-        <HomeButton id="recentButton" labelText="ÚLTIMOS ASSISTIDOS" iconText="◷" accentColor="#94A3B8" />
-        <Label id="accountIconLabel" text="○" color="#D8E2F3" horizAlign="center" />
-        <Label id="accountFooterLabel" text="CONTA" color="#D8E2F3" horizAlign="center" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />
     </children>
 </component>

@@ -1,6 +1,5 @@
 ' Main scene for the PXT Player application.
-' It coordinates feature screens and authenticates playlist credentials through
-' XtreamService, including live TV categories and channel lists.
+' Startup is intentionally safe: Init only opens Home and never contacts the API.
 sub Init()
     m.globalBackground = m.top.FindNode("globalBackground")
     m.globalBackgroundOverlay = m.top.FindNode("globalBackgroundOverlay")
@@ -26,7 +25,7 @@ sub Init()
     m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
     m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
-    m.account = LoadSavedPlaylist()
+    m.account = invalid
     m.pendingAccount = invalid
     m.liveCategories = []
     m.liveCategoriesLoading = false
@@ -125,13 +124,8 @@ sub Init()
     m.splashMinimumTimer.ObserveField("fire", "onSplashMinimumElapsed")
     m.splashMaximumTimer.ObserveField("fire", "onSplashMaximumElapsed")
 
-    if hasAccount(m.account) then
-        updateConnectionStatus(true, "Conectado")
-    else
-        updateConnectionStatus(false, "Nenhuma playlist conectada")
-    end if
-
-    startSplashBootstrap()
+    updateConnectionStatus(false, "Modo seguro: nenhuma lista carregada")
+    showHome()
 end sub
 
 sub startSplashBootstrap()
@@ -328,9 +322,11 @@ end sub
 
 sub showHome()
     showOnlyScreen(m.homeScreen)
+    if m.homeScreen <> invalid then m.homeScreen.SetFocus(true)
 end sub
 
 sub showLogin()
+    if not hasAccount(m.account) then m.account = LoadSavedPlaylist()
     hideAllScreensExcept(m.loginScreen)
     m.loginScreen.callFunc("show", m.account)
 end sub
@@ -1037,24 +1033,11 @@ sub resetSeriesData()
 end sub
 
 sub onOpenSeriesCategoriesRequested()
+    ' Temporary safe screen: do not load categories or series from Home.
     hideAllScreensExcept(m.seriesListScreen)
     m.seriesListScreen.callFunc("resetSelection")
     m.seriesListScreen.callFunc("show", invalid)
-    m.seriesListScreen.callFunc("focusCategories")
-
-    if not hasAccount(m.account) then
-        m.seriesListScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de séries.")
-        m.seriesListScreen.callFunc("focusCategories")
-    else if m.seriesCategoriesLoading then
-        m.seriesListScreen.callFunc("setLoading", true)
-    else if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
-        m.seriesListScreen.callFunc("setCategories", m.seriesCategories)
-        m.seriesListScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
-        m.seriesListScreen.callFunc("focusCategories")
-    else
-        m.seriesListScreen.callFunc("setLoading", true)
-        loadSeriesCategories(m.account)
-    end if
+    m.seriesListScreen.callFunc("showMessage", "Séries será carregado depois")
 end sub
 
 
