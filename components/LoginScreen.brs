@@ -2,8 +2,6 @@
 ' to the MainScene/XtreamService integration.
 sub Init()
     m.background = m.top.FindNode("loginBackground")
-    m.title = m.top.FindNode("loginTitle")
-    m.subtitle = m.top.FindNode("loginSubtitle")
     m.formGroup = m.top.FindNode("formGroup")
 
     m.dnsInput = m.top.FindNode("dnsInput")
@@ -45,15 +43,7 @@ sub configureLayout()
     m.background.width = width
     m.background.height = height
 
-    m.title.width = width
-    m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, 70]
-
-    m.subtitle.width = width
-    m.subtitle.font = "font:MediumSystemFont"
-    m.subtitle.translation = [0, 142]
-
-    m.formGroup.translation = [Int((width - 600) / 2), 230]
+    m.formGroup.translation = [Int((width - 600) / 2), Int((height - 620) / 2)]
     m.messageLabel.width = 600
     m.loadingLabel.width = 500
 end sub
