@@ -5,11 +5,8 @@
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
-        <Rectangle id="globalBackground" color="#000000" opacity="1" translation="[0, 0]" />
-        <LoginScreen id="loginScreen" visible="false" />
-        <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
-        <LivePlayerScreen id="livePlayerScreen" visible="false" />
+        <LoginScreen id="loginScreen" visible="true" />
+        <LiveChannelsScreen id="liveTVScreen" visible="false" />
         <XtreamService id="xtreamService" />
-        <Timer id="requestTimeoutTimer" duration="15" repeat="false" />
     </children>
 </component>
