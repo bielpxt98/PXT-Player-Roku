@@ -1,11 +1,8 @@
 ' Minimal app flow: Login -> Live TV only.
 sub Init()
-    m.background = m.top.FindNode("globalBackground")
     m.loginScreen = m.top.FindNode("loginScreen")
-    m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
-    m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
+    m.liveTVScreen = m.top.FindNode("liveTVScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
-    m.requestTimeoutTimer = m.top.FindNode("requestTimeoutTimer")
 
     m.account = invalid
     m.pendingRequest = ""
@@ -13,21 +10,12 @@ sub Init()
     m.selectedChannel = invalid
 
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
-    m.liveChannelsScreen.ObserveField("categorySelected", "onLiveCategorySelected")
-    m.liveChannelsScreen.ObserveField("channelSelected", "onLiveChannelSelected")
-    m.liveChannelsScreen.ObserveField("backRequested", "onLiveBackRequested")
-    m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
+    m.liveTVScreen.ObserveField("categorySelected", "onLiveCategorySelected")
+    m.liveTVScreen.ObserveField("channelSelected", "onLiveChannelSelected")
+    m.liveTVScreen.ObserveField("backRequested", "onLiveBackRequested")
     m.xtreamService.ObserveField("result", "onXtreamResult")
-    m.requestTimeoutTimer.ObserveField("fire", "onRequestTimeout")
 
-    configureLayout()
     startInitialFlow()
-end sub
-
-sub configureLayout()
-    size = getDisplayResolution()
-    m.background.width = size.width
-    m.background.height = size.height
 end sub
 
 sub startInitialFlow()
@@ -41,20 +29,17 @@ sub startInitialFlow()
 end sub
 
 sub openLogin(account as Dynamic)
-    m.requestTimeoutTimer.control = "stop"
     m.pendingRequest = ""
-    m.livePlayerScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
+    m.liveTVScreen.callFunc("hide")
     m.loginScreen.callFunc("show", account)
     m.loginScreen.SetFocus(true)
 end sub
 
 sub openLiveTv()
     m.loginScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("setAccount", m.account)
-    m.liveChannelsScreen.callFunc("resetSelection")
-    m.liveChannelsScreen.callFunc("show", invalid)
+    m.liveTVScreen.callFunc("setAccount", m.account)
+    m.liveTVScreen.callFunc("resetSelection")
+    m.liveTVScreen.callFunc("show", invalid)
     loadLiveCategories()
 end sub
 
@@ -71,26 +56,25 @@ sub onLoginSubmit()
 end sub
 
 sub loadLiveCategories()
-    m.liveChannelsScreen.callFunc("setCategories", [])
-    m.liveChannelsScreen.callFunc("setLoading", false)
-    m.liveChannelsScreen.callFunc("showMessage", "Carregando categorias de TV ao vivo...")
+    m.liveTVScreen.callFunc("setCategories", [])
+    m.liveTVScreen.callFunc("setLoading", false)
+    m.liveTVScreen.callFunc("showMessage", "Carregando categorias de TV ao vivo...")
     runXtreamRequest("getLiveCategories", "")
 end sub
 
 sub onLiveCategorySelected()
-    category = m.liveChannelsScreen.categorySelected
+    category = m.liveTVScreen.categorySelected
     if category = invalid then return
     m.selectedCategory = category
-    m.liveChannelsScreen.callFunc("setLoading", true)
+    m.liveTVScreen.callFunc("setLoading", true)
     runXtreamRequest("getLiveStreams", getCategoryId(category))
 end sub
 
 sub onLiveChannelSelected()
-    channel = m.liveChannelsScreen.channelSelected
+    channel = m.liveTVScreen.channelSelected
     if channel = invalid then return
     m.selectedChannel = channel
-    m.livePlayerScreen.callFunc("show", channel)
-    runXtreamRequestWithStream("buildLiveStreamUrl", getChannelId(channel), getStreamExtension(channel))
+    m.liveTVScreen.callFunc("showMessage", "Reproducao ao vivo indisponivel nesta versao.")
 end sub
 
 sub onLiveBackRequested()
@@ -98,21 +82,7 @@ sub onLiveBackRequested()
     if m.account = invalid then openLogin(invalid)
 end sub
 
-sub onLivePlayerBack()
-    m.livePlayerScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("show", m.selectedCategory)
-    m.liveChannelsScreen.callFunc("restoreSelectedChannel", m.selectedChannel)
-end sub
-
 sub runXtreamRequest(action as String, categoryId as String)
-    runXtreamRequestInternal(action, categoryId, "", "")
-end sub
-
-sub runXtreamRequestWithStream(action as String, streamId as String, extension as String)
-    runXtreamRequestInternal(action, "", streamId, extension)
-end sub
-
-sub runXtreamRequestInternal(action as String, categoryId as String, streamId as String, extension as String)
     if not isValidAccount(m.account) then
         openLogin(m.account)
         m.loginScreen.callFunc("showError", "Informe DNS, usuário e senha.")
@@ -120,20 +90,15 @@ sub runXtreamRequestInternal(action as String, categoryId as String, streamId as
     end if
 
     m.pendingRequest = action
-    m.requestTimeoutTimer.control = "stop"
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
     m.xtreamService.categoryId = categoryId
-    m.xtreamService.streamId = streamId
-    m.xtreamService.streamExtension = extension
     m.xtreamService.action = action
-    m.requestTimeoutTimer.control = "start"
     m.xtreamService.control = "RUN"
 end sub
 
 sub onXtreamResult()
-    m.requestTimeoutTimer.control = "stop"
     result = m.xtreamService.result
     request = m.pendingRequest
     m.pendingRequest = ""
@@ -153,54 +118,38 @@ sub onXtreamResult()
     else if request = "getLiveCategories" then
         if result.success = true then
             categories = normalizeArray(result.data)
-            m.liveChannelsScreen.callFunc("setCategories", categories)
+            m.liveTVScreen.callFunc("setCategories", categories)
             if categories.Count() > 0 then
                 m.selectedCategory = categories[0]
-                m.liveChannelsScreen.callFunc("showMessage", "Selecione uma categoria e pressione OK.")
+                m.liveTVScreen.callFunc("showMessage", "Selecione uma categoria e pressione OK.")
             else
-                m.liveChannelsScreen.callFunc("showMessage", "Nao foi possivel carregar TV ao vivo." + Chr(10) + "Pressione OK para tentar novamente.")
+                m.liveTVScreen.callFunc("showMessage", "Nao foi possivel carregar TV ao vivo." + Chr(10) + "Pressione OK para tentar novamente.")
             end if
         else
             showRequestFailure(request, "Nao foi possivel carregar TV ao vivo." + Chr(10) + "Pressione OK para tentar novamente.")
         end if
     else if request = "getLiveStreams" then
         if result.success = true then
-            m.liveChannelsScreen.callFunc("setChannels", normalizeArray(result.data))
-            m.liveChannelsScreen.callFunc("focusChannels")
+            m.liveTVScreen.callFunc("setChannels", normalizeArray(result.data))
+            m.liveTVScreen.callFunc("focusChannels")
         else
             showRequestFailure(request, "Nao foi possivel carregar TV ao vivo." + Chr(10) + "Pressione OK para tentar novamente.")
         end if
-    else if request = "buildLiveStreamUrl" then
-        if result.success = true and result.data <> invalid and result.data.url <> invalid then
-            m.livePlayerScreen.callFunc("play", result.data.url)
-        else
-            m.livePlayerScreen.callFunc("showError", getResultMessage(result, "Não foi possível abrir o player ao vivo."))
-        end if
-    end if
-end sub
-
-sub onRequestTimeout()
-    request = m.pendingRequest
-    m.pendingRequest = ""
-    if request = "connect" then
-        m.loginScreen.callFunc("showError", "Tempo esgotado. Verifique DNS, usuário e senha.")
-    else
-        showRequestFailure(request, "Tempo esgotado." + Chr(10) + "Pressione OK para tentar novamente.")
     end if
 end sub
 
 sub showRequestFailure(request as String, message as String)
     if request = "getLiveStreams" then
-        m.liveChannelsScreen.callFunc("setLoading", false)
+        m.liveTVScreen.callFunc("setLoading", false)
     end if
-    m.liveChannelsScreen.callFunc("showMessage", message)
+    m.liveTVScreen.callFunc("showMessage", message)
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "OK" and m.liveChannelsScreen.visible = true and m.pendingRequest = "" then
+    if key = "OK" and m.liveTVScreen.visible = true and m.pendingRequest = "" then
         if m.selectedCategory <> invalid then
-            m.liveChannelsScreen.callFunc("setLoading", true)
+            m.liveTVScreen.callFunc("setLoading", true)
             runXtreamRequest("getLiveStreams", getCategoryId(m.selectedCategory))
             return true
         end if
@@ -236,18 +185,6 @@ function getCategoryId(category as Dynamic) as String
     return ""
 end function
 
-function getChannelId(channel as Dynamic) as String
-    if channel = invalid then return ""
-    if channel.stream_id <> invalid then return channel.stream_id.ToStr()
-    if channel.id <> invalid then return channel.id.ToStr()
-    return ""
-end function
-
-function getStreamExtension(channel as Dynamic) as String
-    if channel <> invalid and channel.container_extension <> invalid and channel.container_extension.ToStr().Trim() <> "" then return channel.container_extension.ToStr()
-    return "ts"
-end function
-
 function getResultMessage(result as Dynamic, fallback as String) as String
     if result <> invalid and result.message <> invalid and result.message.ToStr().Trim() <> "" then return result.message.ToStr()
     return fallback
@@ -256,10 +193,4 @@ end function
 function safeText(value as Dynamic) as String
     if value = invalid then return ""
     return value.ToStr().Trim()
-end function
-
-function getDisplayResolution() as Object
-    deviceInfo = CreateObject("roDeviceInfo")
-    displaySize = deviceInfo.GetDisplaySize()
-    return { width: displaySize.w, height: displaySize.h }
 end function
