@@ -54,7 +54,7 @@ sub configureLayout()
     m.cardGap = 16 : m.cardHeight = 196 : m.resultCols = 5
     m.cardWidth = Int((m.contentWidth - ((m.resultCols - 1) * m.cardGap)) / m.resultCols)
     if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 12 * m.keyGap) / 13) : m.cardWidth = Int((m.contentWidth - ((m.resultCols - 1) * m.cardGap)) / m.resultCols)
-    m.visibleItemCount = m.resultCols * 2
+    m.visibleItemCount = m.resultCols
 end sub
 
 sub show(mode as Dynamic)
@@ -145,7 +145,7 @@ end sub
 sub onSearchTextChanged()
     m.queryMirror.text = "Texto digitado: " + m.searchInput.text
     m.searchDebounceTimer.control = "stop"
-    m.searchDebounceTimer.control = "start"
+    applyFilter()
 end sub
 
 sub onSearchDebounceFire()
@@ -153,14 +153,16 @@ sub onSearchDebounceFire()
 end sub
 
 sub applyFilter()
-    query = LCase(m.searchInput.text.Trim())
+    query = normalizeSearchQuery(m.searchInput.text)
+    oldResults = m.results
     m.results = []
     if m.searchMode = "live" then addMatches("channel", m.channels, query)
     if m.searchMode = "movies" then addMatches("movie", m.movies, query)
     if m.searchMode = "series" then addMatches("series", m.series, query)
+    if query = "" then m.results = pickInitialSearchItems(m.results)
     m.searchResultIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.resultBatchSize
     if m.results.Count() = 0 then
-        clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado. Tente outro nome."
+        clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = getEmptySearchMessage()
         if m.searchFocusArea = "results" then m.searchFocusArea = "keyboardActions"
         updateSearchFocus()
     else
@@ -174,7 +176,7 @@ sub addMatches(kind as String, items as Dynamic, query as String)
     for each item in normalizeArray(items)
         name = getItemName(item)
         meta = getItemMeta(item)
-        lowerName = LCase(name)
+        lowerName = getSearchableTitle(item, name)
         if query = "" then
             startsWithEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
         else if Left(lowerName, Len(query)) = query then
@@ -188,6 +190,45 @@ sub addMatches(kind as String, items as Dynamic, query as String)
     appendSearchEntries(startsWithEntries)
     appendSearchEntries(containsEntries)
 end sub
+
+function pickInitialSearchItems(entries as Object) as Object
+    picks = []
+    if entries = invalid or entries.Count() = 0 then return picks
+    seed = CreateObject("roDateTime").AsSeconds()
+    start = seed MOD entries.Count()
+    i = 0
+    while i < entries.Count() and picks.Count() < m.resultCols
+        idx = (start + i) MOD entries.Count()
+        picks.Push(entries[idx])
+        i = i + 1
+    end while
+    return picks
+end function
+
+function getSearchableTitle(item as Dynamic, fallbackName as String) as String
+    if item <> invalid and item.normalizedTitle <> invalid and item.normalizedTitle.ToStr().Trim() <> "" then return item.normalizedTitle.ToStr()
+    return normalizeSearchQuery(fallbackName)
+end function
+
+function normalizeSearchQuery(value as Dynamic) as String
+    text = LCase(value.ToStr().Trim())
+    replacements = {
+        "á":"a", "à":"a", "â":"a", "ã":"a", "ä":"a", "å":"a",
+        "é":"e", "è":"e", "ê":"e", "ë":"e",
+        "í":"i", "ì":"i", "î":"i", "ï":"i",
+        "ó":"o", "ò":"o", "ô":"o", "õ":"o", "ö":"o",
+        "ú":"u", "ù":"u", "û":"u", "ü":"u",
+        "ç":"c", "ñ":"n", "ý":"y", "ÿ":"y",
+        "-":" ", ".":" ", ",":" ", ":":" ", ";":" ", "_":" "
+    }
+    for each key in replacements
+        text = text.Replace(key, replacements[key])
+    end for
+    while Instr(1, text, "  ") > 0
+        text = text.Replace("  ", " ")
+    end while
+    return text.Trim()
+end function
 
 sub appendSearchEntries(entries as Object)
     for each entry in entries
@@ -447,6 +488,7 @@ end function
 
 function getItemImage(item as Dynamic) as String
     if item = invalid then return ""
+    if item.poster <> invalid and item.poster.ToStr().Trim() <> "" then return item.poster.ToStr()
     if item.stream_icon <> invalid and item.stream_icon.ToStr().Trim() <> "" then return item.stream_icon.ToStr()
     if item.cover <> invalid and item.cover.ToStr().Trim() <> "" then return item.cover.ToStr()
     if item.poster <> invalid and item.poster.ToStr().Trim() <> "" then return item.poster.ToStr()
@@ -457,6 +499,7 @@ end function
 
 function getItemName(item as Dynamic) as String
     if item = invalid then return "Sem nome"
+    if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
     if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
     if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
     return "Sem nome"
@@ -466,6 +509,7 @@ function getItemMeta(item as Dynamic) as String
     parts = []
     if item = invalid then return ""
     if item.year <> invalid and item.year.ToStr().Trim() <> "" then parts.Push(item.year.ToStr())
+    if item.rating <> invalid and item.rating.ToStr().Trim() <> "" then parts.Push(item.rating.ToStr())
     if item.category_name <> invalid and item.category_name.ToStr().Trim() <> "" then parts.Push(item.category_name.ToStr())
     if item.category <> invalid and item.category.ToStr().Trim() <> "" then parts.Push(item.category.ToStr())
     if item.duration <> invalid and item.duration.ToStr().Trim() <> "" then parts.Push(item.duration.ToStr())

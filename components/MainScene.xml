@@ -3,6 +3,7 @@
     <script type="text/brightscript" uri="pkg:/source/PlaylistStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/FavoritesStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
+    <script type="text/brightscript" uri="pkg:/source/SearchIndexStorage.brs" />
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
@@ -28,6 +29,7 @@
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
         <Timer id="autoConnectTimer" duration="0.3" repeat="false" />
+        <Timer id="searchIndexTimer" duration="0.2" repeat="false" />
         <Timer id="splashMinimumTimer" duration="4" repeat="false" />
         <Timer id="splashMaximumTimer" duration="6" repeat="false" />
     </children>
