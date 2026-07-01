@@ -240,11 +240,11 @@ function sendHttpGet(url as String) as Object
         return buildFailure("Não foi possível iniciar a conexão com o servidor Xtream.")
     end if
 
-    event = waitForHttpResponse(port, 15000)
+    event = waitForHttpResponse(port, 6000)
     if event = invalid then
-        print "DEBUG XtreamService: timeout após 15 segundos sem resposta"
+        print "DEBUG XtreamService: timeout após 6 segundos sem resposta"
         transfer.AsyncCancel()
-        return buildFailure("Servidor não respondeu. Verifique DNS, usuário e senha.")
+        return buildFailure("Tempo esgotado ao conectar.")
     end if
 
     response = event.GetString()

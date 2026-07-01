@@ -28,6 +28,9 @@ sub Init()
     m.pendingDetailRequest = ""
     m.account = LoadSavedPlaylist()
     m.pendingAccount = invalid
+    m.loginFormAccount = invalid
+    m.loginConnecting = false
+    m.loginErrorActive = false
     m.liveCategories = []
     m.liveCategoriesLoading = false
     m.liveChannels = []
@@ -205,6 +208,20 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 function handleBackKeySafely() as Boolean
+    if m.loginErrorActive = true then
+        m.loginErrorActive = false
+        m.loginConnecting = false
+        showLogin()
+        return true
+    else if m.loginConnecting = true then
+        m.loginConnecting = false
+        stopLoginTimeout()
+        cancelXtreamRequest()
+        updateConnectionStatus(false, "Conexão cancelada")
+        showLogin()
+        return true
+    end if
+
     if closeActivePlayerScreen() then return true
 
     if m.movieDetailScreen <> invalid and m.movieDetailScreen.visible = true then
@@ -299,7 +316,9 @@ sub showLogin()
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     hideSeriesScreens()
-    m.loginScreen.callFunc("show", m.account)
+    account = m.account
+    if m.loginFormAccount <> invalid then account = m.loginFormAccount
+    m.loginScreen.callFunc("show", account)
 end sub
 
 
@@ -616,14 +635,22 @@ sub onLoginSubmit()
     end if
 
     m.pendingAccount = account
+    m.loginFormAccount = account
+    m.loginConnecting = true
+    m.loginErrorActive = false
     print "DEBUG Login: início da autenticação Xtream"
-    m.loginScreen.callFunc("setLoading", true)
+
+    showHome()
+    updateConnectionStatus(false, "Conectando...")
     startLoginTimeout()
     connectXtream(account)
 end sub
 
 sub onLoginBack()
     stopLoginTimeout()
+    m.loginConnecting = false
+    m.loginErrorActive = false
+    cancelXtreamRequest()
     showHome()
 end sub
 
@@ -956,7 +983,12 @@ sub onXtreamConnectionResult()
         return
     end if
 
+    handleLoginConnectionResult(result)
+end sub
+
+sub handleLoginConnectionResult(result as Object)
     stopLoginTimeout()
+    m.loginConnecting = false
     m.loginScreen.callFunc("setLoading", false)
 
     if m.pendingAccount = invalid then
@@ -967,41 +999,67 @@ sub onXtreamConnectionResult()
     if isValidXtreamConnectionResult(result) then
         print "DEBUG Login: autenticação Xtream concluída com sucesso"
         m.account = m.pendingAccount
+        m.loginFormAccount = invalid
         SavePlaylist(m.account)
         SavePlaylistConnectionStatus("Conectado")
         updateConnectionStatus(true, "Conectado")
         m.pendingAccount = invalid
-        m.liveCategories = []
-        m.liveChannels = []
-        m.liveCategoriesLoading = false
-        m.liveChannelsLoading = false
-        m.movieCategories = []
-        m.movies = []
-        m.searchChannels = []
-        m.searchMovies = []
-        m.searchSeries = []
-        m.movieCategoriesLoading = false
-        m.moviesLoading = false
-        resetSeriesData()
+        m.loginErrorActive = false
+        resetAccountLoadedData()
         showHome()
     else
         print "DEBUG Login: erro na autenticação Xtream - " + getResultMessage(result)
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
-        m.liveCategories = []
-        m.liveChannels = []
-        m.liveCategoriesLoading = false
-        m.liveChannelsLoading = false
-        m.movieCategories = []
-        m.movies = []
-        m.searchChannels = []
-        m.searchMovies = []
-        m.searchSeries = []
-        m.movieCategoriesLoading = false
-        m.moviesLoading = false
-        resetSeriesData()
-        m.loginScreen.callFunc("showError", getResultMessage(result))
+        m.loginErrorActive = true
+        resetAccountLoadedData()
+        updateConnectionStatus(false, "Não foi possível conectar. Pressione Voltar para corrigir os dados.")
+        showHome()
     end if
+end sub
+
+sub resetAccountLoadedData()
+    m.liveCategories = []
+    m.liveChannels = []
+    m.liveCategoriesLoading = false
+    m.liveChannelsLoading = false
+    m.movieCategories = []
+    m.movies = []
+    m.searchChannels = []
+    m.searchMovies = []
+    m.searchSeries = []
+    m.movieCategoriesLoading = false
+    m.moviesLoading = false
+    resetSeriesData()
+end sub
+
+sub startLoginTimeout()
+    m.loginTimeoutTimer.control = "stop"
+    m.loginTimeoutTimer.duration = 6
+    m.loginTimeoutTimer.control = "start"
+end sub
+
+sub stopLoginTimeout()
+    m.loginTimeoutTimer.control = "stop"
+end sub
+
+sub onLoginTimeout()
+    if m.pendingAccount = invalid then return
+    cancelXtreamRequest()
+    onXtreamConnectionResultForLogin({
+        success: false,
+        connected: false,
+        request: "connect",
+        message: "Tempo esgotado ao conectar."
+    })
+end sub
+
+sub cancelXtreamRequest()
+    if m.xtreamService <> invalid then m.xtreamService.control = "STOP"
+end sub
+
+sub onXtreamConnectionResultForLogin(result as Object)
+    handleLoginConnectionResult(result)
 end sub
 
 

@@ -103,24 +103,32 @@ sub clearMessage()
 end sub
 
 sub onEnterSelected()
-    if m.isLoading then return
     clearMessage()
-    m.top.submit = {
-        dns: m.dnsInput.text,
-        username: m.userInput.text,
-        password: m.passwordInput.text
+
+    account = {
+        dns: safeTrim(m.dnsInput.text),
+        username: safeTrim(m.userInput.text),
+        password: safeTrim(m.passwordInput.text)
     }
+
+    if account.dns = "" or account.username = "" or account.password = "" then
+        showError("Informe DNS, usuário e senha para conectar.")
+        return
+    end if
+
+    ' LoginScreen only validates and submits data. MainScene owns navigation
+    ' and all Xtream network work so focus never stays trapped on ENTRAR.
+    setLoading(false)
+    m.top.submit = account
 end sub
 
 sub onBackSelected()
-    if m.isLoading then return
+    setLoading(false)
     m.top.backRequested = true
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if m.isLoading then return true
-
     if key = "up" then
         moveFocus(-1)
         return true
@@ -217,4 +225,10 @@ function getDisplayResolution() as Object
         width: displaySize.w
         height: displaySize.h
     }
+end function
+
+
+function safeTrim(value as Dynamic) as String
+    if value = invalid then return ""
+    return value.ToStr().Trim()
 end function
