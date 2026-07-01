@@ -8,6 +8,7 @@ sub clearCache()
 end sub
 
 sub executeRequest()
+    print "XTREAM ACTION: "; m.top.action
     action = LCase(safeTrim(m.top.action))
     if action = "" then action = "connect"
 
@@ -55,7 +56,7 @@ function requestXtream(requestName as String, apiAction as String) as Object
         url = url + "&category_id=" + escapeQueryValue(m.top.categoryId)
     end if
 
-    print "XTREAM URL: "; sanitizeUrl(url)
+    print "XTREAM URL SAFE: "; safeUrlWithoutPassword(url)
     httpResponse = sendHttpGet(url)
     if not httpResponse.success then return withRequestName(httpResponse, requestName)
 
@@ -98,7 +99,7 @@ function sendHttpGet(url as String) as Object
 
     if not transfer.AsyncGetToString() then
         failure = buildFailure("Não foi possível iniciar a conexão com o servidor Xtream.")
-        failure.url = sanitizeUrl(url) : failure.elapsedMs = timer.TotalMilliseconds()
+        failure.url = safeUrlWithoutPassword(url) : failure.elapsedMs = timer.TotalMilliseconds()
         return failure
     end if
 
@@ -107,7 +108,7 @@ function sendHttpGet(url as String) as Object
     if Type(event) <> "roUrlEvent" then
         transfer.AsyncCancel()
         failure = buildFailure("Tempo esgotado.")
-        failure.url = sanitizeUrl(url) : failure.elapsedMs = elapsedMs
+        failure.url = safeUrlWithoutPassword(url) : failure.elapsedMs = elapsedMs
         return failure
     end if
 
@@ -119,16 +120,16 @@ function sendHttpGet(url as String) as Object
     print "XTREAM BODY LEN: "; bodyLen
     if statusCode < 200 or statusCode > 299 then
         failure = buildFailure("Não foi possível conectar ao servidor Xtream. Código HTTP: " + statusCode.ToStr())
-        failure.statusCode = statusCode : failure.elapsedMs = elapsedMs : failure.url = sanitizeUrl(url)
+        failure.statusCode = statusCode : failure.elapsedMs = elapsedMs : failure.url = safeUrlWithoutPassword(url)
         return failure
     end if
     if response = invalid or response = "" then
         failure = buildFailure("O servidor Xtream respondeu sem dados.")
-        failure.statusCode = statusCode : failure.elapsedMs = elapsedMs : failure.url = sanitizeUrl(url)
+        failure.statusCode = statusCode : failure.elapsedMs = elapsedMs : failure.url = safeUrlWithoutPassword(url)
         return failure
     end if
 
-    return { success: true, body: response, statusCode: statusCode, elapsedMs: elapsedMs, url: sanitizeUrl(url) }
+    return { success: true, body: response, statusCode: statusCode, elapsedMs: elapsedMs, url: safeUrlWithoutPassword(url) }
 end function
 
 function validateJsonResponse(response as String, apiAction as String) as Object
@@ -168,7 +169,7 @@ function escapePathValue(value as Dynamic) as String
     return transfer.Escape(safeTrim(value))
 end function
 
-function sanitizeUrl(url as String) as String
+function safeUrlWithoutPassword(url as String) as String
     if url = invalid then return ""
     passwordPos = Instr(1, url, "password=")
     if passwordPos <= 0 then return url

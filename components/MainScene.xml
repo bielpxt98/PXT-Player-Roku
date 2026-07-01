@@ -8,10 +8,5 @@
         <LoginScreen id="loginScreen" visible="true" />
         <LiveChannelsScreen id="liveTVScreen" visible="false" />
         <XtreamService id="xtreamService" />
-        <Group id="debugPanel">
-            <Rectangle id="debugBackground" color="#05070B" opacity="0.88" />
-            <Label id="debugTitle" text="DEBUG" color="#FFFFFF" />
-            <Label id="debugText" text="" color="#DDE6F3" wrap="true" />
-        </Group>
     </children>
 </component>
