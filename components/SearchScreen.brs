@@ -306,12 +306,13 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "back" then m.top.backRequested = true : return true
-    if key = "up" then moveVertical(-1) : return true
-    if key = "down" then moveVertical(1) : return true
-    if key = "left" then moveHorizontal(-1) : return true
-    if key = "right" then moveHorizontal(1) : return true
-    if key = "OK" then activateFocused() : return true
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "back" then m.top.backRequested = true : return true
+    if normalizedKey = "up" then moveVertical(-1) : return true
+    if normalizedKey = "down" then moveVertical(1) : return true
+    if normalizedKey = "left" then moveHorizontal(-1) : return true
+    if normalizedKey = "right" then moveHorizontal(1) : return true
+    if normalizedKey = "OK" then activateFocused() : return true
     if handleRokuKeyboardKey(key) then return true
     return false
 end function

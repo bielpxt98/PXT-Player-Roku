@@ -72,9 +72,10 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "back" or key = "left" then m.top.backRequested = true : return true
-    if key = "OK" or key = "right" then m.top.playRequested = true : return true
-    if key = "options" then
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "back" or normalizedKey = "left" then m.top.backRequested = true : return true
+    if normalizedKey = "OK" or normalizedKey = "right" then m.top.playRequested = true : return true
+    if normalizedKey = "options" then
         if m.item <> invalid then m.top.favoriteToggled = m.item
         return true
     end if

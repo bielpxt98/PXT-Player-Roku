@@ -147,7 +147,8 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "OK" and m.liveTVScreen.visible = true and m.pendingRequest = "" then
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "OK" and m.liveTVScreen.visible = true and m.pendingRequest = "" then
         if m.selectedCategory <> invalid then
             m.liveTVScreen.callFunc("setLoading", true)
             runXtreamRequest("getLiveStreams", getCategoryId(m.selectedCategory))

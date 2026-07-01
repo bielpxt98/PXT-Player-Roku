@@ -212,7 +212,8 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "back" then
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "back" then
         if m.activePane = "channels" then
             m.activePane = "categories"
             updateFocus()
@@ -220,32 +221,32 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.top.backRequested = true
         end if
         return true
-    else if key = "left" then
+    else if normalizedKey = "left" then
         if m.activePane = "channels" then
             m.activePane = "categories"
             updateFocus()
         end if
         return true
-    else if key = "right" then
+    else if normalizedKey = "right" then
         if m.activePane = "categories" then
             focusChannels()
         end if
         return true
-    else if key = "up" then
+    else if normalizedKey = "up" then
         if m.activePane = "categories" then
             moveCategory(-1)
         else
             moveChannel(-1)
         end if
         return true
-    else if key = "down" then
+    else if normalizedKey = "down" then
         if m.activePane = "categories" then
             moveCategory(1)
         else
             moveChannel(1)
         end if
         return true
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         if m.activePane = "categories" then
             if m.channels.Count() > 0 then
                 focusChannels()

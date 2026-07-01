@@ -4,6 +4,7 @@
         <function name="show" />
         <function name="hide" />
     </interface>
+    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/SplashScreen.brs" />
     <children>
         <Rectangle id="background" color="#020713" opacity="1" translation="[0,0]" />

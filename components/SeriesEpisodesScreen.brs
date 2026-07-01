@@ -258,24 +258,25 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    normalizedKey = normalizeKey(key)
 
-    if key = "back" or key = "left" then
+    if normalizedKey = "back" or normalizedKey = "left" then
         m.top.backRequested = true
         return true
-    else if key = "up" then
+    else if normalizedKey = "up" then
         moveFocus(-1)
         return true
-    else if key = "down" then
+    else if normalizedKey = "down" then
         moveFocus(1)
         return true
-    else if key = "options" then
+    else if normalizedKey = "options" then
         if m.episodes.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.episodes.Count() then
             m.top.episodeFavoriteToggled = m.episodes[m.selectedIndex]
             m.statusLabel.color = "#5CE08A"
             m.statusLabel.text = "Episódio atualizado nos favoritos."
         end if
         return true
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         if m.episodes.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.episodes.Count() then
             m.top.episodeSelected = m.episodes[m.selectedIndex]
         end if

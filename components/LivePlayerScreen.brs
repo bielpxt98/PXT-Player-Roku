@@ -119,8 +119,9 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    normalizedKey = normalizeKey(key)
 
-    if key = "back" then
+    if normalizedKey = "back" then
         return handleBackKeySafely()
     end if
 

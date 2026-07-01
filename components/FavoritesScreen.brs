@@ -152,19 +152,20 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "back" then
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "back" then
         m.top.backRequested = true
         return true
     end if
-    if key = "up" then
+    if normalizedKey = "up" then
         moveFocus(-1)
         return true
     end if
-    if key = "down" then
+    if normalizedKey = "down" then
         moveFocus(1)
         return true
     end if
-    if key = "OK" then
+    if normalizedKey = "OK" then
         if canSelectIndex(m.selectedIndex) then m.top.favoriteSelected = m.items[m.selectedIndex]
         return true
     end if

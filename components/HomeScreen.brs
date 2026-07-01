@@ -173,18 +173,19 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    normalizedKey = normalizeKey(key)
 
-    if key = "left" then
+    if normalizedKey = "left" then
         if m.focusArea = "buttons" then moveFocus(-1)
         return true
-    else if key = "right" then
+    else if normalizedKey = "right" then
         if m.focusArea = "buttons" then moveFocus(1)
         return true
-    else if key = "down" then
+    else if normalizedKey = "down" then
         return true
-    else if key = "up" then
+    else if normalizedKey = "up" then
         return true
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         selectFocusedButton()
         return true
     end if

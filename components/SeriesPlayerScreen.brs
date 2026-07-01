@@ -229,29 +229,30 @@ sub onVideoStateChanged()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    if key = "right" or key = "left" then
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "right" or normalizedKey = "left" or normalizedKey = "forward" or normalizedKey = "rewind" then
         if press then
-            beginSeekHold(key)
+            beginSeekHold(normalizedKey)
         else
-            finishSeekHold(key)
+            finishSeekHold(normalizedKey)
         end if
         return true
     end if
 
     if not press then return false
 
-    if key = "back" then
+    if normalizedKey = "back" then
         return handleBackKeySafely()
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         togglePause()
         return true
-    else if key = "up" then
+    else if normalizedKey = "up" then
         showControls()
         return true
-    else if key = "down" then
+    else if normalizedKey = "down" then
         hideControls()
         return true
-    else if key = "replay" then
+    else if normalizedKey = "replay" then
         seekTo(0)
         return true
     end if
@@ -282,7 +283,7 @@ sub finishSeekHold(key as String)
     wasLongPress = m.seekHoldHandled = true or elapsedMs >= m.holdThresholdMs
     stopSeekHold()
     if not wasLongPress then
-        if key = "right" then
+        if key = "right" or key = "forward" then
             seekBy(m.seekStep)
         else
             seekBy(-m.seekStep)
