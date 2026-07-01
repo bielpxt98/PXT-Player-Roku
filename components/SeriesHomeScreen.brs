@@ -2,11 +2,11 @@ sub Init()
     m.panelBg = m.top.FindNode("panelBg") : m.titleLabel = m.top.FindNode("titleLabel") : m.dividerTop = m.top.FindNode("dividerTop")
     m.categoriesTitle = m.top.FindNode("categoriesTitle") : m.seriesTitle = m.top.FindNode("seriesTitle")
     m.categoriesGroup = m.top.FindNode("categoriesGroup") : m.seriesGroup = m.top.FindNode("seriesGroup") : m.messageLabel = m.top.FindNode("messageLabel")
-    m.searchBg = m.top.FindNode("searchBg") : m.searchLabel = m.top.FindNode("searchLabel") : m.searchFieldBg = m.top.FindNode("searchFieldBg") : m.searchText = m.top.FindNode("searchText")
-    m.keyboardGroup = m.top.FindNode("keyboardGroup") : m.hintLabel = m.top.FindNode("hintLabel")
-    m.categories = [] : m.allSeries = [] : m.filteredSeries = [] : m.query = "" : m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0 : m.keyboardIndex = 0
-    m.columns = 3 : m.visibleRows = 3 : m.categoryWindow = 9 : m.keyboard = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR"]
-    layoutScreen() : renderKeyboard() : hide()
+    m.hintLabel = m.top.FindNode("hintLabel")
+    m.searchEntry = { isSearch: true, category_name: "🔍 PESQUISAR", name: "🔍 PESQUISAR" }
+    m.categories = [m.searchEntry] : m.allSeries = [] : m.filteredSeries = [] : m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0
+    m.columns = 3 : m.visibleRows = 3 : m.categoryWindow = 9
+    layoutScreen() : hide()
 end sub
 sub layoutScreen()
     r = getDisplayResolution() : w = r.width : h = r.height : margin = 54
@@ -15,10 +15,7 @@ sub layoutScreen()
     m.categoriesTitle.translation = [76, 104] : m.categoriesTitle.font = "font:MediumBoldSystemFont" : m.seriesTitle.translation = [360, 104] : m.seriesTitle.font = "font:MediumBoldSystemFont"
     m.categoriesGroup.translation = [76, 146] : m.seriesGroup.translation = [360, 146]
     m.messageLabel.translation = [330, 310] : m.messageLabel.width = w - 420 : m.messageLabel.height = 44 : m.messageLabel.font = "font:MediumSystemFont"
-    m.searchBg.translation = [54, h - 210] : m.searchBg.width = w - 108 : m.searchBg.height = 58
-    m.searchLabel.translation = [78, h - 195] : m.searchLabel.font = "font:MediumBoldSystemFont" : m.searchFieldBg.translation = [190, h - 197] : m.searchFieldBg.width = w - 270 : m.searchFieldBg.height = 34
-    m.searchText.translation = [202, h - 193] : m.searchText.width = w - 294 : m.searchText.height = 30 : m.searchText.font = "font:MediumSystemFont"
-    m.keyboardGroup.translation = [76, h - 138] : m.hintLabel.translation = [0, h - 38] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
+    m.hintLabel.translation = [0, h - 38] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
 end sub
 sub show()
     m.top.visible = true : m.top.SetFocus(true) : renderAll()
@@ -27,10 +24,10 @@ sub hide()
     m.top.visible = false
 end sub
 sub resetSelection()
-    m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0 : m.keyboardIndex = 0 : m.query = "" : updateSearchText()
+    focusSearchEntry()
 end sub
 sub setCategories(items as Object)
-    m.categories = [{ category_id: "", category_name: "Todas" }]
+    m.categories = [m.searchEntry]
     if items <> invalid then
         for each category in items
             m.categories.Push(category)
@@ -48,16 +45,16 @@ sub showMessage(message as String)
     m.messageLabel.text = message
 end sub
 sub applyFilter()
-    q = LCase(m.query) : m.filteredSeries = []
+    m.filteredSeries = []
     for each item in m.allSeries
-        if q = "" or Instr(1, LCase(getSeriesName(item)), q) > 0 then m.filteredSeries.Push(item)
+        m.filteredSeries.Push(item)
     end for
     if m.seriesIndex >= m.filteredSeries.Count() then m.seriesIndex = m.filteredSeries.Count() - 1
     if m.seriesIndex < 0 then m.seriesIndex = 0
     renderSeries()
 end sub
 sub renderAll()
-    renderCategories() : renderSeries() : updateSearchText() : updateFocus()
+    renderCategories() : renderSeries() : updateFocus()
 end sub
 sub renderCategories()
     clearGroup(m.categoriesGroup)
@@ -97,15 +94,8 @@ sub renderSeries()
     end for
     updateFocus()
 end sub
-sub renderKeyboard()
-    clearGroup(m.keyboardGroup)
-    for i = 0 to m.keyboard.Count() - 1
-        col = i mod 13 : row = Int(i / 13) : label = CreateObject("roSGNode", "Label") : label.translation = [col * 84, row * 36] : label.width = 110 : label.height = 32 : label.font = "font:MediumSystemFont" : label.color = "#DDE6F3" : label.text = m.keyboard[i] : m.keyboardGroup.AppendChild(label)
-    end for
-end sub
 sub updateFocus()
-    colorNodes(m.categoriesGroup, m.activePane = "categories", m.categoryIndex) : colorNodes(m.seriesGroup, m.activePane = "series", m.seriesIndex mod (m.columns * m.visibleRows)) : colorNodes(m.keyboardGroup, m.activePane = "keyboard", m.keyboardIndex)
-    m.searchFieldBg.opacity = 0.32 : if m.activePane = "search" then m.searchFieldBg.opacity = 0.46
+    colorNodes(m.categoriesGroup, m.activePane = "categories", getVisibleCategorySelectionIndex()) : colorNodes(m.seriesGroup, m.activePane = "series", m.seriesIndex mod (m.columns * m.visibleRows))
 end sub
 sub colorNodes(group as Object, active as Boolean, selected as Integer)
     for i = 0 to group.GetChildCount() - 1
@@ -124,7 +114,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return false
 end function
 sub cyclePane(delta as Integer)
-    panes = ["categories", "series", "search", "keyboard"]
+    panes = ["categories", "series"]
     idx = 0
     for i = 0 to panes.Count() - 1
         if panes[i] = m.activePane then idx = i
@@ -142,39 +132,34 @@ sub moveSelection(delta as Integer)
     else if m.activePane = "series" and m.filteredSeries.Count() > 0 then
         m.seriesIndex = clamp(m.seriesIndex + (delta * m.columns), 0, m.filteredSeries.Count() - 1)
         renderSeries()
-    else if m.activePane = "keyboard" then
-        m.keyboardIndex = clamp(m.keyboardIndex + (delta * 13), 0, m.keyboard.Count() - 1)
-        updateFocus()
     end if
 end sub
 sub activateSelection()
     if m.activePane = "categories" and m.categories.Count() > 0 then
+        if isSearchEntry(m.categories[m.categoryIndex]) then
+            m.top.searchRequested = true
+            return
+        end if
         m.top.categorySelected = m.categories[m.categoryIndex]
     else if m.activePane = "series" and m.filteredSeries.Count() > 0 then
         m.top.seriesSelected = m.filteredSeries[m.seriesIndex]
-    else if m.activePane = "search" then
-        m.activePane = "keyboard"
-        updateFocus()
-    else if m.activePane = "keyboard" then
-        pressKey(m.keyboard[m.keyboardIndex])
     end if
 end sub
-sub pressKey(k as String)
-    if k = "ESPAÇO" then
-        m.query = m.query + " "
-    else if k = "APAGAR" then
-        if Len(m.query) > 0 then m.query = Left(m.query, Len(m.query) - 1)
-    else if k = "LIMPAR" then
-        m.query = ""
-    else
-        m.query = m.query + k
-    end if
-    updateSearchText()
-    applyFilter()
+sub focusSearchEntry()
+    m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0
+    renderCategories()
 end sub
-sub updateSearchText()
-    m.searchText.text = m.query
-end sub
+
+function isSearchEntry(category as Dynamic) as Boolean
+    return category <> invalid and category.isSearch = true
+end function
+
+function getVisibleCategorySelectionIndex() as Integer
+    first = m.categoryIndex - 4
+    if first < 0 then first = 0
+    return m.categoryIndex - first
+end function
+
 function clamp(v as Integer, lo as Integer, hi as Integer) as Integer
     if v < lo then return lo
     if v > hi then return hi
