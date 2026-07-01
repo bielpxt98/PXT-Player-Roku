@@ -14,7 +14,6 @@
         <field id="openFavorites" type="boolean" alwaysNotify="true" />
         <field id="openRecent" type="boolean" alwaysNotify="true" />
     </interface>
-    <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
         <Poster id="homeBackground" uri="pkg:/images/background.jpeg" opacity="0" translation="[0, 0]" loadDisplayMode="scaleToFill" />

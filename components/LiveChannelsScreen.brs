@@ -142,10 +142,6 @@ sub configureLayout()
     m.hintLabel.translation = [0, height - m.footerReservedHeight + 12]
 end sub
 
-
-
-
-
 sub updateHeaderClock()
     dateTime = CreateObject("roDateTime")
     dateTime.ToLocalTime()
@@ -210,7 +206,6 @@ sub resetSelection()
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
 end sub
-
 
 sub setLoading(isLoading as Boolean)
     clearChannelNodes()
@@ -390,10 +385,6 @@ sub clearChannelNodes()
     m.itemNodes = []
     m.itemRefs = []
 end sub
-
-
-
-
 
 sub clearCategoryNodes()
     while m.categoriesGroup.GetChildCount() > 0
@@ -627,11 +618,6 @@ sub updateFocus()
 
 end sub
 
-
-
-
-
-
 sub applySearchFilter()
     query = LCase(m.searchQuery.Trim())
     m.channels = []
@@ -656,7 +642,6 @@ sub applySearchFilter()
     updateFocus()
 end sub
 
-
 function getCategoryId(category as Dynamic) as String
     if category = invalid then return ""
     if category.category_id <> invalid then return category.category_id.ToStr()
@@ -677,10 +662,6 @@ function getChannelName(channel as Dynamic) as String
     if channel.name <> invalid and channel.name.ToStr().Trim() <> "" then return channel.name.ToStr()
     if channel.title <> invalid and channel.title.ToStr().Trim() <> "" then return channel.title.ToStr()
     return "Canal sem nome"
-end function
-
-function getChannelLogTitle(channel as Dynamic) as String
-    return getChannelName(channel)
 end function
 
 function getDisplayResolution() as Object

@@ -5,7 +5,6 @@ sub Init()
     m.globalBackground = m.top.FindNode("globalBackground")
     m.globalBackgroundOverlay = m.top.FindNode("globalBackgroundOverlay")
     m.homeScreen = m.top.FindNode("homeScreen")
-    m.splashScreen = m.top.FindNode("splashScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
     m.recentScreen = m.top.FindNode("recentScreen")
@@ -25,8 +24,6 @@ sub Init()
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
     m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
     m.searchIndexTimer = m.top.FindNode("searchIndexTimer")
-    m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
-    m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
     m.pendingRequest = ""
     m.isLoadingRequest = false
@@ -63,9 +60,6 @@ sub Init()
     m.openedFromFavorites = false
     m.openedFromSearch = false
     m.openedFromRecent = false
-    m.searchChannels = []
-    m.searchMovies = []
-    m.searchSeries = []
     m.searchLoadStep = ""
     m.searchIndexCache = LoadSearchIndexCache()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
@@ -76,10 +70,6 @@ sub Init()
     m.searchIndexUpdating = false
     m.searchMode = "all"
     m.searchBackTarget = "home"
-    m.splashMinimumElapsed = false
-    m.splashMaximumElapsed = false
-    m.bootstrapActive = false
-    m.bootstrapQueue = []
     m.localFavoritesCache = []
     m.localHistoryCache = []
 
@@ -134,8 +124,6 @@ sub Init()
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
     m.autoConnectTimer.ObserveField("fire", "onAutoConnectTimerFire")
     m.searchIndexTimer.ObserveField("fire", "onSearchIndexTimerFire")
-    m.splashMinimumTimer.ObserveField("fire", "onSplashMinimumElapsed")
-    m.splashMaximumTimer.ObserveField("fire", "onSplashMaximumElapsed")
 
     startInitialFlow()
 end sub
@@ -185,74 +173,7 @@ sub onAutoConnectTimerFire()
     connectXtream(m.account)
 end sub
 
-sub startSplashBootstrap()
-    m.splashMinimumElapsed = false
-    m.splashMaximumElapsed = false
-    m.bootstrapActive = true
-    m.bootstrapQueue = []
-    m.localFavoritesCache = LoadFavorites()
-    m.localHistoryCache = LoadViewingHistory()
-
-    m.homeScreen.callFunc("hide")
-    m.splashScreen.callFunc("show")
-    m.splashMinimumTimer.control = "stop"
-    m.splashMaximumTimer.control = "stop"
-    m.splashMinimumTimer.duration = 4
-    m.splashMaximumTimer.duration = 6
-    m.splashMinimumTimer.control = "start"
-    m.splashMaximumTimer.control = "start"
-
-    if hasAccount(m.account) then
-        m.bootstrapQueue = ["getLiveCategories", "getMovieCategories"]
-        processNextBootstrapRequest()
-    else
-        m.bootstrapActive = false
-    end if
-end sub
-
-sub processNextBootstrapRequest()
-    if m.bootstrapQueue = invalid or m.bootstrapQueue.Count() = 0 then
-        m.bootstrapActive = false
-        finishSplashIfReady()
-        return
-    end if
-
-    nextAction = m.bootstrapQueue.Shift()
-    m.xtreamService.control = "STOP"
-    m.xtreamService.action = nextAction
-    m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = ""
-    m.xtreamService.streamId = ""
-    m.xtreamService.seriesId = ""
-    m.xtreamService.dns = m.account.dns
-    m.xtreamService.username = m.account.username
-    m.xtreamService.password = m.account.password
-    m.xtreamService.control = "RUN"
-end sub
-
-sub onSplashMinimumElapsed()
-    m.splashMinimumElapsed = true
-    finishSplashIfReady()
-end sub
-
-sub onSplashMaximumElapsed()
-    m.splashMaximumElapsed = true
-    m.bootstrapActive = false
-    finishSplashIfReady()
-end sub
-
-sub finishSplashIfReady()
-    if m.splashScreen = invalid or m.splashScreen.visible <> true then return
-    if m.splashMaximumElapsed <> true and (m.splashMinimumElapsed <> true or m.bootstrapActive = true) then return
-
-    m.splashMinimumTimer.control = "stop"
-    m.splashMaximumTimer.control = "stop"
-    m.splashScreen.callFunc("hide")
-    showHome()
-end sub
-
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    if m.splashScreen <> invalid and m.splashScreen.visible = true then return true
     if not press then return false
 
     if key = "back" then
@@ -343,7 +264,6 @@ function getDisplayResolution() as Object
 end function
 
 sub showHome()
-    if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
@@ -376,8 +296,6 @@ sub showLogin()
     if m.loginFormAccount <> invalid then account = m.loginFormAccount
     m.loginScreen.callFunc("show", account)
 end sub
-
-
 
 sub openSearch(mode as String, backTarget as String)
     m.homeScreen.callFunc("hide")
@@ -442,13 +360,6 @@ function getSearchDataForMode(mode as String) as Object
     return { channels: channels, movies: movies, series: series }
 end function
 
-function needsSearchData(mode as String) as Boolean
-    if mode = "live" then return m.searchChannels.Count() = 0
-    if mode = "movies" then return m.searchMovies.Count() = 0
-    if mode = "series" then return m.searchSeries.Count() = 0
-    return m.searchChannels.Count() = 0 or m.searchMovies.Count() = 0 or m.searchSeries.Count() = 0
-end function
-
 sub onSearchChannelSelected()
     channel = m.searchScreen.channelSelected
     if channel = invalid then return
@@ -481,42 +392,6 @@ sub onSearchSeriesSelected()
     m.seriesDetailScreen.callFunc("showMessage", "Carregando temporadas...")
     startDetailTimeout("series")
     loadSeriesInfo(series)
-end sub
-
-sub loadSearchChannels()
-    if not beginXtreamRequest("getLiveStreams") then return
-    m.xtreamService.control = "STOP"
-    m.xtreamService.action = "getLiveStreams"
-    m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = ""
-    m.xtreamService.dns = m.account.dns
-    m.xtreamService.username = m.account.username
-    m.xtreamService.password = m.account.password
-    m.xtreamService.control = "RUN"
-end sub
-
-sub loadSearchMovies()
-    if not beginXtreamRequest("getMovies") then return
-    m.xtreamService.control = "STOP"
-    m.xtreamService.action = "getMovies"
-    m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = ""
-    m.xtreamService.dns = m.account.dns
-    m.xtreamService.username = m.account.username
-    m.xtreamService.password = m.account.password
-    m.xtreamService.control = "RUN"
-end sub
-
-sub loadSearchSeries()
-    if not beginXtreamRequest("getSeries") then return
-    m.xtreamService.control = "STOP"
-    m.xtreamService.action = "getSeries"
-    m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = ""
-    m.xtreamService.dns = m.account.dns
-    m.xtreamService.username = m.account.username
-    m.xtreamService.password = m.account.password
-    m.xtreamService.control = "RUN"
 end sub
 
 sub onOpenRecentRequested()
@@ -579,7 +454,6 @@ sub onHistorySelected()
         buildSeriesStreamUrl(item.content)
     end if
 end sub
-
 
 sub onFavoriteSelected()
     favorite = m.favoritesScreen.favoriteSelected
@@ -654,7 +528,6 @@ sub onOpenLiveCategoriesRequested()
     end if
 end sub
 
-
 sub onOpenMovieCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
@@ -723,7 +596,6 @@ end sub
 sub onLiveChannelsBack()
     showHome()
 end sub
-
 
 sub onMovieCategoriesBack()
     showHome()
@@ -864,7 +736,6 @@ sub onLiveChannelsCategorySelected()
     loadLiveChannels(category)
 end sub
 
-
 sub onLiveChannelSelected()
     channel = m.liveChannelsScreen.channelSelected
     if channel = invalid then return
@@ -910,7 +781,6 @@ sub buildLiveStreamUrl(channel as Object)
     m.xtreamService.control = "RUN"
 end sub
 
-
 sub loadMovieInfo(movie as Object)
     if not beginXtreamRequest("getMovieInfo") then return
     m.xtreamService.control = "STOP"
@@ -955,7 +825,6 @@ sub connectXtream(account as Object)
     m.xtreamService.password = account.password
     m.xtreamService.control = "RUN"
 end sub
-
 
 sub loadMovies(category as Object)
     if not beginXtreamRequest("getMovies") then return
@@ -1127,9 +996,6 @@ sub resetAccountLoadedData()
     m.liveChannelsLoading = false
     m.movieCategories = []
     m.movies = []
-    m.searchChannels = []
-    m.searchMovies = []
-    m.searchSeries = []
     m.movieCategoriesLoading = false
     m.moviesLoading = false
     resetSeriesData()
@@ -1204,11 +1070,6 @@ end sub
 
 sub onXtreamConnectionResultForLogin(result as Object)
     handleLoginConnectionResult(result)
-end sub
-
-
-sub continueBootstrapIfNeeded()
-    if m.bootstrapActive = true and m.splashMaximumElapsed <> true then processNextBootstrapRequest()
 end sub
 
 sub loadLocalSearchIndexCache()
@@ -1830,13 +1691,6 @@ function isValidXtreamConnectionResult(result as Dynamic) as Boolean
     return true
 end function
 
-function getResultMessage(result as Dynamic) as String
-    if result <> invalid and result.message <> invalid and result.message.ToStr().Trim() <> "" then
-        return result.message.ToStr()
-    end if
-    return "Não foi possível conectar ao servidor."
-end function
-
 function getStreamId(channel as Dynamic) as String
     if channel = invalid then return ""
     if channel.stream_id <> invalid then return channel.stream_id.ToStr()
@@ -1890,8 +1744,6 @@ function hasAccount(account as Dynamic) as Boolean
     if account = invalid then return false
     return safeText(account.dns) <> "" and safeText(account.username) <> "" and safeText(account.password) <> ""
 end function
-
-
 
 function sortSeasons(items as Object) as Object
     sorted = []

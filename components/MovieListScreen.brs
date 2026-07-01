@@ -147,15 +147,6 @@ sub renderGrid()
     resetGridFocusToFirstItem()
 end sub
 
-function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
-    item = CreateObject("roSGNode", "Group") : col = visualIndex mod m.columns : row = Int(visualIndex / m.columns)
-    item.translation = [col * (m.posterW + m.posterGapX), row * m.itemH]
-    bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#063B66" : bg.opacity = 0.0
-    poster = CreateObject("roSGNode", "Poster") : poster.id = "poster" : poster.width = m.posterW : poster.height = m.posterH : poster.loadDisplayMode = "scaleToFill" : poster.uri = getMovieCover(itemData)
-    label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [0, m.posterH + m.titleOffsetY] : label.width = m.posterW : label.height = m.titleH : label.font = "font:SmallSystemFont" : label.color = "#DDE6F3" : label.text = getMovieName(itemData) : label.horizAlign = "center" : label.vertAlign = "top"
-    item.AppendChild(bg) : item.AppendChild(poster) : item.AppendChild(label) : return item
-end function
-
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then
@@ -334,10 +325,6 @@ function getMovieName(item as Dynamic) as String
     if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
     if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
     return "Filme sem nome"
-end function
-
-function getMovieLogTitle(item as Dynamic) as String
-    return getMovieName(item)
 end function
 
 function getMovieCover(item as Dynamic) as String
