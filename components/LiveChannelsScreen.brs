@@ -20,6 +20,7 @@ sub Init()
     m.account = invalid
     m.categories = []
     m.categoryNodes = []
+    m.categoryRefs = []
     m.categorySelectedIndex = 0
     m.categoryFirstVisibleIndex = 0
     m.focusColumn = "categories"
@@ -27,6 +28,7 @@ sub Init()
     m.allChannels = []
     m.searchQuery = ""
     m.itemNodes = []
+    m.itemRefs = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
 
@@ -166,7 +168,6 @@ sub show(category as Dynamic)
 
     m.searchQuery = ""
     m.focusColumn = "categories"
-    configureLayout()
     selectCategory(category)
     updateVisibleWindow()
     renderList()
@@ -208,13 +209,8 @@ end sub
 sub resetSelection()
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
-    logInitialSelection()
 end sub
 
-sub logInitialSelection()
-    print "INIT selectedIndex="; m.selectedIndex
-    print "INIT firstVisibleIndex="; m.firstVisibleIndex
-end sub
 
 sub setLoading(isLoading as Boolean)
     clearChannelNodes()
@@ -286,6 +282,7 @@ sub renderCategories()
         item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
         m.categoriesGroup.AppendChild(item)
         m.categoryNodes.Push(item)
+        m.categoryRefs.Push(m.lastCategoryRefs)
     end for
 end sub
 
@@ -321,6 +318,7 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     item.AppendChild(background)
     item.AppendChild(accent)
     item.AppendChild(label)
+    m.lastCategoryRefs = { background: background, accent: accent, label: label }
     return item
 end function
 
@@ -336,6 +334,7 @@ sub renderList()
         item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
         m.channelsGroup.AppendChild(item)
         m.itemNodes.Push(item)
+        m.itemRefs.Push(m.lastItemRefs)
     end for
 end sub
 
@@ -380,6 +379,7 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     item.AppendChild(accent)
     item.AppendChild(logoBackground)
     item.AppendChild(label)
+    m.lastItemRefs = { background: background, accent: accent, label: label, logoBackground: logoBackground }
     return item
 end function
 
@@ -388,6 +388,7 @@ sub clearChannelNodes()
         m.channelsGroup.RemoveChildIndex(0)
     end while
     m.itemNodes = []
+    m.itemRefs = []
 end sub
 
 
@@ -399,6 +400,7 @@ sub clearCategoryNodes()
         m.categoriesGroup.RemoveChildIndex(0)
     end while
     m.categoryNodes = []
+    m.categoryRefs = []
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -438,8 +440,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             end if
         else if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
             itemIndex = m.selectedIndex
-            print "OK opening selectedIndex="; itemIndex
-            print "OK opening item="; getChannelLogTitle(m.channels[itemIndex])
                     m.top.channelSelected = m.channels[itemIndex]
         end if
         return true
@@ -459,6 +459,9 @@ end sub
 sub handleCategoryUpDown(direction as Integer)
     if m.categories.Count() = 0 then return
 
+    oldSelected = m.categorySelectedIndex
+    oldFirst = m.categoryFirstVisibleIndex
+
     if direction > 0 then
         m.categorySelectedIndex = m.categorySelectedIndex + 1
     else if direction < 0 then
@@ -467,10 +470,9 @@ sub handleCategoryUpDown(direction as Integer)
         return
     end if
 
-    previousFirstVisibleIndex = m.categoryFirstVisibleIndex
     updateCategoryVisibleWindow()
 
-    if m.categoryFirstVisibleIndex <> previousFirstVisibleIndex then
+    if oldSelected <> m.categorySelectedIndex or oldFirst <> m.categoryFirstVisibleIndex then
         renderCategories()
     end if
 
@@ -499,6 +501,9 @@ end sub
 sub handleUpDown(direction as Integer)
     if m.channels.Count() = 0 then return
 
+    oldSelected = m.selectedIndex
+    oldFirst = m.firstVisibleIndex
+
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
     else if direction < 0 then
@@ -507,10 +512,9 @@ sub handleUpDown(direction as Integer)
         return
     end if
 
-    previousFirstVisibleIndex = m.firstVisibleIndex
     updateVisibleWindow()
 
-    if m.firstVisibleIndex <> previousFirstVisibleIndex then
+    if oldSelected <> m.selectedIndex or oldFirst <> m.firstVisibleIndex then
         renderList()
     end if
 
@@ -542,80 +546,83 @@ sub updateVisibleWindow()
 end sub
 
 sub updateFocus()
-    selectedNode = invalid
-    selectedCategoryNode = invalid
+    selectedIndex = -1
+    selectedCategoryIndex = -1
 
     for i = 0 to m.categoryNodes.Count() - 1
         realIndex = m.categoryFirstVisibleIndex + i
-        background = m.categoryNodes[i].FindNode("itemBackground")
-        accent = m.categoryNodes[i].FindNode("itemAccent")
-        label = m.categoryNodes[i].FindNode("itemLabel")
+        refs = m.categoryRefs[i]
 
         m.categoryNodes[i].scale = [1.0, 1.0]
-        background.color = "#111827"
-        background.opacity = 0.86
-        accent.opacity = 0.0
-        label.color = "#F8FAFC"
+        if refs.background <> invalid then
+            refs.background.color = "#111827"
+            refs.background.opacity = 0.86
+        end if
+        if refs.accent <> invalid then refs.accent.opacity = 0.0
+        if refs.label <> invalid then refs.label.color = "#F8FAFC"
 
-        if realIndex = m.categorySelectedIndex then selectedCategoryNode = m.categoryNodes[i]
+        if realIndex = m.categorySelectedIndex then selectedCategoryIndex = i
     end for
 
-    if selectedCategoryNode <> invalid then
-        background = selectedCategoryNode.FindNode("itemBackground")
-        accent = selectedCategoryNode.FindNode("itemAccent")
-        label = selectedCategoryNode.FindNode("itemLabel")
-
-        selectedCategoryNode.scale = [1.02, 1.02]
-        if m.focusColumn = "categories" then
-            background.color = "#061F36"
-            label.color = "#FFFFFF"
-        else
-            background.color = "#101A2C"
-            label.color = "#B8C3D6"
+    if selectedCategoryIndex >= 0 then
+        refs = m.categoryRefs[selectedCategoryIndex]
+        m.categoryNodes[selectedCategoryIndex].scale = [1.02, 1.02]
+        if refs.background <> invalid then
+            if m.focusColumn = "categories" then
+                refs.background.color = "#061F36"
+            else
+                refs.background.color = "#101A2C"
+            end if
+            refs.background.opacity = 1.0
         end if
-        background.opacity = 1.0
-        accent.opacity = 1.0
+        if refs.label <> invalid then
+            if m.focusColumn = "categories" then
+                refs.label.color = "#FFFFFF"
+            else
+                refs.label.color = "#B8C3D6"
+            end if
+        end if
+        if refs.accent <> invalid then refs.accent.opacity = 1.0
     end if
 
     ' Keep a single manual highlight: reset every visible item before
     ' applying the selectedIndex state to exactly one realIndex.
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
-        background = m.itemNodes[i].FindNode("itemBackground")
-        accent = m.itemNodes[i].FindNode("itemAccent")
-        label = m.itemNodes[i].FindNode("itemLabel")
-        logoBackground = m.itemNodes[i].FindNode("logoBackground")
+        refs = m.itemRefs[i]
 
         m.itemNodes[i].scale = [1.0, 1.0]
-        background.color = "#111827"
-        background.opacity = 0.86
-        accent.opacity = 0.0
-        label.color = "#F8FAFC"
-        if logoBackground <> invalid then logoBackground.color = "#1F2937"
+        if refs.background <> invalid then
+            refs.background.color = "#111827"
+            refs.background.opacity = 0.86
+        end if
+        if refs.accent <> invalid then refs.accent.opacity = 0.0
+        if refs.label <> invalid then refs.label.color = "#F8FAFC"
+        if refs.logoBackground <> invalid then refs.logoBackground.color = "#1F2937"
 
-        if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
+        if realIndex = m.selectedIndex then selectedIndex = i
     end for
 
-    if selectedNode <> invalid then
-        background = selectedNode.FindNode("itemBackground")
-        accent = selectedNode.FindNode("itemAccent")
-        label = selectedNode.FindNode("itemLabel")
-        logoBackground = selectedNode.FindNode("logoBackground")
-
-        selectedNode.scale = [1.02, 1.02]
-        if m.focusColumn = "channels" then
-            background.color = "#061F36"
-        else
-            background.color = "#101A2C"
+    if selectedIndex >= 0 then
+        refs = m.itemRefs[selectedIndex]
+        m.itemNodes[selectedIndex].scale = [1.02, 1.02]
+        if refs.background <> invalid then
+            if m.focusColumn = "channels" then
+                refs.background.color = "#061F36"
+            else
+                refs.background.color = "#101A2C"
+            end if
+            refs.background.opacity = 1.0
         end if
-        background.opacity = 1.0
-        accent.opacity = 1.0
-        if m.focusColumn = "channels" then
-            label.color = "#FFFFFF"
-        else
-            label.color = "#B8C3D6"
+        if refs.accent <> invalid then refs.accent.opacity = 1.0
+        if refs.label <> invalid then
+            if m.focusColumn = "channels" then
+                refs.label.color = "#FFFFFF"
+            else
+                refs.label.color = "#B8C3D6"
+            end if
         end if
-        if logoBackground <> invalid then logoBackground.color = "#063B66"
+        if refs.logoBackground <> invalid then refs.logoBackground.color = "#063B66"
     end if
 
 end sub

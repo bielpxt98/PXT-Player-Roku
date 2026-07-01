@@ -8,6 +8,7 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
     m.items = []
     m.itemNodes = []
+    m.itemRefs = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
     configureLayout()
@@ -117,6 +118,7 @@ sub renderList()
         node = createFavoriteItem(m.items[realIndex], visualIndex, realIndex)
         m.favoritesGroup.AppendChild(node)
         m.itemNodes.Push(node)
+        m.itemRefs.Push(m.lastItemRefs)
     end for
 end sub
 
@@ -147,6 +149,7 @@ function createFavoriteItem(favorite as Object, visibleIndex as Integer, absolut
     end if
     item.AppendChild(background)
     item.AppendChild(label)
+    m.lastItemRefs = { background: background, label: label }
     return item
 end function
 
@@ -180,10 +183,11 @@ sub moveFocus(direction as Integer)
         if nextIndex >= m.items.Count() then nextIndex = 0
         if canSelectIndex(nextIndex) then exit for
     end for
+    oldSelected = m.selectedIndex
+    oldFirst = m.firstVisibleIndex
     m.selectedIndex = nextIndex
-    previousFirstVisibleIndex = m.firstVisibleIndex
     updateVisibleWindow()
-    if m.firstVisibleIndex <> previousFirstVisibleIndex then renderList()
+    if oldSelected <> m.selectedIndex or oldFirst <> m.firstVisibleIndex then renderList()
     updateFocus()
 end sub
 
@@ -212,8 +216,9 @@ end sub
 sub updateFocus()
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
-        bg = m.itemNodes[i].FindNode("itemBackground")
-        label = m.itemNodes[i].FindNode("itemLabel")
+        refs = m.itemRefs[i]
+        bg = refs.background
+        label = refs.label
         if m.items[realIndex].isHeader = true then
             bg.opacity = 0.0
             label.color = "#FFCC66"
@@ -235,6 +240,7 @@ sub clearFavoriteNodes()
         m.favoritesGroup.RemoveChildIndex(0)
     end while
     m.itemNodes = []
+    m.itemRefs = []
 end sub
 
 function getDisplayResolution() as Object

@@ -11,7 +11,7 @@ sub Init()
     m.moviesGrid = m.top.FindNode("moviesGrid")
     m.hintLabel = m.top.FindNode("hintLabel")
     m.categories = [] : m.movies = [] : m.allMovie = []
-    m.categoryNodes = [] : m.itemNodes = []
+    m.categoryNodes = [] : m.categoryRefs = [] : m.itemNodes = [] : m.itemRefs = []
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
     m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "grid"
     configureLayout()
@@ -59,7 +59,6 @@ sub configureLayout()
 end sub
 
 sub show(category as Dynamic)
-    configureLayout()
     if category <> invalid then syncSelectedCategory(category)
     resetGridSelection()
     renderCategories() : renderGrid() : updateFocus()
@@ -120,7 +119,7 @@ sub renderCategories()
     for visualIndex = 0 to lastIndex - m.firstVisibleCategoryIndex
         realIndex = m.firstVisibleCategoryIndex + visualIndex
         node = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
-        m.categoriesGroup.AppendChild(node) : m.categoryNodes.Push(node)
+        m.categoriesGroup.AppendChild(node) : m.categoryNodes.Push(node) : m.categoryRefs.Push(m.lastCategoryRefs)
     end for
 end sub
 
@@ -128,7 +127,7 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     item = CreateObject("roSGNode", "Group") : item.translation = [0, visibleIndex * m.categoryItemH]
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.categoryW : bg.height = m.categoryItemH - 8 : bg.color = "#111827" : bg.opacity = 0.0
     label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [14, 0] : label.width = m.categoryW - 24 : label.height = m.categoryItemH - 8 : label.vertAlign = "center" : label.font = "font:SmallSystemFont" : label.color = "#C9D4E5" : label.text = getCategoryName(category)
-    item.AppendChild(bg) : item.AppendChild(label) : return item
+    item.AppendChild(bg) : item.AppendChild(label) : m.lastCategoryRefs = { background: bg, label: label } : return item
 end function
 
 sub renderGrid()
@@ -219,7 +218,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.activePane = "categories" then
             if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
         else if m.movies.Count() > 0 then
-            print "OK opening selectedIndex="; m.selectedIndex : print "OK opening item="; getMovieLogTitle(m.movies[m.selectedIndex])
             m.top.movieSelected = m.movies[m.selectedIndex]
         end if
         return true
@@ -229,12 +227,22 @@ end function
 
 sub moveCategory(direction as Integer)
     if m.categories.Count() = 0 then return
-    m.selectedCategoryIndex = m.selectedCategoryIndex + direction : updateCategoryWindow() : renderCategories() : updateFocus()
+    oldSelected = m.selectedCategoryIndex
+    oldFirst = m.firstVisibleCategoryIndex
+    m.selectedCategoryIndex = m.selectedCategoryIndex + direction
+    updateCategoryWindow()
+    if oldSelected <> m.selectedCategoryIndex or oldFirst <> m.firstVisibleCategoryIndex then renderCategories()
+    updateFocus()
 end sub
 
 sub moveGrid(dx as Integer, dy as Integer)
     if m.movies.Count() = 0 then return
-    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx : updateGridWindow() : m.moviesGrid.jumpToItem = m.selectedIndex : updateFocus()
+    oldSelected = m.selectedIndex
+    oldFirst = m.firstVisibleRow
+    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx
+    updateGridWindow()
+    if oldSelected <> m.selectedIndex or oldFirst <> m.firstVisibleRow then m.moviesGrid.jumpToItem = m.selectedIndex
+    updateFocus()
 end sub
 
 sub updateCategoryWindow()
@@ -261,9 +269,17 @@ sub updateFocus()
         m.searchBar.color = "#101722" : m.searchLabel.color = "#DDE6F3"
     end if
     for i = 0 to m.categoryNodes.Count() - 1
-        realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
-        bg.opacity = 0.0 : label.color = "#C9D4E5"
-        if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#061F36" : label.color = "#FFFFFF"
+        realIndex = m.firstVisibleCategoryIndex + i
+        refs = m.categoryRefs[i]
+        if refs.background <> invalid then refs.background.opacity = 0.0
+        if refs.label <> invalid then refs.label.color = "#C9D4E5"
+        if realIndex = m.selectedCategoryIndex then
+            if refs.background <> invalid then
+                refs.background.opacity = 1.0
+                refs.background.color = "#061F36"
+            end if
+            if refs.label <> invalid then refs.label.color = "#FFFFFF"
+        end if
         if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
     if m.activePane = "grid" and m.movies.Count() > 0 then m.moviesGrid.SetFocus(true) else m.top.SetFocus(true)
@@ -289,12 +305,14 @@ sub clearCategoryNodes()
         m.categoriesGroup.RemoveChildIndex(0)
     end while
     m.categoryNodes = []
+    m.categoryRefs = []
 end sub
 
 sub clearGridNodes()
     m.moviesGrid.content = invalid
     m.moviesGrid.visible = false
     m.itemNodes = []
+    m.itemRefs = []
 end sub
 
 function getCategoryId(category as Dynamic) as String

@@ -24,7 +24,7 @@ sub Init()
     m.searchNumbers = ["0","1","2","3","4","5","6","7","8","9"]
     m.searchActions = ["ESPAÇO","APAGAR","LIMPAR","FECHAR"]
     m.keyRows = [m.searchLetters[0], m.searchLetters[1], m.searchNumbers, m.searchActions]
-    m.keyNodes = [] : m.itemNodes = []
+    m.keyNodes = [] : m.keyRefs = [] : m.itemNodes = [] : m.itemRefs = []
     m.searchFocusArea = "input" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.firstVisibleIndex = 0
     configureLayout()
 end sub
@@ -122,8 +122,10 @@ end function
 sub renderKeyboard()
     while m.keyboardGroup.GetChildCount() > 0 : m.keyboardGroup.RemoveChildIndex(0) : end while
     m.keyNodes = []
+    m.keyRefs = []
     for r = 0 to m.keyRows.Count() - 1
         rowNodes = []
+        rowRefs = []
         for c = 0 to m.keyRows[r].Count() - 1
             keyLabel = m.keyRows[r][c]
             keyW = m.keyW
@@ -132,9 +134,10 @@ sub renderKeyboard()
             g = CreateObject("roSGNode", "Group") : g.translation = [c * (keyW + m.keyGap), r * (m.keyH + m.keyGap)]
             bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = keyW : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
             lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = keyW : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
-            g.AppendChild(bg) : g.AppendChild(lb) : m.keyboardGroup.AppendChild(g) : rowNodes.Push(g)
+            g.AppendChild(bg) : g.AppendChild(lb) : m.keyboardGroup.AppendChild(g) : rowNodes.Push(g) : rowRefs.Push({ background: bg, label: lb })
         end for
         m.keyNodes.Push(rowNodes)
+        m.keyRefs.Push(rowRefs)
     end for
     updateSearchFocus()
 end sub
@@ -202,7 +205,7 @@ sub renderResults()
     if lastIndex >= m.results.Count() then lastIndex = m.results.Count() - 1
     for i = m.firstVisibleIndex to lastIndex
         node = createCardResultNode(m.results[i], i - m.firstVisibleIndex)
-        m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node)
+        m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node) : m.itemRefs.Push(m.lastItemRefs)
     end for
 end sub
 
@@ -215,6 +218,7 @@ function createCardResultNode(result as Object, visualIndex as Integer) as Objec
     title = CreateObject("roSGNode", "Label") : title.id = "itemLabel" : title.width = m.cardWidth - 12 : title.height = 30 : title.translation = [6, m.cardHeight - 58] : title.horizAlign = "center" : title.vertAlign = "center" : title.color = "#FFFFFF" : title.font = "font:SmallBoldSystemFont" : title.text = result.title
     meta = CreateObject("roSGNode", "Label") : meta.id = "itemMeta" : meta.width = m.cardWidth - 12 : meta.height = 24 : meta.translation = [6, m.cardHeight - 28] : meta.horizAlign = "center" : meta.vertAlign = "center" : meta.color = "#9FB0C8" : meta.font = "font:TinySystemFont" : meta.text = result.meta
     group.AppendChild(bg) : group.AppendChild(imageBg) : group.AppendChild(poster) : group.AppendChild(title) : group.AppendChild(meta)
+    m.lastItemRefs = { background: bg, label: title }
     return group
 end function
 
@@ -274,6 +278,9 @@ sub moveSearchFocus(key as String)
     if m.searchFocusArea = "results" then
         loadedCount = getLoadedResultCount()
         if loadedCount = 0 then m.searchFocusArea = "keyboardActions" : return
+        oldSelected = m.searchResultIndex
+        oldFirst = m.firstVisibleIndex
+        oldLimit = m.renderedResultLimit
         if key = "left" and m.searchResultIndex > 0 then m.searchResultIndex = m.searchResultIndex - 1
         if key = "right" and m.searchResultIndex < loadedCount - 1 then m.searchResultIndex = m.searchResultIndex + 1
         if key = "up" then
@@ -282,7 +289,7 @@ sub moveSearchFocus(key as String)
         if key = "down" and m.searchResultIndex + m.resultCols < loadedCount then m.searchResultIndex = m.searchResultIndex + m.resultCols
         maybeLoadMoreResults()
         updateResultWindow()
-        renderResults()
+        if oldSelected <> m.searchResultIndex or oldFirst <> m.firstVisibleIndex or oldLimit <> m.renderedResultLimit then renderResults()
     end if
 end sub
 
@@ -364,7 +371,7 @@ end sub
 sub updateKeyboardFocus()
     for r = 0 to m.keyNodes.Count() - 1
         for c = 0 to m.keyNodes[r].Count() - 1
-            bg = m.keyNodes[r][c].FindNode("keyBackground") : lb = m.keyNodes[r][c].FindNode("keyLabel")
+            refs = m.keyRefs[r][c] : bg = refs.background : lb = refs.label
             selected = false
             if m.searchFocusArea = "keyboardLetters" and r = m.searchLetterRow and c = m.searchLetterCol then selected = true
             if m.searchFocusArea = "keyboardNumbers" and r = 2 and c = m.searchNumberIndex then selected = true
@@ -380,7 +387,7 @@ end sub
 
 sub updateResultFocus()
     for i = 0 to m.itemNodes.Count() - 1
-        bg = m.itemNodes[i].FindNode("itemBackground") : lb = m.itemNodes[i].FindNode("itemLabel")
+        refs = m.itemRefs[i] : bg = refs.background : lb = refs.label
         realIndex = m.firstVisibleIndex + i
         if m.searchFocusArea = "results" and realIndex = m.searchResultIndex then
             bg.color = "#063B66" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
@@ -430,6 +437,7 @@ end sub
 sub clearResultNodes()
     while m.resultsGroup.GetChildCount() > 0 : m.resultsGroup.RemoveChildIndex(0) : end while
     m.itemNodes = []
+    m.itemRefs = []
 end sub
 
 function normalizeArray(value as Dynamic) as Object

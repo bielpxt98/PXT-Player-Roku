@@ -640,7 +640,6 @@ sub onLoginSubmit()
     m.loginFormAccount = account
     m.loginConnecting = true
     m.loginErrorActive = false
-    print "DEBUG Login: início da autenticação Xtream"
 
     showHome()
     updateConnectionStatus(false, "Conectando...")
@@ -872,7 +871,6 @@ sub buildMovieStreamUrl(movie as Object)
 end sub
 
 sub connectXtream(account as Object)
-    print "DEBUG Login: enviando requisição de conexão Xtream"
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "connect"
     m.xtreamService.cacheEnabled = false
@@ -994,12 +992,10 @@ sub handleLoginConnectionResult(result as Object)
     m.loginScreen.callFunc("setLoading", false)
 
     if m.pendingAccount = invalid then
-        print "DEBUG Login: resposta ignorada porque não há login pendente"
         return
     end if
 
     if isValidXtreamConnectionResult(result) then
-        print "DEBUG Login: autenticação Xtream concluída com sucesso"
         m.account = m.pendingAccount
         m.loginFormAccount = invalid
         SavePlaylist(m.account)
@@ -1010,7 +1006,6 @@ sub handleLoginConnectionResult(result as Object)
         resetAccountLoadedData()
         showHome()
     else
-        print "DEBUG Login: erro na autenticação Xtream - " + getResultMessage(result)
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
         m.loginErrorActive = true
