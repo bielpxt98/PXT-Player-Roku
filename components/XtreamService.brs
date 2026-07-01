@@ -191,8 +191,7 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     if apiAction = "get_vod_info" and safeTrim(m.top.streamId) <> "" then
         url = url + "&vod_id=" + escapeQueryValue(m.top.streamId)
     end if
-    timeoutMs = 6000
-    if apiAction = "get_series_info" then timeoutMs = 20000
+    timeoutMs = 8000
 
     httpResponse = sendHttpGet(url, timeoutMs)
     if not httpResponse.success then
@@ -243,8 +242,7 @@ function sendHttpGet(url as String, timeoutMs as Integer) as Object
     event = waitForHttpResponse(port, timeoutMs)
     if event = invalid then
         transfer.AsyncCancel()
-        if timeoutMs = 20000 then return buildFailure("Timeout")
-        return buildFailure("Tempo esgotado ao conectar.")
+        return buildFailure("Tempo esgotado ao carregar dados.")
     end if
 
     response = event.GetString()

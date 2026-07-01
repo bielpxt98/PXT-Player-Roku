@@ -95,7 +95,13 @@ sub hide()
 end sub
 
 sub setLoading(isLoading as Boolean)
+    if isLoading then m.loadingLabel.text = "Carregando detalhes..."
     m.loadingLabel.visible = isLoading
+end sub
+
+sub showMessage(message as String)
+    m.loadingLabel.text = message
+    m.loadingLabel.visible = message <> ""
 end sub
 
 sub setDetails(details as Dynamic)
