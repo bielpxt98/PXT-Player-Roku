@@ -30,8 +30,12 @@ sub resetSelection()
     m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0 : m.keyboardIndex = 0 : m.query = "" : updateSearchText()
 end sub
 sub setCategories(items as Object)
-    m.categories = [{category_id:"", category_name:"Todas"}]
-    if items <> invalid then for each c in items : m.categories.Push(c) : end for
+    m.categories = [{ category_id: "", category_name: "Todas" }]
+    if items <> invalid then
+        for each category in items
+            m.categories.Push(category)
+        end for
+    end if
     renderCategories()
 end sub
 sub setSeries(items as Object)
@@ -56,13 +60,27 @@ sub renderAll()
     renderCategories() : renderSeries() : updateSearchText() : updateFocus()
 end sub
 sub renderCategories()
-    clearGroup(m.categoriesGroup) : first = m.categoryIndex - 4 : if first < 0 then first = 0
-    last = first + m.categoryWindow - 1 : if last >= m.categories.Count() then last = m.categories.Count() - 1
+    clearGroup(m.categoriesGroup)
+    first = m.categoryIndex - 4
+    if first < 0 then first = 0
+    last = first + m.categoryWindow - 1
+    if last >= m.categories.Count() then last = m.categories.Count() - 1
     y = 0
+
     for i = first to last
-        label = CreateObject("roSGNode", "Label") : label.width = 250 : label.height = 34 : label.translation = [0, y] : label.font = "font:MediumSystemFont" : label.color = "#DDE6F3" : prefix = "  " : if i = m.categoryIndex then prefix = "> "
-        label.text = prefix + getCategoryName(m.categories[i]) : m.categoriesGroup.AppendChild(label) : y = y + 38
+        label = CreateObject("roSGNode", "Label")
+        label.width = 250
+        label.height = 34
+        label.translation = [0, y]
+        label.font = "font:MediumSystemFont"
+        label.color = "#DDE6F3"
+        prefix = "  "
+        if i = m.categoryIndex then prefix = "> "
+        label.text = prefix + getCategoryName(m.categories[i])
+        m.categoriesGroup.AppendChild(label)
+        y = y + 38
     end for
+
     updateFocus()
 end sub
 sub renderSeries()
@@ -163,7 +181,9 @@ function clamp(v as Integer, lo as Integer, hi as Integer) as Integer
     return v
 end function
 sub clearGroup(group as Object)
-    while group.GetChildCount() > 0 : group.RemoveChildIndex(0) : end while
+    while group.GetChildCount() > 0
+        group.RemoveChildIndex(0)
+    end while
 end sub
 function normalizeArray(items as Dynamic) as Object
     if items <> invalid and Type(items) = "roArray" then return items
