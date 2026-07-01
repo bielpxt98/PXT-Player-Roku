@@ -109,7 +109,8 @@ end sub
 
 
 function isOkKey(key as String) as Boolean
-    k = LCase(key)
+    if key = invalid then return false
+    k = LCase(key.Trim())
     return k = "ok" or k = "enter" or k = "return" or k = "select"
 end function
 
@@ -142,6 +143,12 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if isOkKey(key) then
         if m.focusIndex <= 2 then
             openTextKeyboard(m.focusIndex)
+            return true
+        else if m.focusIndex = 3 then
+            onEnterSelected()
+            return true
+        else if m.focusIndex = 4 then
+            onBackSelected()
             return true
         end if
     end if
