@@ -10,6 +10,7 @@ sub Init()
 
     m.categories = []
     m.itemNodes = []
+    m.itemRefs = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
 
@@ -101,13 +102,8 @@ end sub
 sub resetSelection()
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
-    logInitialSelection()
 end sub
 
-sub logInitialSelection()
-    print "INIT selectedIndex="; m.selectedIndex
-    print "INIT firstVisibleIndex="; m.firstVisibleIndex
-end sub
 
 sub setLoading(isLoading as Boolean)
     clearCategoryNodes()
@@ -160,6 +156,7 @@ sub renderList()
         item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
         m.categoriesGroup.AppendChild(item)
         m.itemNodes.Push(item)
+        m.itemRefs.Push(m.lastItemRefs)
     end for
 end sub
 
@@ -194,6 +191,7 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     item.AppendChild(background)
     item.AppendChild(accent)
     item.AppendChild(label)
+    m.lastItemRefs = { background: background, accent: accent, label: label }
     return item
 end function
 
@@ -215,6 +213,7 @@ sub clearCategoryNodes()
         m.categoriesGroup.RemoveChildIndex(0)
     end while
     m.itemNodes = []
+    m.itemRefs = []
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -231,8 +230,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
-            print "OK opening selectedIndex="; m.selectedIndex
-            print "OK opening item="; getCategoryLogTitle(m.categories[m.selectedIndex])
             m.top.categorySelected = m.categories[m.selectedIndex]
         end if
         return true
@@ -248,6 +245,9 @@ end sub
 sub handleUpDown(direction as Integer)
     if m.categories.Count() = 0 then return
 
+    oldSelected = m.selectedIndex
+    oldFirst = m.firstVisibleIndex
+
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
     else if direction < 0 then
@@ -256,10 +256,9 @@ sub handleUpDown(direction as Integer)
         return
     end if
 
-    previousFirstVisibleIndex = m.firstVisibleIndex
     updateVisibleWindow()
 
-    if m.firstVisibleIndex <> previousFirstVisibleIndex then
+    if oldSelected <> m.selectedIndex or oldFirst <> m.firstVisibleIndex then
         renderList()
     end if
 
@@ -290,35 +289,34 @@ sub updateVisibleWindow()
 end sub
 
 sub updateFocus()
-    selectedNode = invalid
+    selectedIndex = -1
 
     ' Keep a single manual highlight: reset every visible item before
     ' applying the selectedIndex state to exactly one realIndex.
     for i = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + i
-        background = m.itemNodes[i].FindNode("itemBackground")
-        accent = m.itemNodes[i].FindNode("itemAccent")
-        label = m.itemNodes[i].FindNode("itemLabel")
+        refs = m.itemRefs[i]
 
         m.itemNodes[i].scale = [1.0, 1.0]
-        background.color = "#111827"
-        background.opacity = 0.86
-        accent.opacity = 0.0
-        label.color = "#F8FAFC"
+        if refs.background <> invalid then
+            refs.background.color = "#111827"
+            refs.background.opacity = 0.86
+        end if
+        if refs.accent <> invalid then refs.accent.opacity = 0.0
+        if refs.label <> invalid then refs.label.color = "#F8FAFC"
 
-        if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
+        if realIndex = m.selectedIndex then selectedIndex = i
     end for
 
-    if selectedNode <> invalid then
-        background = selectedNode.FindNode("itemBackground")
-        accent = selectedNode.FindNode("itemAccent")
-        label = selectedNode.FindNode("itemLabel")
-
-        selectedNode.scale = [1.02, 1.02]
-        background.color = "#0B3A5E"
-        background.opacity = 1.0
-        accent.opacity = 0.0
-        label.color = "#FFFFFF"
+    if selectedIndex >= 0 then
+        refs = m.itemRefs[selectedIndex]
+        m.itemNodes[selectedIndex].scale = [1.02, 1.02]
+        if refs.background <> invalid then
+            refs.background.color = "#0B3A5E"
+            refs.background.opacity = 1.0
+        end if
+        if refs.accent <> invalid then refs.accent.opacity = 0.0
+        if refs.label <> invalid then refs.label.color = "#FFFFFF"
     end if
 end sub
 
