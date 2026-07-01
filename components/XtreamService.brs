@@ -55,13 +55,23 @@ function requestXtream(requestName as String, apiAction as String) as Object
         url = url + "&category_id=" + escapeQueryValue(m.top.categoryId)
     end if
 
+    print "XTREAM URL: "; sanitizeUrl(url)
     httpResponse = sendHttpGet(url)
     if not httpResponse.success then return withRequestName(httpResponse, requestName)
 
     parsedResponse = validateJsonResponse(httpResponse.body, apiAction)
-    if not parsedResponse.success then return withRequestName(parsedResponse, requestName)
+    if not parsedResponse.success then
+        parsedResponse.statusCode = httpResponse.statusCode
+        parsedResponse.elapsedMs = httpResponse.elapsedMs
+        parsedResponse.url = httpResponse.url
+        return withRequestName(parsedResponse, requestName)
+    end if
 
-    return buildSuccess(requestName, parsedResponse.data)
+    success = buildSuccess(requestName, parsedResponse.data)
+    success.statusCode = httpResponse.statusCode
+    success.elapsedMs = httpResponse.elapsedMs
+    success.url = httpResponse.url
+    return success
 end function
 
 function getCredentials() as Object
@@ -78,6 +88,7 @@ function buildPlayerApiUrl(dns as String, username as String, password as String
 end function
 
 function sendHttpGet(url as String) as Object
+    timer = CreateObject("roTimespan")
     transfer = CreateObject("roUrlTransfer")
     transfer.SetUrl(url)
     transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
@@ -85,25 +96,47 @@ function sendHttpGet(url as String) as Object
     port = CreateObject("roMessagePort")
     transfer.SetMessagePort(port)
 
-    if not transfer.AsyncGetToString() then return buildFailure("Não foi possível iniciar a conexão com o servidor Xtream.")
+    if not transfer.AsyncGetToString() then
+        failure = buildFailure("Não foi possível iniciar a conexão com o servidor Xtream.")
+        failure.url = sanitizeUrl(url) : failure.elapsedMs = timer.TotalMilliseconds()
+        return failure
+    end if
 
     event = Wait(15000, port)
+    elapsedMs = timer.TotalMilliseconds()
     if Type(event) <> "roUrlEvent" then
         transfer.AsyncCancel()
-        return buildFailure("Tempo esgotado.")
+        failure = buildFailure("Tempo esgotado.")
+        failure.url = sanitizeUrl(url) : failure.elapsedMs = elapsedMs
+        return failure
     end if
 
     response = event.GetString()
     statusCode = event.GetResponseCode()
-    if statusCode < 200 or statusCode > 299 then return buildFailure("Não foi possível conectar ao servidor Xtream. Código HTTP: " + statusCode.ToStr())
-    if response = invalid or response = "" then return buildFailure("O servidor Xtream respondeu sem dados.")
+    bodyLen = 0
+    if response <> invalid then bodyLen = Len(response)
+    print "XTREAM HTTP: "; statusCode
+    print "XTREAM BODY LEN: "; bodyLen
+    if statusCode < 200 or statusCode > 299 then
+        failure = buildFailure("Não foi possível conectar ao servidor Xtream. Código HTTP: " + statusCode.ToStr())
+        failure.statusCode = statusCode : failure.elapsedMs = elapsedMs : failure.url = sanitizeUrl(url)
+        return failure
+    end if
+    if response = invalid or response = "" then
+        failure = buildFailure("O servidor Xtream respondeu sem dados.")
+        failure.statusCode = statusCode : failure.elapsedMs = elapsedMs : failure.url = sanitizeUrl(url)
+        return failure
+    end if
 
-    return { success: true, body: response, statusCode: statusCode }
+    return { success: true, body: response, statusCode: statusCode, elapsedMs: elapsedMs, url: sanitizeUrl(url) }
 end function
 
 function validateJsonResponse(response as String, apiAction as String) as Object
     parsedResponse = ParseJson(response)
-    if parsedResponse = invalid then return buildFailure("O servidor Xtream respondeu em um formato inválido.")
+    if parsedResponse = invalid then
+        print "XTREAM JSON INVALID"
+        return buildFailure("O servidor Xtream respondeu em um formato inválido.")
+    end if
 
     if apiAction = "" then
         userInfo = parsedResponse.user_info
@@ -133,6 +166,16 @@ end function
 function escapePathValue(value as Dynamic) as String
     transfer = CreateObject("roUrlTransfer")
     return transfer.Escape(safeTrim(value))
+end function
+
+function sanitizeUrl(url as String) as String
+    if url = invalid then return ""
+    passwordPos = Instr(1, url, "password=")
+    if passwordPos <= 0 then return url
+    valueStart = passwordPos + Len("password=")
+    ampPos = Instr(valueStart, url, "&")
+    if ampPos > 0 then return Left(url, valueStart - 1) + "***" + Mid(url, ampPos)
+    return Left(url, valueStart - 1) + "***"
 end function
 
 function safeTrim(value as Dynamic) as String
