@@ -20,12 +20,9 @@ sub Init()
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
     m.resultBatchSize = 20 : m.renderedResultLimit = 20
     m.searchMode = "live"
-    m.searchLetters = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"] ]
-    m.searchNumbers = ["0","1","2","3","4","5","6","7","8","9"]
-    m.searchActions = ["ESPAÇO","APAGAR","LIMPAR","FECHAR"]
-    m.keyRows = [m.searchLetters[0], m.searchLetters[1], m.searchNumbers, m.searchActions]
+    m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.itemNodes = []
-    m.searchFocusArea = "input" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.firstVisibleIndex = 0
+    m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     configureLayout()
 end sub
 
@@ -50,11 +47,11 @@ sub configureLayout()
     m.keyboardGroup.translation = [m.marginX, m.keyboardTop]
     m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 34]
     m.keyGap = 8
-    m.keyW = Int((m.contentWidth - 12 * m.keyGap) / 13) : m.keyH = 34
-    m.cardGap = 16 : m.cardHeight = 196 : m.resultCols = 5
-    m.cardWidth = Int((m.contentWidth - ((m.resultCols - 1) * m.cardGap)) / m.resultCols)
-    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 12 * m.keyGap) / 13) : m.cardWidth = Int((m.contentWidth - ((m.resultCols - 1) * m.cardGap)) / m.resultCols)
-    m.visibleItemCount = m.resultCols * 2
+    m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.keyH = 34
+    m.cardGap = 16 : m.cardHeight = 196
+    m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
+    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
+    m.visibleItemCount = 7
 end sub
 
 sub show(mode as Dynamic)
@@ -63,12 +60,12 @@ sub show(mode as Dynamic)
     configureLayout()
     configureSearchLabels()
     m.top.visible = true : m.top.SetFocus(true)
+    m.searchInput.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
     m.searchInput.text = "" : m.queryMirror.text = "Texto digitado: "
-    m.searchFocusArea = "input" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.firstVisibleIndex = 0
+    m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
     applyFilter()
-    updateSearchFocus()
 end sub
 
 sub hide()
@@ -126,17 +123,14 @@ sub renderKeyboard()
         rowNodes = []
         for c = 0 to m.keyRows[r].Count() - 1
             keyLabel = m.keyRows[r][c]
-            keyW = m.keyW
-            if r = 2 then keyW = Int((m.contentWidth - 9 * m.keyGap) / 10)
-            if r = 3 then keyW = Int((m.contentWidth - 3 * m.keyGap) / 4)
-            g = CreateObject("roSGNode", "Group") : g.translation = [c * (keyW + m.keyGap), r * (m.keyH + m.keyGap)]
-            bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = keyW : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
-            lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = keyW : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
+            g = CreateObject("roSGNode", "Group") : g.translation = [c * (m.keyW + m.keyGap), r * (m.keyH + m.keyGap)]
+            bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = m.keyW : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
+            lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = m.keyW : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
             g.AppendChild(bg) : g.AppendChild(lb) : m.keyboardGroup.AppendChild(g) : rowNodes.Push(g)
         end for
         m.keyNodes.Push(rowNodes)
     end for
-    updateSearchFocus()
+    updateKeyboardFocus()
 end sub
 
 sub onSearchTextChanged()
@@ -155,13 +149,11 @@ sub applyFilter()
     if m.searchMode = "live" then addMatches("channel", m.channels, query)
     if m.searchMode = "movies" then addMatches("movie", m.movies, query)
     if m.searchMode = "series" then addMatches("series", m.series, query)
-    m.searchResultIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.resultBatchSize
+    m.selectedIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.resultBatchSize
     if m.results.Count() = 0 then
         clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado. Tente outro nome."
-        if m.searchFocusArea = "results" then m.searchFocusArea = "keyboardActions"
-        updateSearchFocus()
     else
-        m.statusLabel.text = "" : renderResults() : updateSearchFocus()
+        m.statusLabel.text = "" : renderResults() : updateResultFocus()
     end if
 end sub
 
@@ -207,8 +199,7 @@ sub renderResults()
 end sub
 
 function createCardResultNode(result as Object, visualIndex as Integer) as Object
-    col = visualIndex MOD m.resultCols : row = Int(visualIndex / m.resultCols)
-    group = CreateObject("roSGNode", "Group") : group.translation = [col * (m.cardWidth + m.cardGap), row * (m.cardHeight + 12)]
+    group = CreateObject("roSGNode", "Group") : group.translation = [visualIndex * (m.cardWidth + m.cardGap), 0]
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "itemBackground" : bg.width = m.cardWidth : bg.height = m.cardHeight : bg.color = "#101827" : bg.opacity = 0.92
     imageBg = CreateObject("roSGNode", "Rectangle") : imageBg.width = m.cardWidth - 18 : imageBg.height = m.cardHeight - 70 : imageBg.translation = [9, 9] : imageBg.color = "#1C2940"
     poster = CreateObject("roSGNode", "Poster") : poster.id = "itemImage" : poster.width = m.cardWidth - 18 : poster.height = m.cardHeight - 70 : poster.translation = [9, 9] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getItemImage(result.item)
@@ -221,155 +212,157 @@ end function
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then m.top.backRequested = true : return true
-    if key = "up" or key = "down" or key = "left" or key = "right" then
-        moveSearchFocus(key)
-        updateSearchFocus()
-        return true
-    end if
+    if key = "up" then moveVertical(-1) : return true
+    if key = "down" then moveVertical(1) : return true
+    if key = "left" then moveHorizontal(-1) : return true
+    if key = "right" then moveHorizontal(1) : return true
     if key = "OK" then activateFocused() : return true
     if handleRokuKeyboardKey(key) then return true
     return false
 end function
 
-sub moveSearchFocus(key as String)
-    if m.searchFocusArea = "input" then
-        if key = "down" then m.searchFocusArea = "keyboardLetters"
-        return
-    end if
-
-    if m.searchFocusArea = "keyboardLetters" then
-        if key = "right" and m.searchLetterCol < 12 then m.searchLetterCol = m.searchLetterCol + 1
-        if key = "left" and m.searchLetterCol > 0 then m.searchLetterCol = m.searchLetterCol - 1
-        if key = "up" then
-            if m.searchLetterRow = 1 then m.searchLetterRow = 0 else m.searchFocusArea = "input"
+sub moveVertical(direction as Integer)
+    if m.focusZone = "input" then
+        moveZone(direction)
+    else if m.focusZone = "keyboard" then
+        if moveKeyboardFocus(direction, 0) then
+            updateAllFocus()
+        else
+            moveZone(direction)
         end if
-        if key = "down" then
-            if m.searchLetterRow = 0 then
-                m.searchLetterRow = 1
-            else
-                m.searchFocusArea = "keyboardNumbers" : m.searchNumberIndex = nearestNumberIndexForLetterCol(m.searchLetterCol)
-            end if
-        end if
-        return
-    end if
-
-    if m.searchFocusArea = "keyboardNumbers" then
-        if key = "right" and m.searchNumberIndex < m.searchNumbers.Count() - 1 then m.searchNumberIndex = m.searchNumberIndex + 1
-        if key = "left" and m.searchNumberIndex > 0 then m.searchNumberIndex = m.searchNumberIndex - 1
-        if key = "up" then
-            m.searchFocusArea = "keyboardLetters" : m.searchLetterRow = 1 : m.searchLetterCol = nearestLetterColForNumberIndex(m.searchNumberIndex)
-        end if
-        if key = "down" then m.searchFocusArea = "keyboardActions" : m.searchActionIndex = nearestActionIndexForNumberIndex(m.searchNumberIndex)
-        return
-    end if
-
-    if m.searchFocusArea = "keyboardActions" then
-        if key = "right" and m.searchActionIndex < m.searchActions.Count() - 1 then m.searchActionIndex = m.searchActionIndex + 1
-        if key = "left" and m.searchActionIndex > 0 then m.searchActionIndex = m.searchActionIndex - 1
-        if key = "up" then m.searchFocusArea = "keyboardNumbers" : m.searchNumberIndex = nearestNumberIndexForActionIndex(m.searchActionIndex)
-        if key = "down" and m.results.Count() > 0 then m.searchFocusArea = "results"
-        return
-    end if
-
-    if m.searchFocusArea = "results" then
-        loadedCount = getLoadedResultCount()
-        if loadedCount = 0 then m.searchFocusArea = "keyboardActions" : return
-        if key = "left" and m.searchResultIndex > 0 then m.searchResultIndex = m.searchResultIndex - 1
-        if key = "right" and m.searchResultIndex < loadedCount - 1 then m.searchResultIndex = m.searchResultIndex + 1
-        if key = "up" then
-            if m.searchResultIndex < m.resultCols then m.searchFocusArea = "keyboardActions" else m.searchResultIndex = m.searchResultIndex - m.resultCols
-        end if
-        if key = "down" and m.searchResultIndex + m.resultCols < loadedCount then m.searchResultIndex = m.searchResultIndex + m.resultCols
-        maybeLoadMoreResults()
-        updateResultWindow()
-        renderResults()
+    else if m.focusZone = "results" and m.results.Count() > 0 then
+        moveZone(direction)
+    else
+        moveZone(direction)
     end if
 end sub
 
-function nearestNumberIndexForLetterCol(col as Integer) as Integer
-    idx = Int((col * (m.searchNumbers.Count() - 1) + 6) / 12)
-    if idx < 0 then idx = 0
-    if idx > m.searchNumbers.Count() - 1 then idx = m.searchNumbers.Count() - 1
-    return idx
-end function
+sub moveZone(direction as Integer)
+    if direction < 0 then
+        if m.focusZone = "keyboard" then
+            if m.results.Count() > 0 then
+                m.focusZone = "results"
+            else
+                m.focusZone = "input"
+            end if
+        else if m.focusZone = "input" then
+            if m.results.Count() > 0 then
+                m.focusZone = "results"
+            else
+                m.focusZone = "keyboard"
+            end if
+        else
+            m.focusZone = "keyboard"
+        end if
+    else
+        if m.focusZone = "results" then
+            m.focusZone = "keyboard"
+        else if m.focusZone = "input" then
+            m.focusZone = "keyboard"
+        else if m.results.Count() > 0 then
+            m.focusZone = "results"
+        else
+            m.focusZone = "input"
+        end if
+    end if
+    updateAllFocus()
+end sub
 
-function nearestLetterColForNumberIndex(idx as Integer) as Integer
-    col = Int((idx * 12 + 4) / (m.searchNumbers.Count() - 1))
-    if col < 0 then col = 0
-    if col > 12 then col = 12
-    return col
-end function
+sub moveHorizontal(direction as Integer)
+    if m.focusZone = "keyboard" then
+        moveKeyboardFocus(0, direction)
+        updateAllFocus()
+    else if m.focusZone = "results" and m.results.Count() > 0 then
+        m.selectedIndex = m.selectedIndex + direction
+        if m.selectedIndex < 0 then m.selectedIndex = 0
+        if m.selectedIndex >= getLoadedResultCount() then m.selectedIndex = getLoadedResultCount() - 1
+        maybeLoadMoreResults()
+        updateResultWindow()
+        renderResults()
+        updateResultFocus()
+    end if
+end sub
 
-function nearestActionIndexForNumberIndex(idx as Integer) as Integer
-    action = Int((idx * (m.searchActions.Count() - 1) + 4) / (m.searchNumbers.Count() - 1))
-    if action < 0 then action = 0
-    if action > m.searchActions.Count() - 1 then action = m.searchActions.Count() - 1
-    return action
-end function
+function moveKeyboardFocus(rowDelta as Integer, colDelta as Integer) as Boolean
+    if m.keyRows = invalid or m.keyRows.Count() = 0 then return false
 
-function nearestNumberIndexForActionIndex(idx as Integer) as Integer
-    num = Int((idx * (m.searchNumbers.Count() - 1) + 1) / (m.searchActions.Count() - 1))
-    if num < 0 then num = 0
-    if num > m.searchNumbers.Count() - 1 then num = m.searchNumbers.Count() - 1
-    return num
+    if m.selectedKeyRow < 0 then m.selectedKeyRow = 0
+    if m.selectedKeyRow >= m.keyRows.Count() then m.selectedKeyRow = m.keyRows.Count() - 1
+
+    rowCount = m.keyRows[m.selectedKeyRow].Count()
+    if rowCount = 0 then return false
+
+    if colDelta <> 0 then
+        m.selectedKeyCol = m.selectedKeyCol + colDelta
+        if m.selectedKeyCol < 0 then m.selectedKeyCol = rowCount - 1
+        if m.selectedKeyCol >= rowCount then m.selectedKeyCol = 0
+        return true
+    end if
+
+    nextRow = m.selectedKeyRow + rowDelta
+    if nextRow < 0 or nextRow >= m.keyRows.Count() then return false
+    nextRowCount = m.keyRows[nextRow].Count()
+    if nextRowCount = 0 then return false
+
+    m.selectedKeyRow = nextRow
+    if m.selectedKeyCol < 0 then m.selectedKeyCol = 0
+    if m.selectedKeyCol >= nextRowCount then m.selectedKeyCol = nextRowCount - 1
+    return true
 end function
 
 sub activateFocused()
-    if m.searchFocusArea = "results" then openSelected() : return
-    if m.searchFocusArea = "input" then return
-    keyLabel = getFocusedKeyboardLabel()
+    if m.focusZone = "results" then openSelected() : return
+    if m.focusZone = "input" then m.searchInput.SetFocus(true) : return
+    keyLabel = m.keyRows[m.selectedKeyRow][m.selectedKeyCol]
     if keyLabel = "APAGAR" then
         t = m.searchInput.text : if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
     else if keyLabel = "LIMPAR" then
         m.searchInput.text = ""
     else if keyLabel = "FECHAR" then
         m.top.backRequested = true
+        return
     else if keyLabel = "ESPAÇO" then
         m.searchInput.text = m.searchInput.text + " "
     else
         m.searchInput.text = m.searchInput.text + keyLabel
     end if
-    updateSearchFocus()
+    updateAllFocus()
 end sub
-
-function getFocusedKeyboardLabel() as String
-    if m.searchFocusArea = "keyboardLetters" then return m.searchLetters[m.searchLetterRow][m.searchLetterCol]
-    if m.searchFocusArea = "keyboardNumbers" then return m.searchNumbers[m.searchNumberIndex]
-    if m.searchFocusArea = "keyboardActions" then return m.searchActions[m.searchActionIndex]
-    return ""
-end function
 
 function handleRokuKeyboardKey(key as String) as Boolean
     if Left(key, 4) = "lit_" then
         m.searchInput.text = m.searchInput.text + Mid(key, 5)
-        updateSearchFocus()
+        updateAllFocus()
         return true
     end if
     if key = "backspace" or key = "delete" then
         t = m.searchInput.text
         if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
-        updateSearchFocus()
+        updateAllFocus()
         return true
     end if
     return false
 end function
 
-sub updateSearchFocus()
-    m.top.SetFocus(true)
-    if m.searchFocusArea = "input" then m.inputBackground.color = "#063B66" else m.inputBackground.color = "#0B1220"
-    updateKeyboardFocus()
-    updateResultFocus()
+sub updateAllFocus()
+    updateKeyboardFocus() : updateResultFocus()
+    if m.focusZone = "input" then
+        m.searchInput.SetFocus(true)
+    else
+        m.top.SetFocus(true)
+    end if
+    if m.focusZone = "input" then
+        m.inputBackground.color = "#063B66"
+    else
+        m.inputBackground.color = "#0B1220"
+    end if
 end sub
 
 sub updateKeyboardFocus()
     for r = 0 to m.keyNodes.Count() - 1
         for c = 0 to m.keyNodes[r].Count() - 1
             bg = m.keyNodes[r][c].FindNode("keyBackground") : lb = m.keyNodes[r][c].FindNode("keyLabel")
-            selected = false
-            if m.searchFocusArea = "keyboardLetters" and r = m.searchLetterRow and c = m.searchLetterCol then selected = true
-            if m.searchFocusArea = "keyboardNumbers" and r = 2 and c = m.searchNumberIndex then selected = true
-            if m.searchFocusArea = "keyboardActions" and r = 3 and c = m.searchActionIndex then selected = true
-            if selected then
+            if m.focusZone = "keyboard" and r = m.selectedKeyRow and c = m.selectedKeyCol then
                 bg.color = "#FFCC00" : bg.opacity = 1.0 : lb.color = "#06111F" : m.keyNodes[r][c].scale = [1.08, 1.08]
             else
                 bg.color = "#101A2C" : bg.opacity = 0.92 : lb.color = "#EAF2FF" : m.keyNodes[r][c].scale = [1.0, 1.0]
@@ -382,7 +375,7 @@ sub updateResultFocus()
     for i = 0 to m.itemNodes.Count() - 1
         bg = m.itemNodes[i].FindNode("itemBackground") : lb = m.itemNodes[i].FindNode("itemLabel")
         realIndex = m.firstVisibleIndex + i
-        if m.searchFocusArea = "results" and realIndex = m.searchResultIndex then
+        if m.focusZone = "results" and realIndex = m.selectedIndex then
             bg.color = "#063B66" : bg.opacity = 1.0 : lb.color = "#FFFFFF"
         else
             bg.color = "#101827" : bg.opacity = 0.92 : lb.color = "#FFFFFF"
@@ -393,13 +386,13 @@ end sub
 sub updateResultWindow()
     loadedCount = getLoadedResultCount()
     if loadedCount = 0 then
-        m.searchResultIndex = 0 : m.firstVisibleIndex = 0
+        m.selectedIndex = 0 : m.firstVisibleIndex = 0
         return
     end if
-    if m.searchResultIndex < 0 then m.searchResultIndex = 0
-    if m.searchResultIndex >= loadedCount then m.searchResultIndex = loadedCount - 1
-    if m.searchResultIndex < m.firstVisibleIndex then m.firstVisibleIndex = m.searchResultIndex
-    if m.searchResultIndex >= m.firstVisibleIndex + m.visibleItemCount then m.firstVisibleIndex = m.searchResultIndex - m.visibleItemCount + 1
+    if m.selectedIndex < 0 then m.selectedIndex = 0
+    if m.selectedIndex >= loadedCount then m.selectedIndex = loadedCount - 1
+    if m.selectedIndex < m.firstVisibleIndex then m.firstVisibleIndex = m.selectedIndex
+    if m.selectedIndex >= m.firstVisibleIndex + m.visibleItemCount then m.firstVisibleIndex = m.selectedIndex - m.visibleItemCount + 1
     maxFirst = loadedCount - m.visibleItemCount
     if maxFirst < 0 then maxFirst = 0
     if m.firstVisibleIndex > maxFirst then m.firstVisibleIndex = maxFirst
@@ -413,15 +406,15 @@ end function
 
 sub maybeLoadMoreResults()
     if m.results.Count() <= m.renderedResultLimit then return
-    if m.searchResultIndex >= m.renderedResultLimit - 4 then
+    if m.selectedIndex >= m.renderedResultLimit - 4 then
         m.renderedResultLimit = m.renderedResultLimit + m.resultBatchSize
         if m.renderedResultLimit > m.results.Count() then m.renderedResultLimit = m.results.Count()
     end if
 end sub
 
 sub openSelected()
-    if m.results.Count() = 0 or m.searchResultIndex < 0 or m.searchResultIndex >= m.results.Count() then return
-    result = m.results[m.searchResultIndex]
+    if m.results.Count() = 0 or m.selectedIndex < 0 or m.selectedIndex >= m.results.Count() then return
+    result = m.results[m.selectedIndex]
     if result.type = "channel" then m.top.channelSelected = result.item
     if result.type = "movie" then m.top.movieSelected = result.item
     if result.type = "series" then m.top.seriesSelected = result.item
