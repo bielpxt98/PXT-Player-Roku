@@ -8,6 +8,7 @@ sub Init()
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
+    m.searchEntry = { isSearch: true, category_name: "PESQUISAR", name: "PESQUISAR" }
     m.categories = []
     m.itemNodes = []
     m.itemRefs = []
@@ -139,9 +140,18 @@ sub showMessage(message as String)
 end sub
 
 function normalizeCategories(categories as Dynamic) as Object
-    if categories = invalid then return []
-    if Type(categories) = "roArray" then return categories
-    return []
+    items = [m.searchEntry]
+    if categories = invalid then return items
+    if Type(categories) = "roArray" then
+        for each category in categories
+            items.Push(category)
+        end for
+    end if
+    return items
+end function
+
+function isSearchEntry(category as Dynamic) as Boolean
+    return category <> invalid and category.isSearch = true
 end function
 
 sub renderList()
@@ -230,7 +240,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
-            m.top.categorySelected = m.categories[m.selectedIndex]
+            if isSearchEntry(m.categories[m.selectedIndex]) then
+                m.top.searchRequested = true
+            else
+                m.top.categorySelected = m.categories[m.selectedIndex]
+            end if
         end if
         return true
     end if

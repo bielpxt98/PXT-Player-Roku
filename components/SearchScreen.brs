@@ -39,21 +39,23 @@ sub configureLayout()
     m.topGradient.width = m.screenW : m.topGradient.height = 170
     m.title.width = m.screenW : m.title.font = "font:LargeBoldSystemFont" : m.title.translation = [0, 28]
     m.subtitle.width = m.screenW : m.subtitle.font = "font:MediumSystemFont" : m.subtitle.translation = [0, 82]
-    m.resultsTitle.translation = [m.marginX, 118] : m.resultsTitle.font = "font:MediumBoldSystemFont"
-    m.resultsGroup.translation = [m.marginX, 158]
-    m.keyboardTop = m.screenH - 260
-    if m.screenH <= 720 then m.keyboardTop = m.screenH - 210
-    m.inputBackground.translation = [m.marginX, m.keyboardTop - 58] : m.inputBackground.width = m.contentWidth : m.inputBackground.height = 46
-    m.searchInput.translation = [m.marginX + 14, m.keyboardTop - 54] : m.searchInput.width = 2 : m.searchInput.height = 2 : m.searchInput.visible = true
-    m.queryMirror.translation = [m.marginX + 20, m.keyboardTop - 49] : m.queryMirror.width = m.contentWidth - 40 : m.queryMirror.height = 34 : m.queryMirror.font = "font:MediumBoldSystemFont"
-    m.statusLabel.translation = [m.marginX, m.keyboardTop - 104] : m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont"
+    m.inputTop = 132 : m.inputHeight = 56
+    m.resultsTop = m.inputTop + m.inputHeight + 58
+    m.keyboardTop = m.resultsTop + 348
+    if m.screenH <= 720 then m.inputTop = 104 : m.inputHeight = 46 : m.resultsTop = m.inputTop + m.inputHeight + 42 : m.keyboardTop = m.resultsTop + 228
+    m.resultsTitle.translation = [m.marginX, m.resultsTop - 36] : m.resultsTitle.font = "font:MediumBoldSystemFont"
+    m.resultsGroup.translation = [m.marginX, m.resultsTop]
+    m.inputBackground.translation = [m.marginX, m.inputTop] : m.inputBackground.width = m.contentWidth : m.inputBackground.height = m.inputHeight
+    m.searchInput.translation = [m.marginX + 14, m.inputTop + 4] : m.searchInput.width = 2 : m.searchInput.height = 2 : m.searchInput.visible = true
+    m.queryMirror.translation = [m.marginX + 20, m.inputTop + 8] : m.queryMirror.width = m.contentWidth - 40 : m.queryMirror.height = m.inputHeight - 14 : m.queryMirror.font = "font:MediumBoldSystemFont"
+    m.statusLabel.translation = [m.marginX, m.resultsTop + 112] : m.statusLabel.width = m.contentWidth : m.statusLabel.font = "font:MediumSystemFont"
     m.keyboardGroup.translation = [m.marginX, m.keyboardTop]
     m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 34]
-    m.keyGap = 8
-    m.keyW = Int((m.contentWidth - 12 * m.keyGap) / 13) : m.keyH = 34
-    m.cardGap = 16 : m.cardHeight = 196 : m.resultCols = 5
+    m.keyGap = 10
+    m.keyW = Int((m.contentWidth - 12 * m.keyGap) / 13) : m.keyH = 38
+    m.cardGap = 28 : m.cardHeight = 306 : m.resultCols = 5
     m.cardWidth = Int((m.contentWidth - ((m.resultCols - 1) * m.cardGap)) / m.resultCols)
-    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 12 * m.keyGap) / 13) : m.cardWidth = Int((m.contentWidth - ((m.resultCols - 1) * m.cardGap)) / m.resultCols)
+    if m.screenH <= 720 then m.cardGap = 18 : m.cardHeight = 206 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 12 * m.keyGap) / 13) : m.cardWidth = Int((m.contentWidth - ((m.resultCols - 1) * m.cardGap)) / m.resultCols)
     m.visibleItemCount = m.resultCols
 end sub
 
@@ -64,7 +66,7 @@ sub show(mode as Dynamic)
     configureSearchLabels()
     m.top.visible = true : m.top.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
-    m.searchInput.text = "" : m.queryMirror.text = "Texto digitado: "
+    m.searchInput.text = "" : m.queryMirror.text = "Buscar: "
     m.searchFocusArea = "input" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
     applyFilter()
@@ -143,7 +145,7 @@ sub renderKeyboard()
 end sub
 
 sub onSearchTextChanged()
-    m.queryMirror.text = "Texto digitado: " + m.searchInput.text
+    m.queryMirror.text = "Buscar: " + m.searchInput.text
     m.searchDebounceTimer.control = "stop"
     applyFilter()
 end sub
@@ -237,16 +239,32 @@ sub appendSearchEntries(entries as Object)
 end sub
 
 sub renderResults()
-    clearResultNodes()
-    if m.results.Count() = 0 then return
+    if m.results.Count() = 0 then
+        clearResultNodes()
+        return
+    end if
     updateResultWindow()
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
     maxLoadedIndex = getLoadedResultCount() - 1
     if lastIndex > maxLoadedIndex then lastIndex = maxLoadedIndex
     if lastIndex >= m.results.Count() then lastIndex = m.results.Count() - 1
-    for i = m.firstVisibleIndex to lastIndex
-        node = createCardResultNode(m.results[i], i - m.firstVisibleIndex)
-        m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node) : m.itemRefs.Push(m.lastItemRefs)
+    neededCount = lastIndex - m.firstVisibleIndex + 1
+    if neededCount < 0 then neededCount = 0
+    while m.itemNodes.Count() > neededCount
+        removeIndex = m.itemNodes.Count() - 1
+        m.resultsGroup.RemoveChildIndex(removeIndex)
+        m.itemNodes.Delete(removeIndex)
+        m.itemRefs.Delete(removeIndex)
+    end while
+    for visualIndex = 0 to neededCount - 1
+        realIndex = m.firstVisibleIndex + visualIndex
+        result = m.results[realIndex]
+        if visualIndex < m.itemNodes.Count() then
+            updateCardResultNode(m.itemNodes[visualIndex], m.itemRefs[visualIndex], result, visualIndex)
+        else
+            node = createCardResultNode(result, visualIndex)
+            m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node) : m.itemRefs.Push(m.lastItemRefs)
+        end if
     end for
 end sub
 
@@ -259,8 +277,35 @@ function createCardResultNode(result as Object, visualIndex as Integer) as Objec
     title = CreateObject("roSGNode", "Label") : title.id = "itemLabel" : title.width = m.cardWidth - 12 : title.height = 30 : title.translation = [6, m.cardHeight - 58] : title.horizAlign = "center" : title.vertAlign = "center" : title.color = "#FFFFFF" : title.font = "font:SmallBoldSystemFont" : title.text = result.title
     meta = CreateObject("roSGNode", "Label") : meta.id = "itemMeta" : meta.width = m.cardWidth - 12 : meta.height = 24 : meta.translation = [6, m.cardHeight - 28] : meta.horizAlign = "center" : meta.vertAlign = "center" : meta.color = "#9FB0C8" : meta.font = "font:TinySystemFont" : meta.text = result.meta
     group.AppendChild(bg) : group.AppendChild(imageBg) : group.AppendChild(poster) : group.AppendChild(title) : group.AppendChild(meta)
-    m.lastItemRefs = { background: bg, label: title }
+    m.lastItemRefs = { background: bg, label: title, meta: meta, poster: poster, imageBg: imageBg, resultKey: getResultKey(result) }
     return group
+end function
+
+sub updateCardResultNode(group as Object, refs as Object, result as Object, visualIndex as Integer)
+    col = visualIndex MOD m.resultCols : row = Int(visualIndex / m.resultCols)
+    group.translation = [col * (m.cardWidth + m.cardGap), row * (m.cardHeight + 12)]
+    refs.background.width = m.cardWidth : refs.background.height = m.cardHeight
+    refs.imageBg.width = m.cardWidth - 18 : refs.imageBg.height = m.cardHeight - 70
+    refs.poster.width = m.cardWidth - 18 : refs.poster.height = m.cardHeight - 70
+    refs.label.width = m.cardWidth - 12 : refs.label.translation = [6, m.cardHeight - 58]
+    refs.meta.width = m.cardWidth - 12 : refs.meta.translation = [6, m.cardHeight - 28]
+    key = getResultKey(result)
+    if refs.resultKey = key then return
+    refs.resultKey = key
+    refs.poster.uri = getItemImage(result.item)
+    refs.label.text = result.title
+    refs.meta.text = result.meta
+end sub
+
+function getResultKey(result as Object) as String
+    item = result.item
+    if item <> invalid then
+        if item.stream_id <> invalid then return result.type + ":" + item.stream_id.ToStr()
+        if item.series_id <> invalid then return result.type + ":" + item.series_id.ToStr()
+        if item.title <> invalid then return result.type + ":" + item.title.ToStr()
+        if item.name <> invalid then return result.type + ":" + item.name.ToStr()
+    end if
+    return result.type + ":" + result.title
 end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -278,7 +323,9 @@ end function
 
 sub moveSearchFocus(key as String)
     if m.searchFocusArea = "input" then
-        if key = "down" then m.searchFocusArea = "keyboardLetters"
+        if key = "down" then
+            if m.results.Count() > 0 then m.searchFocusArea = "results" else m.searchFocusArea = "keyboardLetters"
+        end if
         return
     end if
 
@@ -286,7 +333,13 @@ sub moveSearchFocus(key as String)
         if key = "right" and m.searchLetterCol < 12 then m.searchLetterCol = m.searchLetterCol + 1
         if key = "left" and m.searchLetterCol > 0 then m.searchLetterCol = m.searchLetterCol - 1
         if key = "up" then
-            if m.searchLetterRow = 1 then m.searchLetterRow = 0 else m.searchFocusArea = "input"
+            if m.searchLetterRow = 1 then
+                m.searchLetterRow = 0
+            else if m.results.Count() > 0 then
+                m.searchFocusArea = "results"
+            else
+                m.searchFocusArea = "input"
+            end if
         end if
         if key = "down" then
             if m.searchLetterRow = 0 then
@@ -324,10 +377,8 @@ sub moveSearchFocus(key as String)
         oldLimit = m.renderedResultLimit
         if key = "left" and m.searchResultIndex > 0 then m.searchResultIndex = m.searchResultIndex - 1
         if key = "right" and m.searchResultIndex < loadedCount - 1 then m.searchResultIndex = m.searchResultIndex + 1
-        if key = "up" then
-            if m.searchResultIndex < m.resultCols then m.searchFocusArea = "keyboardActions" else m.searchResultIndex = m.searchResultIndex - m.resultCols
-        end if
-        if key = "down" and m.searchResultIndex + m.resultCols < loadedCount then m.searchResultIndex = m.searchResultIndex + m.resultCols
+        if key = "up" then m.searchFocusArea = "input"
+        if key = "down" then m.searchFocusArea = "keyboardLetters"
         maybeLoadMoreResults()
         updateResultWindow()
         if oldSelected <> m.searchResultIndex or oldFirst <> m.firstVisibleIndex or oldLimit <> m.renderedResultLimit then renderResults()
