@@ -1,12 +1,9 @@
 ' Minimal app flow: Login -> Live TV only.
 sub Init()
+    print "PXT DEBUG: INIT"
     m.loginScreen = m.top.FindNode("loginScreen")
     m.liveTVScreen = m.top.FindNode("liveTVScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
-    m.debugPanel = m.top.FindNode("debugPanel")
-    m.debugBackground = m.top.FindNode("debugBackground")
-    m.debugTitle = m.top.FindNode("debugTitle")
-    m.debugText = m.top.FindNode("debugText")
 
     m.account = invalid
     m.pendingRequest = ""
@@ -14,10 +11,6 @@ sub Init()
     m.lastFailedCategoryId = ""
     m.selectedCategory = invalid
     m.selectedChannel = invalid
-    m.debugState = { screen: "Inicializando", dns: "", username: "", action: "", url: "", status: "", error: "", key: "", categories: 0, channels: 0, time: "" }
-
-    configureDebugPanel()
-    updateDebug("INIT", {})
 
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.liveTVScreen.ObserveField("categorySelected", "onLiveCategorySelected")
@@ -26,16 +19,6 @@ sub Init()
     m.xtreamService.ObserveField("result", "onXtreamResult")
 
     startInitialFlow()
-end sub
-
-sub configureDebugPanel()
-    r = getDisplayResolution() : w = r.width : h = r.height
-    panelW = 360 : panelH = h
-    if w <= 1280 then panelW = 300
-    m.debugPanel.translation = [w - panelW, 0]
-    m.debugBackground.width = panelW : m.debugBackground.height = panelH
-    m.debugTitle.translation = [14, 14] : m.debugTitle.width = panelW - 28 : m.debugTitle.font = "font:SmallBoldSystemFont"
-    m.debugText.translation = [14, 48] : m.debugText.width = panelW - 28 : m.debugText.height = panelH - 60 : m.debugText.font = "font:SmallSystemFont"
 end sub
 
 sub startInitialFlow()
@@ -55,7 +38,6 @@ sub openLogin(account as Dynamic)
     m.liveTVScreen.callFunc("hide")
     m.loginScreen.callFunc("show", account)
     m.loginScreen.SetFocus(true)
-    updateDebug("OPEN_LOGIN", { screen: "Login" })
 end sub
 
 sub openLiveTv()
@@ -64,15 +46,14 @@ sub openLiveTv()
     m.liveTVScreen.callFunc("resetSelection")
     m.liveTVScreen.callFunc("show", invalid)
     m.liveTVScreen.SetFocus(true)
-    updateDebug("OPEN_HOME", { screen: "Home / TV AO VIVO", error: "" })
+    print "PXT DEBUG: OPEN_HOME"
 end sub
 
 sub onLoginSubmit()
     account = m.loginScreen.submit
-    updateDebug("LOGIN_SUBMIT", { screen: "Login", dns: safeText(account.dns), username: safeText(account.username), action: "connect" })
+    print "PXT DEBUG: LOGIN_SUBMIT"
     if not isValidAccount(account) then
         m.loginScreen.callFunc("showError", "Informe DNS, usuário e senha.")
-        updateDebug("LOGIN_SUBMIT", { error: "Informe DNS, usuário e senha." })
         return
     end if
 
@@ -85,7 +66,7 @@ sub startConnectFromHome()
     m.liveTVScreen.callFunc("setCategories", [])
     m.liveTVScreen.callFunc("setLoading", false)
     m.liveTVScreen.callFunc("showMessage", "Conectando...")
-    updateDebug("CONNECT_START", { action: "connect", status: "", error: "", categories: 0, channels: 0 })
+    print "PXT DEBUG: CONNECT_START"
     runXtreamRequest("connect", "")
 end sub
 
@@ -93,7 +74,7 @@ sub loadLiveCategories()
     m.liveTVScreen.callFunc("setCategories", [])
     m.liveTVScreen.callFunc("setLoading", false)
     m.liveTVScreen.callFunc("showMessage", "Carregando categorias de TV ao vivo...")
-    updateDebug("CATEGORIES_START", { action: "get_live_categories", status: "", error: "", categories: 0, channels: 0 })
+    print "PXT DEBUG: CATEGORIES_START"
     runXtreamRequest("getLiveCategories", "")
 end sub
 
@@ -102,7 +83,6 @@ sub onLiveCategorySelected()
     if category = invalid then return
     m.selectedCategory = category
     m.liveTVScreen.callFunc("setLoading", true)
-    updateDebug("STREAMS_START", { action: "get_live_streams", status: "", error: "", channels: 0 })
     runXtreamRequest("getLiveStreams", getCategoryId(category))
 end sub
 
@@ -131,7 +111,6 @@ sub runXtreamRequest(action as String, categoryId as String)
     m.xtreamService.categoryId = categoryId
     m.xtreamService.action = action
     m.xtreamService.control = "RUN"
-    updateDebug(action + "_REQUEST", { dns: m.account.dns, username: m.account.username, action: actionToApiAction(action), url: buildDebugUrl(action, categoryId) })
 end sub
 
 sub onXtreamResult()
@@ -144,12 +123,11 @@ sub onXtreamResult()
         return
     end if
 
-    updateDebugFromResult(result)
+    print "PXT DEBUG: CONNECT_RESULT "; result.success
     if request = "connect" then
         if result.success = true then
             SavePlaylist(m.account)
             m.lastFailedRequest = ""
-            updateDebug("CONNECT_SUCCESS", { error: "" })
             loadLiveCategories()
         else
             markFailure(request, getResultMessage(result, "Login inválido. Verifique DNS, usuário e senha."), result)
@@ -159,7 +137,7 @@ sub onXtreamResult()
             categories = normalizeArray(result.data)
             m.liveTVScreen.callFunc("setCategories", categories)
             m.lastFailedRequest = ""
-            updateDebug("CATEGORIES_SUCCESS", { categories: categories.Count(), error: "" })
+            print "PXT DEBUG: CATEGORIES_COUNT "; categories.Count()
             if categories.Count() > 0 then
                 m.selectedCategory = categories[0]
                 m.liveTVScreen.callFunc("showMessage", "Selecione uma categoria e pressione OK.")
@@ -175,7 +153,6 @@ sub onXtreamResult()
             m.liveTVScreen.callFunc("setChannels", channels)
             m.liveTVScreen.callFunc("focusChannels")
             m.lastFailedRequest = ""
-            updateDebug("STREAMS_SUCCESS", { channels: channels.Count(), error: "" })
         else
             markFailure(request, "Nao foi possivel carregar TV ao vivo.", result)
         end if
@@ -188,9 +165,6 @@ sub markFailure(request as String, message as String, result as Dynamic)
     detail = message
     if result <> invalid then detail = getResultMessage(result, message)
     suffix = Chr(10) + "Pressione OK para tentar novamente."
-    if request = "connect" then updateDebug("CONNECT_ERROR", { error: detail })
-    if request = "getLiveCategories" then updateDebug("CATEGORIES_ERROR", { error: detail })
-    if request = "getLiveStreams" then updateDebug("STREAMS_ERROR", { error: detail })
     m.liveTVScreen.callFunc("setLoading", false)
     m.liveTVScreen.callFunc("showMessage", detail + suffix)
 end sub
@@ -198,14 +172,12 @@ end sub
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     normalizedKey = normalizeKey(key)
-    updateDebug("KEY", { key: key })
     if normalizedKey = "OK" and m.liveTVScreen.visible = true and m.pendingRequest = "" then
         if m.lastFailedRequest <> "" then
             retryLastFailure()
             return true
         else if m.selectedCategory <> invalid then
             m.liveTVScreen.callFunc("setLoading", true)
-            updateDebug("STREAMS_START", { action: "get_live_streams", error: "", channels: 0 })
             runXtreamRequest("getLiveStreams", getCategoryId(m.selectedCategory))
             return true
         end if
@@ -222,66 +194,9 @@ sub retryLastFailure()
         loadLiveCategories()
     else if request = "getLiveStreams" then
         m.liveTVScreen.callFunc("setLoading", true)
-        updateDebug("STREAMS_START", { action: "get_live_streams", status: "", error: "", channels: 0 })
         runXtreamRequest("getLiveStreams", m.lastFailedCategoryId)
     end if
 end sub
-
-sub updateDebug(eventName as String, values as Object)
-    if m.debugState = invalid then return
-    if values <> invalid then
-        for each k in values
-            m.debugState[k] = values[k]
-        end for
-    end if
-    if m.account <> invalid then
-        m.debugState.dns = m.account.dns
-        m.debugState.username = m.account.username
-    end if
-    text = "Tela atual: " + safeText(m.debugState.screen) + Chr(10)
-    text = text + "DNS usado: " + safeText(m.debugState.dns) + Chr(10)
-    text = text + "Usuário: " + safeText(m.debugState.username) + Chr(10)
-    text = text + "senha: ***" + Chr(10)
-    text = text + "Ação atual: " + safeText(m.debugState.action) + Chr(10)
-    text = text + "URL: " + safeText(m.debugState.url) + Chr(10)
-    text = text + "HTTP: " + safeText(m.debugState.status) + Chr(10)
-    text = text + "Erro: " + safeText(m.debugState.error) + Chr(10)
-    text = text + "Última tecla: " + safeText(m.debugState.key) + Chr(10)
-    text = text + "Categorias: " + m.debugState.categories.ToStr() + Chr(10)
-    text = text + "Canais: " + m.debugState.channels.ToStr() + Chr(10)
-    text = text + "Tempo req.: " + safeText(m.debugState.time) + Chr(10)
-    text = text + "Evento: " + eventName
-    m.debugText.text = text
-end sub
-
-sub updateDebugFromResult(result as Dynamic)
-    values = {}
-    if result.statusCode <> invalid then values.status = result.statusCode.ToStr()
-    if result.elapsedMs <> invalid then values.time = result.elapsedMs.ToStr() + " ms"
-    if result.url <> invalid then values.url = result.url
-    if result.message <> invalid and result.success <> true then values.error = result.message
-    updateDebug("XTREAM_RESULT", values)
-end sub
-
-function actionToApiAction(action as String) as String
-    if action = "getLiveCategories" then return "get_live_categories"
-    if action = "getLiveStreams" then return "get_live_streams"
-    return "connect"
-end function
-
-function buildDebugUrl(action as String, categoryId as String) as String
-    if m.account = invalid then return ""
-    url = m.account.dns + "/player_api.php?username=" + escapeDebugValue(m.account.username) + "&password=***"
-    apiAction = actionToApiAction(action)
-    if apiAction <> "connect" then url = url + "&action=" + apiAction
-    if apiAction = "get_live_streams" and categoryId <> "" then url = url + "&category_id=" + categoryId
-    return url
-end function
-
-function escapeDebugValue(value as Dynamic) as String
-    transfer = CreateObject("roUrlTransfer")
-    return transfer.Escape(safeText(value))
-end function
 
 function isValidAccount(account as Dynamic) as Boolean
     if account = invalid then return false
