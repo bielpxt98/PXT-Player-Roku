@@ -21,11 +21,8 @@
         <MovieListScreen id="movieListScreen" visible="false" />
         <MovieDetailScreen id="movieDetailScreen" visible="false" />
         <MoviePlayerScreen id="moviePlayerScreen" visible="false" />
-        <SeriesCategoriesScreen id="seriesCategoriesScreen" visible="false" />
-        <SeriesListScreen id="seriesListScreen" visible="false" />
+        <SeriesHomeScreen id="seriesHomeScreen" visible="false" />
         <SeriesDetailScreen id="seriesDetailScreen" visible="false" />
-        <SeriesSeasonsScreen id="seriesSeasonsScreen" visible="false" />
-        <SeriesEpisodesScreen id="seriesEpisodesScreen" visible="false" />
         <SeriesPlayerScreen id="seriesPlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
