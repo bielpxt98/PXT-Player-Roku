@@ -1193,8 +1193,10 @@ sub onSeriesPlayerBack()
         m.openedFromRecent = false
         m.openedFromSearch = false
         showHome()
-    else
+    else if m.selectedSeries <> invalid then
         m.seriesDetailScreen.callFunc("show", m.selectedSeries)
+    else
+        showHome()
     end if
 end sub
 
@@ -1279,7 +1281,6 @@ sub loadSeriesInfo(series as Object)
         showSeriesInfoFailure("Não foi possível carregar temporadas: série sem identificador.")
         return
     end if
-    startDetailTimeout("series")
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeriesInfo"
     m.xtreamService.cacheEnabled = false
@@ -1332,19 +1333,29 @@ sub onSeriesResult(result as Object)
 end sub
 
 sub onSeriesInfoResult(result as Object)
-    stopDetailTimeout("series")
     if result.success = true then
         if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setDetails", result.data)
     else
-        showSeriesInfoFailure("Não foi possível carregar as temporadas desta série. Você pode voltar e tentar novamente.")
+        showSeriesInfoFailure("Não foi possível carregar os detalhes desta série." + Chr(10) + "Pressione Voltar e tente novamente.")
     end if
 end sub
 
 sub showSeriesInfoFailure(message as String)
-    stopDetailTimeout("series")
     if m.seriesDetailScreen.visible = true then
         m.seriesDetailScreen.callFunc("setLoading", false)
         m.seriesDetailScreen.callFunc("showMessage", message)
+    end if
+end sub
+
+sub onLiveStreamUrlResult(result as Object)
+    if m.livePlayerScreen.visible <> true then return
+    if result = invalid or result.data = invalid then return
+    if result.data.streamId <> invalid and result.data.streamId.ToStr() <> getStreamId(m.selectedLiveChannel) then return
+
+    if result.success = true and result.data.url <> invalid then
+        m.livePlayerScreen.callFunc("play", result.data.url)
+    else
+        m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
     end if
 end sub
 

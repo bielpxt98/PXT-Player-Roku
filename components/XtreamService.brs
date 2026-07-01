@@ -112,7 +112,8 @@ function buildLiveStreamUrl() as Object
         connected: true,
         request: "buildLiveStreamUrl",
         data: {
-            url: credentials.dns + "/live/" + escapePathValue(credentials.username) + "/" + escapePathValue(credentials.password) + "/" + escapePathValue(streamId) + "." + escapePathValue(extension)
+            url: credentials.dns + "/live/" + escapePathValue(credentials.username) + "/" + escapePathValue(credentials.password) + "/" + escapePathValue(streamId) + "." + escapePathValue(extension),
+            streamId: streamId
         },
         message: "URL de reprodução montada com sucesso."
     }
@@ -190,7 +191,10 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     if apiAction = "get_vod_info" and safeTrim(m.top.streamId) <> "" then
         url = url + "&vod_id=" + escapeQueryValue(m.top.streamId)
     end if
-    httpResponse = sendHttpGet(url)
+    timeoutMs = 6000
+    if apiAction = "get_series_info" then timeoutMs = 20000
+
+    httpResponse = sendHttpGet(url, timeoutMs)
     if not httpResponse.success then
         return withRequestName(httpResponse, cacheKey)
     end if
@@ -224,7 +228,7 @@ function buildPlayerApiUrl(dns as String, username as String, password as String
     return url
 end function
 
-function sendHttpGet(url as String) as Object
+function sendHttpGet(url as String, timeoutMs as Integer) as Object
     transfer = CreateObject("roUrlTransfer")
     transfer.SetUrl(url)
     transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
@@ -236,9 +240,10 @@ function sendHttpGet(url as String) as Object
         return buildFailure("Não foi possível iniciar a conexão com o servidor Xtream.")
     end if
 
-    event = waitForHttpResponse(port, 6000)
+    event = waitForHttpResponse(port, timeoutMs)
     if event = invalid then
         transfer.AsyncCancel()
+        if timeoutMs = 20000 then return buildFailure("Timeout")
         return buildFailure("Tempo esgotado ao conectar.")
     end if
 

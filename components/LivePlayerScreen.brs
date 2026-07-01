@@ -42,10 +42,15 @@ sub configureLayout()
 end sub
 
 sub show(channel as Dynamic)
+    stopPlayback()
+    m.isClosing = false
     m.channel = channel
     m.channelName = getChannelName(channel)
     m.top.channelName = m.channelName
-    m.isClosing = false
+    if m.video <> invalid then
+        m.video.content = invalid
+        m.video.visible = false
+    end if
     m.top.visible = true
     showLoading("Preparando " + m.channelName + "...")
     m.top.SetFocus(true)
@@ -63,6 +68,11 @@ sub play(streamUrl as String)
     content.streamFormat = getStreamFormat(streamUrl)
     content.live = true
 
+    if m.video = invalid or m.isClosing = true then return
+    if m.channelName <> content.title then return
+
+    m.video.content = invalid
+    m.video.visible = false
     m.video.content = content
     m.video.control = "play"
     m.isPlaying = true
@@ -104,6 +114,7 @@ sub onVideoStateChanged()
     if m.isClosing = true or m.video = invalid then return
     state = LCase(m.video.state)
     if state = "playing" then
+        m.video.visible = true
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
