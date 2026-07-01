@@ -24,6 +24,7 @@ sub Init()
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
     m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
+    m.searchIndexTimer = m.top.FindNode("searchIndexTimer")
     m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
     m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
@@ -66,6 +67,13 @@ sub Init()
     m.searchMovies = []
     m.searchSeries = []
     m.searchLoadStep = ""
+    m.searchIndexCache = LoadSearchIndexCache()
+    m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
+    m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
+    m.searchIndexQueue = []
+    m.searchIndexKind = ""
+    m.searchIndexCategoryId = ""
+    m.searchIndexUpdating = false
     m.searchMode = "all"
     m.searchBackTarget = "home"
     m.splashMinimumElapsed = false
@@ -125,6 +133,7 @@ sub Init()
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
     m.autoConnectTimer.ObserveField("fire", "onAutoConnectTimerFire")
+    m.searchIndexTimer.ObserveField("fire", "onSearchIndexTimerFire")
     m.splashMinimumTimer.ObserveField("fire", "onSplashMinimumElapsed")
     m.splashMaximumTimer.ObserveField("fire", "onSplashMaximumElapsed")
 
@@ -427,11 +436,9 @@ end sub
 
 function getSearchDataForMode(mode as String) as Object
     channels = m.searchChannels
-    movies = m.searchMovies
-    series = m.searchSeries
+    movies = m.movieSearchIndex
+    series = m.seriesSearchIndex
     if mode = "live" and m.liveChannels <> invalid and m.liveChannels.Count() > 0 then channels = m.liveChannels
-    if mode = "movies" and m.movies <> invalid and m.movies.Count() > 0 then movies = m.movies
-    if mode = "series" and m.series <> invalid and m.series.Count() > 0 then series = m.series
     return { channels: channels, movies: movies, series: series }
 end function
 
@@ -1029,6 +1036,8 @@ sub onXtreamConnectionResult()
     if result = invalid then return
     completeXtreamRequest()
 
+    if handleSearchIndexResult(result) then return
+
     if result.request = "getSeriesCategories" then
         onSeriesCategoriesResult(result)
         return
@@ -1087,7 +1096,9 @@ sub handleLoginConnectionResult(result as Object)
         m.loginErrorActive = false
         m.connectionMode = ""
         resetAccountLoadedData()
+        loadLocalSearchIndexCache()
         showHome()
+        startSearchIndexRefresh()
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
@@ -1105,6 +1116,11 @@ sub handleLoginConnectionResult(result as Object)
 end sub
 
 sub resetAccountLoadedData()
+    m.searchIndexCache = createEmptySearchIndexCache()
+    m.movieSearchIndex = []
+    m.seriesSearchIndex = []
+    m.searchIndexQueue = []
+    m.searchIndexUpdating = false
     m.liveCategories = []
     m.liveChannels = []
     m.liveCategoriesLoading = false
@@ -1193,6 +1209,113 @@ end sub
 
 sub continueBootstrapIfNeeded()
     if m.bootstrapActive = true and m.splashMaximumElapsed <> true then processNextBootstrapRequest()
+end sub
+
+sub loadLocalSearchIndexCache()
+    m.searchIndexCache = LoadSearchIndexCache()
+    m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
+    m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
+    if m.searchIndexCache.movieCategories.Count() > 0 then m.movieCategories = m.searchIndexCache.movieCategories
+    if m.searchIndexCache.seriesCategories.Count() > 0 then m.seriesCategories = m.searchIndexCache.seriesCategories
+end sub
+
+sub startSearchIndexRefresh()
+    if not hasAccount(m.account) then return
+    if m.searchIndexUpdating = true then return
+    m.searchIndexQueue = []
+    if m.movieCategories = invalid or m.movieCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovieCategories", kind: "movieCategories", categoryId: "" })
+    if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getSeriesCategories", kind: "seriesCategories", categoryId: "" })
+    for each category in normalizeMovieCategories(m.movieCategories)
+        m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: getCategoryId(category) })
+    end for
+    for each category in normalizeSeriesCategories(m.seriesCategories)
+        m.searchIndexQueue.Push({ action: "getSeries", kind: "series", categoryId: getCategoryId(category) })
+    end for
+    m.searchIndexUpdating = true
+    m.searchIndexTimer.control = "stop"
+    m.searchIndexTimer.control = "start"
+end sub
+
+sub onSearchIndexTimerFire()
+    processNextSearchIndexRequest()
+end sub
+
+sub processNextSearchIndexRequest()
+    if m.searchIndexUpdating <> true then return
+    if m.isLoadingRequest = true then
+        m.searchIndexTimer.control = "start"
+        return
+    end if
+    if m.searchIndexQueue = invalid or m.searchIndexQueue.Count() = 0 then
+        m.searchIndexUpdating = false
+        m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
+        m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
+        m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
+        SaveSearchIndexCache(m.searchIndexCache)
+        return
+    end if
+    job = m.searchIndexQueue.Shift()
+    m.searchIndexKind = job.kind
+    m.searchIndexCategoryId = job.categoryId
+    if beginXtreamRequest(job.action) then
+        m.xtreamService.control = "STOP"
+        m.xtreamService.action = job.action
+        m.xtreamService.cacheEnabled = true
+        m.xtreamService.categoryId = job.categoryId
+        m.xtreamService.dns = m.account.dns
+        m.xtreamService.username = m.account.username
+        m.xtreamService.password = m.account.password
+        m.xtreamService.control = "RUN"
+    else
+        m.searchIndexTimer.control = "start"
+    end if
+end sub
+
+function handleSearchIndexResult(result as Object) as Boolean
+    if m.searchIndexUpdating <> true or m.searchIndexKind = "" then return false
+    kind = m.searchIndexKind
+    m.searchIndexKind = ""
+    if result.success = true then
+        if kind = "movieCategories" then
+            m.movieCategories = normalizeMovieCategories(result.data)
+            m.searchIndexCache.movieCategories = m.movieCategories
+            for each category in m.movieCategories
+                m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: getCategoryId(category) })
+            end for
+        else if kind = "seriesCategories" then
+            m.seriesCategories = normalizeSeriesCategories(result.data)
+            m.searchIndexCache.seriesCategories = m.seriesCategories
+            for each category in m.seriesCategories
+                m.searchIndexQueue.Push({ action: "getSeries", kind: "series", categoryId: getCategoryId(category) })
+            end for
+        else if kind = "movies" then
+            replaceSearchIndexCategory("movies", m.searchIndexCategoryId, BuildMovieSearchIndexItems(result.data, m.searchIndexCategoryId))
+        else if kind = "series" then
+            replaceSearchIndexCategory("series", m.searchIndexCategoryId, BuildSeriesSearchIndexItems(result.data, m.searchIndexCategoryId))
+        end if
+        SaveSearchIndexCache(m.searchIndexCache)
+    end if
+    m.searchIndexTimer.control = "start"
+    return true
+end function
+
+sub replaceSearchIndexCategory(kind as String, categoryId as String, entries as Object)
+    target = []
+    current = m.movieSearchIndex
+    if kind = "series" then current = m.seriesSearchIndex
+    for each entry in current
+        if entry.categoryId = invalid or entry.categoryId.ToStr() <> categoryId then target.Push(entry)
+    end for
+    for each entry in entries
+        target.Push(entry)
+    end for
+    if kind = "series" then
+        m.seriesSearchIndex = target
+        m.searchIndexCache.seriesSearchIndex = target
+    else
+        m.movieSearchIndex = target
+        m.searchIndexCache.movieSearchIndex = target
+    end if
 end sub
 
 sub hideSeriesScreens()
@@ -1422,6 +1545,8 @@ sub onMovieCategoriesResult(result as Object)
 
     if result.success = true then
         m.movieCategories = normalizeMovieCategories(result.data)
+        m.searchIndexCache.movieCategories = m.movieCategories
+        SaveSearchIndexCache(m.searchIndexCache)
         if m.movieListScreen.visible = true then
             m.movieListScreen.callFunc("setCategories", m.movieCategories)
             m.movieListScreen.callFunc("showMessage", "Escolha uma categoria para carregar os filmes.")
@@ -1455,6 +1580,8 @@ sub onSeriesCategoriesResult(result as Object)
     if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", false)
     if result.success = true then
         m.seriesCategories = normalizeSeriesCategories(result.data)
+        m.searchIndexCache.seriesCategories = m.seriesCategories
+        SaveSearchIndexCache(m.searchIndexCache)
         if m.seriesHomeScreen.visible = true then
             m.seriesHomeScreen.callFunc("setCategories", m.seriesCategories)
             m.seriesHomeScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
