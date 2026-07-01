@@ -20,7 +20,7 @@ sub Init()
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
     m.resultBatchSize = 20 : m.renderedResultLimit = 20
     m.searchMode = "live"
-    m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
+    m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.itemNodes = []
     m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     configureLayout()
@@ -95,13 +95,13 @@ end sub
 sub configureSearchLabels()
     m.title.text = getSearchTitle()
     m.searchInput.hintText = getSearchHint()
-    m.subtitle.text = "Digite pelo teclado do app ou pelo Roku Remote no celular"
+    m.subtitle.text = "Buscar: "
 end sub
 
 function getSearchTitle() as String
-    if m.searchMode = "movies" then return "BUSCAR FILME"
-    if m.searchMode = "series" then return "BUSCAR SÉRIE"
-    return "BUSCAR CANAL"
+    if m.searchMode = "movies" then return "PESQUISAR FILME"
+    if m.searchMode = "series" then return "PESQUISAR"
+    return "PESQUISAR CANAL"
 end function
 
 function getSearchHint() as String
@@ -318,10 +318,9 @@ sub activateFocused()
         t = m.searchInput.text : if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
     else if keyLabel = "LIMPAR" then
         m.searchInput.text = ""
-    else if keyLabel = "BUSCAR" then
-        m.searchDebounceTimer.control = "stop"
-        applyFilter()
-        if m.results.Count() > 0 then m.focusZone = "results"
+    else if keyLabel = "FECHAR" then
+        m.top.backRequested = true
+        return
     else if keyLabel = "ESPAÇO" then
         m.searchInput.text = m.searchInput.text + " "
     else

@@ -111,6 +111,7 @@ sub Init()
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
     m.seriesHomeScreen.ObserveField("backRequested", "onSeriesHomeBack")
     m.seriesHomeScreen.ObserveField("categorySelected", "onSeriesHomeCategorySelected")
+    m.seriesHomeScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
     m.seriesHomeScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.seriesDetailScreen.ObserveField("backRequested", "onSeriesDetailBack")
     m.seriesDetailScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
@@ -361,6 +362,7 @@ sub onSearchBack()
         m.searchScreen.callFunc("hide")
     else if m.searchBackTarget = "series" then
         m.seriesHomeScreen.callFunc("show")
+        m.seriesHomeScreen.callFunc("focusSearchEntry")
         m.searchScreen.callFunc("hide")
     else
         showHome()
@@ -1133,6 +1135,10 @@ sub onSeriesPlayerBack()
     else
         m.seriesDetailScreen.callFunc("show", m.selectedSeries)
     end if
+end sub
+
+sub onSeriesSearchRequested()
+    openSearch("series", "series")
 end sub
 
 sub onSeriesHomeCategorySelected()
