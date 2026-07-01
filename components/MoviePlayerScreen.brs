@@ -268,30 +268,31 @@ sub setTopFocus()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
+    normalizedKey = normalizeKey(key)
 
-    if key = "right" or key = "fastforward" then
+    if normalizedKey = "right" or normalizedKey = "forward" then
         if press then
-            beginSeekHold(key, m.seekStep)
+            beginSeekHold(normalizedKey, m.seekStep)
         else
-            finishSeekHold(key)
+            finishSeekHold(normalizedKey)
         end if
         setTopFocus()
         updateControls()
         return true
     end if
 
-    if key = "left" or key = "rewind" then
+    if normalizedKey = "left" or normalizedKey = "rewind" then
         if press then
-            beginSeekHold(key, -m.seekStep)
+            beginSeekHold(normalizedKey, -m.seekStep)
         else
-            finishSeekHold(key)
+            finishSeekHold(normalizedKey)
         end if
         setTopFocus()
         updateControls()
         return true
     end if
 
-    if key = "play" or key = "pause" then
+    if normalizedKey = "play" then
         if press then
             togglePause()
             setTopFocus()
@@ -300,30 +301,30 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     end if
 
-    if key = "back" then
+    if normalizedKey = "back" then
         if not press then return true
         return handleBackKeySafely()
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         if press then
             togglePause()
             setTopFocus()
             updateControls()
         end if
         return true
-    else if key = "options" then
+    else if normalizedKey = "options" then
         if press then
             toggleControls()
             setTopFocus()
             updateControls()
         end if
         return true
-    else if key = "up" then
+    else if normalizedKey = "up" then
         if press then showControls()
         return true
-    else if key = "down" then
+    else if normalizedKey = "down" then
         if press then hideControls()
         return true
-    else if key = "replay" then
+    else if normalizedKey = "replay" then
         if press then seekTo(0)
         return true
     end if

@@ -53,3 +53,31 @@ function ratingText(value as String) as String
     end for
     return stars
 end function
+
+function normalizeKey(key as String) as String
+    if key = invalid then return ""
+    if key = " " then return "OK"
+
+    normalized = LCase(key.Trim())
+
+    if normalized = "ok" or normalized = "enter" or normalized = "return" or normalized = "space" or normalized = "spacebar" then return "OK"
+    if normalized = "back" or normalized = "esc" or normalized = "escape" or normalized = "backspace" then return "back"
+
+    if normalized = "up" or normalized = "arrowup" or normalized = "arrow up" then return "up"
+    if normalized = "down" or normalized = "arrowdown" or normalized = "arrow down" then return "down"
+    if normalized = "left" or normalized = "arrowleft" or normalized = "arrow left" then return "left"
+    if normalized = "right" or normalized = "arrowright" or normalized = "arrow right" then return "right"
+
+    if normalized = "home" then return "home"
+    if normalized = "options" or normalized = "info" or normalized = "delete" or normalized = "del" then return "options"
+
+    if normalized = "play" or normalized = "pause" or normalized = "playpause" or normalized = "play/pause" or normalized = "insert" then return "play"
+    if normalized = "rewind" or normalized = "pageup" or normalized = "page up" then return "rewind"
+    if normalized = "fastforward" or normalized = "fast forward" or normalized = "forward" or normalized = "pagedown" or normalized = "page down" then return "forward"
+    if normalized = "replay" or normalized = "instantreplay" or normalized = "instant replay" or normalized = "end" then return "replay"
+
+    if Len(normalized) = 1 and Instr(1, "0123456789", normalized) > 0 then return normalized
+    if Left(normalized, 4) = "lit_" then return normalized
+
+    return ""
+end function

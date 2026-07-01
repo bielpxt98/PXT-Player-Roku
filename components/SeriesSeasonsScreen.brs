@@ -164,20 +164,21 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    normalizedKey = normalizeKey(key)
 
-    if key = "back" or key = "left" then
+    if normalizedKey = "back" or normalizedKey = "left" then
         m.top.backRequested = true
         return true
-    else if key = "right" then
+    else if normalizedKey = "right" then
         moveFocus(1)
         return true
-    else if key = "up" then
+    else if normalizedKey = "up" then
         moveFocus(0 - m.columns)
         return true
-    else if key = "down" then
+    else if normalizedKey = "down" then
         moveFocus(m.columns)
         return true
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         if m.seasons.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.seasons.Count() then
             m.top.seasonSelected = m.seasons[m.selectedIndex]
         end if

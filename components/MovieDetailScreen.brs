@@ -169,19 +169,20 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "left" then
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "left" then
         if m.selectedButton > 0 then
             m.selectedButton = m.selectedButton - 1
             updateButtons()
         end if
         return true
-    else if key = "right" then
+    else if normalizedKey = "right" then
         if m.selectedButton < 2 then
             m.selectedButton = m.selectedButton + 1
             updateButtons()
         end if
         return true
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         if m.selectedButton = 0 then
             m.top.playRequested = true
         else if m.selectedButton = 1 then
@@ -190,7 +191,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.top.backRequested = true
         end if
         return true
-    else if key = "back" then
+    else if normalizedKey = "back" then
         m.top.backRequested = true
         return true
     end if

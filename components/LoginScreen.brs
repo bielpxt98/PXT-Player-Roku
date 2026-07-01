@@ -109,30 +109,31 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    normalizedKey = normalizeKey(key)
     if m.isLoading then return true
 
-    if key = "up" then
+    if normalizedKey = "up" then
         moveFocus(-1)
         return true
-    else if key = "down" then
+    else if normalizedKey = "down" then
         moveFocus(1)
         return true
-    else if key = "left" then
+    else if normalizedKey = "left" then
         if m.focusIndex = 4 then
             m.focusIndex = 3
             updateFocus()
             return true
         end if
-    else if key = "right" then
+    else if normalizedKey = "right" then
         if m.focusIndex = 3 then
             m.focusIndex = 4
             updateFocus()
             return true
         end if
-    else if key = "back" then
+    else if normalizedKey = "back" then
         onBackSelected()
         return true
-    else if key = "OK" then
+    else if normalizedKey = "OK" then
         if m.focusIndex <= 2 then
             openTextKeyboard(m.focusIndex)
             return true

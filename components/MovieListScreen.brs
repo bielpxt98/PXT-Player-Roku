@@ -198,7 +198,8 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    if key = "back" then
+    normalizedKey = normalizeKey(key)
+    if normalizedKey = "back" then
         if m.activePane = "grid" or m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         else
@@ -206,7 +207,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if key = "left" then
+    if normalizedKey = "left" then
         if m.activePane = "grid" then
             if (m.selectedIndex mod m.columns) = 0 then
                 m.activePane = "categories" : updateFocus()
@@ -218,7 +219,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if key = "right" then
+    if normalizedKey = "right" then
         if m.activePane = "categories" or m.activePane = "search" then
             if m.movies.Count() > 0 then m.activePane = "grid" : updateFocus()
         else
@@ -226,7 +227,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if key = "up" then
+    if normalizedKey = "up" then
         if m.activePane = "categories" then
             if m.selectedCategoryIndex = 0 then
                 m.activePane = "search" : updateFocus()
@@ -238,7 +239,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if key = "down" then
+    if normalizedKey = "down" then
         if m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         else if m.activePane = "categories" then
@@ -248,11 +249,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if key = "options" then
+    if normalizedKey = "options" then
         if m.movies.Count() > 0 then m.top.movieFavoriteToggled = m.movies[m.selectedIndex]
         return true
     end if
-    if key = "OK" then
+    if normalizedKey = "OK" then
         if m.activePane = "search" then
             m.top.searchRequested = true
         else if m.activePane = "categories" then
