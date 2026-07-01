@@ -98,13 +98,13 @@ end sub
 sub configureSearchLabels()
     m.title.text = getSearchTitle()
     m.searchInput.hintText = getSearchHint()
-    m.subtitle.text = "Digite pelo teclado do app ou pelo Roku Remote no celular"
+    m.subtitle.text = "Buscar: "
 end sub
 
 function getSearchTitle() as String
-    if m.searchMode = "movies" then return "BUSCAR FILME"
-    if m.searchMode = "series" then return "BUSCAR SÉRIE"
-    return "BUSCAR CANAL"
+    if m.searchMode = "movies" then return "PESQUISAR FILME"
+    if m.searchMode = "series" then return "PESQUISAR"
+    return "PESQUISAR CANAL"
 end function
 
 function getSearchHint() as String
