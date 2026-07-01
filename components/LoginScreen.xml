@@ -8,10 +8,12 @@
         <field id="submit" type="assocarray" alwaysNotify="true" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
     </interface>
-    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/LoginScreen.brs" />
     <children>
-        <Rectangle id="loginBackground" color="#000000" opacity="1" translation="[0, 0]" />
+        <Rectangle id="loginBackground" color="#000000" opacity="0.58" translation="[0, 0]" />
+        <Label id="loginTitle" text="LOGIN PXT PLAYER" color="#FFFFFF" horizAlign="center" />
+        <Label id="loginSubtitle" text="Informe os dados da sua conta" color="#B8C3D6" horizAlign="center" />
+
         <Group id="formGroup">
             <Label id="dnsLabel" text="DNS" color="#FFFFFF" />
             <Rectangle id="dnsFocus" color="#147DFF" width="600" height="72" />
@@ -23,23 +25,13 @@
 
             <Label id="passwordLabel" text="SENHA" color="#FFFFFF" translation="[0, 238]" />
             <Rectangle id="passwordFocus" color="#147DFF" width="600" height="72" translation="[0, 268]" />
-            <TextEditBox id="passwordInput" hintText="Sua senha" width="580" height="54" translation="[10, 277]" maxTextLength="100" clearOnDownKey="false" leadingEllipsis="true" />
+            <TextEditBox id="passwordInput" hintText="Sua senha" width="580" height="54" translation="[10, 277]" secureMode="true" maxTextLength="100" clearOnDownKey="false" leadingEllipsis="true" />
 
             <Button id="enterButton" text="ENTRAR" minWidth="280" translation="[0, 390]" />
             <Button id="backButton" text="VOLTAR" minWidth="280" translation="[320, 390]" />
             <BusySpinner id="loadingSpinner" translation="[240, 486]" visible="false" />
             <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 548]" visible="false" />
             <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 488]" visible="false" />
-        </Group>
-        <Group id="customKeyboardOverlay" visible="false" translation="[0, 0]">
-            <Rectangle id="customKeyboardScrim" color="#000000" opacity="0.72" />
-            <Group id="customKeyboardPanel">
-                <Rectangle id="customKeyboardPanelBackground" color="#07111F" opacity="1" width="900" height="500" />
-                <Label id="customKeyboardTitle" color="#FFFFFF" font="font:MediumBoldSystemFont" width="860" height="48" translation="[20, 18]" horizAlign="center" />
-                <Rectangle id="customKeyboardTextBackground" color="#101A2C" width="860" height="58" translation="[20, 74]" />
-                <Label id="customKeyboardText" color="#EAF2FF" font="font:SmallBoldSystemFont" width="836" height="58" translation="[32, 74]" vertAlign="center" />
-                <Group id="customKeyboardKeys" translation="[28, 154]" />
-            </Group>
         </Group>
     </children>
 </component>

@@ -8,7 +8,6 @@
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="channelName" type="string" />
     </interface>
-    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/LivePlayerScreen.brs" />
     <children>
         <Video id="video" translation="[0, 0]" />

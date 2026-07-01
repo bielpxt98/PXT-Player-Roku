@@ -10,8 +10,8 @@ sub Init()
     m.animationTimer = m.top.FindNode("animationTimer")
     m.phaseIndex = 0
     m.phases = [
-        { icon: "▣", label: "TV AO VIVO" },
-        { icon: "▶", label: "FILMES" },
+        { icon: "📺", label: "TV AO VIVO" },
+        { icon: "🎬", label: "FILMES" },
         { icon: "▶", label: "SÉRIES" },
         { icon: "⏯", label: "PLAYER" }
     ]

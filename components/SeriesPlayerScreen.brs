@@ -113,12 +113,9 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     content.live = false
 
     m.lastPosition = startPosition
-    if startPosition > 0 then
-        content.PlayStart = startPosition
-    end if
-
     m.video.visible = true
     m.video.content = content
+    if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
     m.top.SetFocus(true)
@@ -229,41 +226,34 @@ sub onVideoStateChanged()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    normalizedKey = normalizeKey(key)
-    if normalizedKey = "right" or normalizedKey = "left" or normalizedKey = "forward" or normalizedKey = "rewind" then
+    if key = "right" or key = "left" then
         if press then
-            beginSeekHold(normalizedKey)
+            beginSeekHold(key)
         else
-            finishSeekHold(normalizedKey)
+            finishSeekHold(key)
         end if
         return true
     end if
 
     if not press then return false
 
-    if normalizedKey = "back" then
+    if key = "back" then
         return handleBackKeySafely()
-    else if normalizedKey = "OK" then
+    else if key = "OK" then
         togglePause()
         return true
-    else if normalizedKey = "up" then
+    else if key = "up" then
         showControls()
         return true
-    else if normalizedKey = "down" then
+    else if key = "down" then
         hideControls()
         return true
-    else if normalizedKey = "replay" then
+    else if key = "replay" then
         seekTo(0)
         return true
     end if
 
     return false
-end function
-
-function handleBackKeySafely() as Boolean
-    stopPlayback()
-    m.top.backRequested = true
-    return true
 end function
 
 sub beginSeekHold(key as String)
@@ -283,7 +273,7 @@ sub finishSeekHold(key as String)
     wasLongPress = m.seekHoldHandled = true or elapsedMs >= m.holdThresholdMs
     stopSeekHold()
     if not wasLongPress then
-        if key = "right" or key = "forward" then
+        if key = "right" then
             seekBy(m.seekStep)
         else
             seekBy(-m.seekStep)
@@ -380,4 +370,14 @@ function getStreamFormat(streamUrl as String) as String
     if Instr(1, lowerUrl, ".m3u8") > 0 then return "hls"
     if Instr(1, lowerUrl, ".mp4") > 0 then return "mp4"
     return "ts"
+end function
+
+function getDisplayResolution() as Object
+    deviceInfo = CreateObject("roDeviceInfo")
+    displaySize = deviceInfo.GetDisplaySize()
+
+    return {
+        width: displaySize.w,
+        height: displaySize.h
+    }
 end function

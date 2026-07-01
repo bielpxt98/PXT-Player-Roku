@@ -1,4 +1,4 @@
-' Simple in-app search screen for section-scoped live channels, movies, and series.
+' Premium in-app search screen for section-scoped live channels, movies, and series.
 sub Init()
     m.backgroundImage = m.top.FindNode("backgroundImage")
     m.overlay = m.top.FindNode("overlay")
@@ -12,20 +12,15 @@ sub Init()
     m.statusLabel = m.top.FindNode("statusLabel")
     m.searchDebounceTimer = m.top.FindNode("searchDebounceTimer")
     m.searchDebounceTimer.ObserveField("fire", "onSearchDebounceFire")
-    m.moviePreloadTimer = m.top.FindNode("moviePreloadTimer")
-    m.moviePreloadTimer.ObserveField("fire", "onMoviePreloadTimerFire")
     m.keyboardGroup = m.top.FindNode("keyboardGroup")
     m.resultsTitle = m.top.FindNode("resultsTitle")
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = []
-    m.movieSource = [] : m.movieSearchCache = [] : m.moviePreloadIndex = 0 : m.moviePreloadComplete = true
-    m.moviePreloadBatchSize = 75 : m.isLoading = false
-    m.initialResultLimit = 30 : m.maxRenderedResults = 30 : m.resultBatchSize = 30 : m.renderedResultLimit = 30
+    m.resultBatchSize = 20 : m.renderedResultLimit = 20
     m.searchMode = "live"
-    m.keyboardMode = "alpha"
-    setKeyboardRows()
+    m.keyRows = [ ["A","B","C","D","E","F","G","H","I","J"], ["K","L","M","N","O","P","Q","R","S","T"], ["U","V","W","X","Y","Z","0","1","2","3"], ["4","5","6","7","8","9","ESPAÇO","APAGAR","LIMPAR","BUSCAR"] ]
     m.keyNodes = [] : m.itemNodes = []
     m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     configureLayout()
@@ -52,10 +47,10 @@ sub configureLayout()
     m.keyboardGroup.translation = [m.marginX, m.keyboardTop]
     m.hintLabel.width = m.screenW : m.hintLabel.font = "font:SmallSystemFont" : m.hintLabel.translation = [0, m.screenH - 34]
     m.keyGap = 8
-    m.keyW = Int((m.contentWidth - 6 * m.keyGap) / 7) : m.keyH = 34
+    m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.keyH = 34
     m.cardGap = 16 : m.cardHeight = 196
     m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
-    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 6 * m.keyGap) / 7) : m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
+    if m.screenH <= 720 then m.cardGap = 12 : m.cardHeight = 170 : m.keyH = 28 : m.keyGap = 6 : m.keyW = Int((m.contentWidth - 9 * m.keyGap) / 10) : m.cardWidth = Int((m.contentWidth - (5 * m.cardGap)) / 5.5)
     m.visibleItemCount = 7
 end sub
 
@@ -68,7 +63,7 @@ sub show(mode as Dynamic)
     m.searchInput.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
     m.searchInput.text = "" : m.queryMirror.text = "Texto digitado: "
-    m.focusZone = "input" : m.keyboardMode = "alpha" : setKeyboardRows() : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
+    m.focusZone = "input" : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : m.selectedIndex = 0 : m.firstVisibleIndex = 0
     renderKeyboard()
     applyFilter()
 end sub
@@ -78,9 +73,8 @@ sub hide()
 end sub
 
 sub setLoading(isLoading as Boolean)
-    m.isLoading = isLoading
     if isLoading then
-        m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando..."
+        clearResultNodes() : m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando conteúdo para busca..."
     else
         m.statusLabel.text = ""
     end if
@@ -89,56 +83,9 @@ end sub
 sub setData(data as Object)
     if data = invalid then return
     if data.channels <> invalid then m.channels = normalizeArray(data.channels)
-    if data.movies <> invalid then startMoviePreload(normalizeArray(data.movies))
+    if data.movies <> invalid then m.movies = normalizeArray(data.movies)
     if data.series <> invalid then m.series = normalizeArray(data.series)
     applyFilter()
-end sub
-
-sub startMoviePreload(items as Object)
-    if items = invalid then items = []
-    if m.movieSource <> invalid and m.movieSource.Count() = items.Count() and m.moviePreloadComplete = true then
-        m.movies = items
-        return
-    end if
-
-    m.movieSource = items
-    m.movies = []
-    m.movieSearchCache = []
-    m.moviePreloadIndex = 0
-    m.moviePreloadComplete = (items.Count() = 0)
-    if m.moviePreloadTimer <> invalid then m.moviePreloadTimer.control = "stop"
-    processMoviePreloadBatch()
-    if m.moviePreloadComplete <> true and m.moviePreloadTimer <> invalid then m.moviePreloadTimer.control = "start"
-end sub
-
-sub onMoviePreloadTimerFire()
-    processMoviePreloadBatch()
-    if m.moviePreloadComplete = true and m.moviePreloadTimer <> invalid then m.moviePreloadTimer.control = "stop"
-end sub
-
-sub processMoviePreloadBatch()
-    if m.movieSource = invalid then return
-    if m.moviePreloadIndex >= m.movieSource.Count() then
-        m.moviePreloadComplete = true
-        m.isLoading = false
-        return
-    end if
-
-    batchEnd = m.moviePreloadIndex + m.moviePreloadBatchSize - 1
-    if batchEnd >= m.movieSource.Count() then batchEnd = m.movieSource.Count() - 1
-    for i = m.moviePreloadIndex to batchEnd
-        item = m.movieSource[i]
-        name = getItemName(item)
-        m.movies.Push(item)
-        m.movieSearchCache.Push({ lowerName: LCase(name), result: { type: "movie", title: name, meta: getItemMeta(item), item: item } })
-    end for
-    m.moviePreloadIndex = batchEnd + 1
-    if m.moviePreloadIndex >= m.movieSource.Count() then
-        m.moviePreloadComplete = true
-        m.isLoading = false
-    end if
-
-    if m.searchMode = "movies" then applyFilter()
 end sub
 
 sub showMessage(message as String)
@@ -169,14 +116,6 @@ function getEmptySearchMessage() as String
     return "Digite para encontrar canais ao vivo na sua lista."
 end function
 
-sub setKeyboardRows()
-    if m.keyboardMode = "numeric" then
-        m.keyRows = [ ["1","2","3"], ["4","5","6"], ["7","8","9"], ["ABC","0","APAGAR"], ["ESPAÇO","LIMPAR","BUSCAR"] ]
-    else
-        m.keyRows = [ ["A","B","C","D","E","F","G"], ["H","I","J","K","L","M","N"], ["O","P","Q","R","S","T","U"], ["V","W","X","Y","Z","123","APAGAR"], ["ESPAÇO","LIMPAR","BUSCAR"] ]
-    end if
-end sub
-
 sub renderKeyboard()
     while m.keyboardGroup.GetChildCount() > 0 : m.keyboardGroup.RemoveChildIndex(0) : end while
     m.keyNodes = []
@@ -184,32 +123,15 @@ sub renderKeyboard()
         rowNodes = []
         for c = 0 to m.keyRows[r].Count() - 1
             keyLabel = m.keyRows[r][c]
-            keyWidth = getKeyWidth(keyLabel)
-            keyX = getKeyX(r, c)
-            g = CreateObject("roSGNode", "Group") : g.translation = [keyX, r * (m.keyH + m.keyGap)]
-            bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = keyWidth : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
-            lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = keyWidth : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
+            g = CreateObject("roSGNode", "Group") : g.translation = [c * (m.keyW + m.keyGap), r * (m.keyH + m.keyGap)]
+            bg = CreateObject("roSGNode", "Rectangle") : bg.id = "keyBackground" : bg.width = m.keyW : bg.height = m.keyH : bg.color = "#101A2C" : bg.opacity = 0.92
+            lb = CreateObject("roSGNode", "Label") : lb.id = "keyLabel" : lb.width = m.keyW : lb.height = m.keyH : lb.horizAlign = "center" : lb.vertAlign = "center" : lb.color = "#EAF2FF" : lb.font = "font:SmallBoldSystemFont" : lb.text = keyLabel
             g.AppendChild(bg) : g.AppendChild(lb) : m.keyboardGroup.AppendChild(g) : rowNodes.Push(g)
         end for
         m.keyNodes.Push(rowNodes)
     end for
     updateKeyboardFocus()
 end sub
-
-function getKeyX(rowIndex as Integer, colIndex as Integer) as Integer
-    keyX = 0
-    if rowIndex < 0 or rowIndex >= m.keyRows.Count() then return 0
-    for i = 0 to colIndex - 1
-        keyX = keyX + getKeyWidth(m.keyRows[rowIndex][i]) + m.keyGap
-    end for
-    return keyX
-end function
-
-function getKeyWidth(keyLabel as String) as Integer
-    if keyLabel = "ESPAÇO" then return (m.keyW * 3) + (m.keyGap * 2)
-    if keyLabel = "LIMPAR" or keyLabel = "BUSCAR" then return (m.keyW * 2) + m.keyGap
-    return m.keyW
-end function
 
 sub onSearchTextChanged()
     m.queryMirror.text = "Texto digitado: " + m.searchInput.text
@@ -225,57 +147,40 @@ sub applyFilter()
     query = LCase(m.searchInput.text.Trim())
     m.results = []
     if m.searchMode = "live" then addMatches("channel", m.channels, query)
-    if m.searchMode = "movies" then addMovieMatches(m.movies, query)
+    if m.searchMode = "movies" then addMatches("movie", m.movies, query)
     if m.searchMode = "series" then addMatches("series", m.series, query)
-    m.selectedIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.maxRenderedResults
+    m.selectedIndex = 0 : m.firstVisibleIndex = 0 : m.renderedResultLimit = m.resultBatchSize
     if m.results.Count() = 0 then
-        clearResultNodes()
-        if isCurrentSearchLoading() then
-            m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando..."
-        else if query = "" then
-            m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = getEmptySearchMessage()
-        else
-            m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado"
-        end if
+        clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = "Nenhum resultado encontrado. Tente outro nome."
     else
-        if isCurrentSearchLoading() then
-            m.statusLabel.color = "#B8C3D6" : m.statusLabel.text = "Carregando..."
-        else
-            m.statusLabel.text = ""
-        end if
-        renderResults() : updateResultFocus()
+        m.statusLabel.text = "" : renderResults() : updateResultFocus()
     end if
 end sub
 
-sub addMovieMatches(items as Dynamic, query as String)
-    sourceItems = m.movieSearchCache
-    if sourceItems = invalid then sourceItems = []
-    for each cachedItem in sourceItems
-        if m.results.Count() >= m.maxRenderedResults then exit for
-        if shouldIncludeMovieResult(cachedItem.lowerName, query) then
-            m.results.Push(cachedItem.result)
+sub addMatches(kind as String, items as Dynamic, query as String)
+    startsWithEntries = []
+    containsEntries = []
+    for each item in normalizeArray(items)
+        name = getItemName(item)
+        meta = getItemMeta(item)
+        lowerName = LCase(name)
+        if query = "" then
+            startsWithEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
+        else if Left(lowerName, Len(query)) = query then
+            startsWithEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
+        else if Instr(1, lowerName, query) > 0 then
+            containsEntries.Push({ sortKey: lowerName, type: kind, title: name, meta: meta, item: item })
         end if
     end for
+    startsWithEntries.SortBy("sortKey")
+    containsEntries.SortBy("sortKey")
+    appendSearchEntries(startsWithEntries)
+    appendSearchEntries(containsEntries)
 end sub
 
-function isCurrentSearchLoading() as Boolean
-    if m.searchMode = "movies" then return m.moviePreloadComplete <> true or m.isLoading = true
-    return m.isLoading = true
-end function
-
-function shouldIncludeMovieResult(lowerName as String, query as String) as Boolean
-    if query = "" then return true
-    return Left(lowerName, Len(query)) = query
-end function
-
-sub addMatches(kind as String, items as Dynamic, query as String)
-    for each item in normalizeArray(items)
-        if m.results.Count() >= m.maxRenderedResults then exit for
-        name = getItemName(item)
-        lowerName = LCase(name)
-        if query = "" or Left(lowerName, Len(query)) = query then
-            m.results.Push({ type: kind, title: name, meta: getItemMeta(item), item: item })
-        end if
+sub appendSearchEntries(entries as Object)
+    for each entry in entries
+        m.results.Push({ type: entry.type, title: entry.title, meta: entry.meta, item: entry.item })
     end for
 end sub
 
@@ -306,13 +211,12 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    normalizedKey = normalizeKey(key)
-    if normalizedKey = "back" then m.top.backRequested = true : return true
-    if normalizedKey = "up" then moveVertical(-1) : return true
-    if normalizedKey = "down" then moveVertical(1) : return true
-    if normalizedKey = "left" then moveHorizontal(-1) : return true
-    if normalizedKey = "right" then moveHorizontal(1) : return true
-    if normalizedKey = "OK" then activateFocused() : return true
+    if key = "back" then m.top.backRequested = true : return true
+    if key = "up" then moveVertical(-1) : return true
+    if key = "down" then moveVertical(1) : return true
+    if key = "left" then moveHorizontal(-1) : return true
+    if key = "right" then moveHorizontal(1) : return true
+    if key = "OK" then activateFocused() : return true
     if handleRokuKeyboardKey(key) then return true
     return false
 end function
@@ -410,11 +314,7 @@ sub activateFocused()
     if m.focusZone = "results" then openSelected() : return
     if m.focusZone = "input" then m.searchInput.SetFocus(true) : return
     keyLabel = m.keyRows[m.selectedKeyRow][m.selectedKeyCol]
-    if keyLabel = "123" then
-        m.keyboardMode = "numeric" : setKeyboardRows() : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : renderKeyboard()
-    else if keyLabel = "ABC" then
-        m.keyboardMode = "alpha" : setKeyboardRows() : m.selectedKeyRow = 0 : m.selectedKeyCol = 0 : renderKeyboard()
-    else if keyLabel = "APAGAR" then
+    if keyLabel = "APAGAR" then
         t = m.searchInput.text : if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
     else if keyLabel = "LIMPAR" then
         m.searchInput.text = ""
@@ -506,7 +406,11 @@ function getLoadedResultCount() as Integer
 end function
 
 sub maybeLoadMoreResults()
-    if m.renderedResultLimit > m.maxRenderedResults then m.renderedResultLimit = m.maxRenderedResults
+    if m.results.Count() <= m.renderedResultLimit then return
+    if m.selectedIndex >= m.renderedResultLimit - 4 then
+        m.renderedResultLimit = m.renderedResultLimit + m.resultBatchSize
+        if m.renderedResultLimit > m.results.Count() then m.renderedResultLimit = m.results.Count()
+    end if
 end sub
 
 sub openSelected()
@@ -522,6 +426,10 @@ sub clearResultNodes()
     m.itemNodes = []
 end sub
 
+function normalizeArray(value as Dynamic) as Object
+    if value <> invalid and Type(value) = "roArray" then return value
+    return []
+end function
 
 function getItemImage(item as Dynamic) as String
     if item = invalid then return ""

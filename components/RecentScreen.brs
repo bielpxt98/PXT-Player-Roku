@@ -99,17 +99,16 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    normalizedKey = normalizeKey(key)
-    if normalizedKey = "back" then
+    if key = "back" then
         m.top.backRequested = true
         return true
-    else if normalizedKey = "up" then
+    else if key = "up" then
         moveFocus(-1)
         return true
-    else if normalizedKey = "down" then
+    else if key = "down" then
         moveFocus(1)
         return true
-    else if normalizedKey = "OK" then
+    else if key = "OK" then
         if m.items.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.items.Count() then m.top.historySelected = m.items[m.selectedIndex]
         return true
     end if

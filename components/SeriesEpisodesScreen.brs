@@ -91,9 +91,9 @@ end sub
 
 sub show(category as Dynamic)
     if category <> invalid then
-        m.subtitle.text = getCategoryName(category)
+        m.subtitle.text = "Episódios • " + getCategoryName(category)
     else
-        m.subtitle.text = "Temporada"
+        m.subtitle.text = "Episódios"
     end if
 
     configureLayout()
@@ -102,7 +102,7 @@ sub show(category as Dynamic)
     renderList()
     updateFocus()
     m.top.visible = true
-    if m.top.visible = true then m.top.SetFocus(true)
+    m.top.SetFocus(true)
 end sub
 
 sub hide()
@@ -116,6 +116,8 @@ sub resetSelection()
 end sub
 
 sub logInitialSelection()
+    print "INIT selectedIndex="; m.selectedIndex
+    print "INIT firstVisibleIndex="; m.firstVisibleIndex
 end sub
 
 sub setLoading(isLoading as Boolean)
@@ -248,6 +250,12 @@ function getEpisodeCover(episode as Dynamic) as String
     return ""
 end function
 
+function getCategoryName(category as Dynamic) as String
+    if category = invalid then return "Categoria"
+    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
+    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
+    return "Categoria"
+end function
 
 sub clearEpisodeNodes()
     while m.episodesGroup.GetChildCount() > 0
@@ -258,26 +266,27 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    normalizedKey = normalizeKey(key)
 
-    if normalizedKey = "back" or normalizedKey = "left" then
+    if key = "back" then
         m.top.backRequested = true
         return true
-    else if normalizedKey = "up" then
+    else if key = "up" then
         moveFocus(-1)
         return true
-    else if normalizedKey = "down" then
+    else if key = "down" then
         moveFocus(1)
         return true
-    else if normalizedKey = "options" then
+    else if key = "options" then
         if m.episodes.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.episodes.Count() then
             m.top.episodeFavoriteToggled = m.episodes[m.selectedIndex]
             m.statusLabel.color = "#5CE08A"
             m.statusLabel.text = "Episódio atualizado nos favoritos."
         end if
         return true
-    else if normalizedKey = "OK" then
+    else if key = "OK" then
         if m.episodes.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.episodes.Count() then
+            print "OK opening selectedIndex="; m.selectedIndex
+            print "OK opening item="; getEpisodeLogTitle(m.episodes[m.selectedIndex])
             m.top.episodeSelected = m.episodes[m.selectedIndex]
         end if
         return true
@@ -370,3 +379,13 @@ sub updateFocus()
         coverBackground.color = "#0F4F7A"
     end if
 end sub
+
+function getDisplayResolution() as Object
+    deviceInfo = CreateObject("roDeviceInfo")
+    displaySize = deviceInfo.GetDisplaySize()
+
+    return {
+        width: displaySize.w
+        height: displaySize.h
+    }
+end function

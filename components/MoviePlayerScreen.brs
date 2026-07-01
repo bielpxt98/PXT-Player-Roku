@@ -10,14 +10,10 @@ sub Init()
     m.errorMessage = m.top.FindNode("errorMessage")
     m.controlsGroup = m.top.FindNode("controlsGroup")
     m.controlsBackground = m.top.FindNode("controlsBackground")
-    m.controlsTitle = m.top.FindNode("controlsTitle")
-    m.seekStatusLabel = m.top.FindNode("seekStatusLabel")
-    m.currentTimeLabel = m.top.FindNode("currentTimeLabel")
-    m.durationLabel = m.top.FindNode("durationLabel")
-    m.progressTrack = m.top.FindNode("progressTrack")
-    m.progressFill = m.top.FindNode("progressFill")
+    m.rewindIcon = m.top.FindNode("rewindIcon")
+    m.playPauseIcon = m.top.FindNode("playPauseIcon")
+    m.forwardIcon = m.top.FindNode("forwardIcon")
     m.seekHoldTimer = m.top.FindNode("seekHoldTimer")
-    m.progressTimer = m.top.FindNode("progressTimer")
 
     m.movie = invalid
     m.movieName = "Filme"
@@ -26,20 +22,18 @@ sub Init()
     m.resumePosition = 0
     m.lastPosition = 0
     m.seekStep = 10
-    m.seekHoldDelta = 0
+    m.longSeekStep = 10
+    m.holdThresholdMs = 450
     m.heldSeekKey = ""
+    m.seekHoldHandled = false
+    m.seekPressTimer = invalid
     m.pendingStreamUrl = ""
-    m.pendingSeekPosition = invalid
-    m.pendingSeekTimer = invalid
     m.resumeDialog = invalid
 
     configureLayout()
     m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
-    m.video.ObserveField("position", "onVideoProgressChanged")
-    m.video.ObserveField("duration", "onVideoProgressChanged")
     m.seekHoldTimer.ObserveField("fire", "onSeekHoldTimerFire")
-    m.progressTimer.ObserveField("fire", "onProgressTimerFire")
     hide()
 end sub
 
@@ -64,35 +58,25 @@ sub configureLayout()
     m.errorMessage.font = "font:MediumSystemFont"
     m.errorMessage.translation = [0, 78]
 
-    controlsWidth = width - 160
-    if controlsWidth > 980 then controlsWidth = 980
-    if controlsWidth < 520 then controlsWidth = width - 64
-    controlsHeight = 150
-    controlsX = Int((width - controlsWidth) / 2)
-    controlsY = height - controlsHeight - 64
-    m.controlsGroup.translation = [controlsX, controlsY]
+    controlsWidth = 420
+    controlsHeight = 140
+    iconSize = 92
+    iconGap = 24
+    m.controlsGroup.translation = [Int((width - controlsWidth) / 2), Int((height - controlsHeight) / 2)]
     m.controlsBackground.width = controlsWidth
     m.controlsBackground.height = controlsHeight
-    m.controlsTitle.translation = [28, 18]
-    m.controlsTitle.width = controlsWidth - 56
-    m.controlsTitle.height = 34
-    m.controlsTitle.font = "font:MediumBoldSystemFont"
-    m.seekStatusLabel.translation = [28, 54]
-    m.seekStatusLabel.width = controlsWidth - 56
-    m.seekStatusLabel.height = 30
-    m.seekStatusLabel.font = "font:SmallSystemFont"
-    m.currentTimeLabel.translation = [28, 92]
-    m.currentTimeLabel.width = 120
-    m.currentTimeLabel.font = "font:SmallSystemFont"
-    m.durationLabel.translation = [controlsWidth - 148, 92]
-    m.durationLabel.width = 120
-    m.durationLabel.font = "font:SmallSystemFont"
-    m.progressTrack.translation = [28, 124]
-    m.progressTrack.width = controlsWidth - 56
-    m.progressTrack.height = 8
-    m.progressFill.translation = [28, 124]
-    m.progressFill.width = 0
-    m.progressFill.height = 8
+    m.rewindIcon.translation = [24, 24]
+    m.rewindIcon.width = iconSize
+    m.rewindIcon.height = iconSize
+    m.rewindIcon.font = "font:LargeBoldSystemFont"
+    m.playPauseIcon.translation = [24 + iconSize + iconGap, 24]
+    m.playPauseIcon.width = iconSize
+    m.playPauseIcon.height = iconSize
+    m.playPauseIcon.font = "font:LargeBoldSystemFont"
+    m.forwardIcon.translation = [24 + ((iconSize + iconGap) * 2), 24]
+    m.forwardIcon.width = iconSize
+    m.forwardIcon.height = iconSize
+    m.forwardIcon.font = "font:LargeBoldSystemFont"
 end sub
 
 sub show(movie as Dynamic)
@@ -103,7 +87,7 @@ sub show(movie as Dynamic)
     m.top.visible = true
     showLoading("Preparando " + m.movieName + "...")
     hideControls()
-    setTopFocus()
+    m.top.SetFocus(true)
 end sub
 
 sub play(streamUrl as String)
@@ -129,17 +113,12 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     content.live = false
 
     m.lastPosition = startPosition
-    m.pendingSeekPosition = invalid
-    m.pendingSeekTimer = invalid
-    if startPosition > 0 then
-        content.PlayStart = startPosition
-    end if
-
     m.video.visible = true
     m.video.content = content
+    if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
-    setTopFocus()
+    m.top.SetFocus(true)
     showLoading("Carregando " + m.movieName + "...")
 end sub
 
@@ -153,13 +132,6 @@ sub setResumePosition(position as Dynamic)
 end sub
 
 function getPlaybackPosition() as Integer
-    if m.pendingSeekPosition <> invalid then
-        if m.pendingSeekTimer <> invalid and m.pendingSeekTimer.TotalMilliseconds() < 1800 then
-            return Int(m.pendingSeekPosition)
-        end if
-        m.pendingSeekPosition = invalid
-        m.pendingSeekTimer = invalid
-    end if
     if m.video <> invalid and m.video.position <> invalid then
         m.lastPosition = Int(m.video.position)
         return m.lastPosition
@@ -213,9 +185,6 @@ sub stopPlayback()
     if m.loadingSpinner <> invalid then m.loadingSpinner.control = "stop"
     if m.loadingGroup <> invalid then m.loadingGroup.visible = false
     stopSeekHold()
-    if m.progressTimer <> invalid then m.progressTimer.control = "stop"
-    m.pendingSeekPosition = invalid
-    m.pendingSeekTimer = invalid
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
 end sub
 
@@ -243,9 +212,6 @@ sub onVideoStateChanged()
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
-        if m.progressTimer <> invalid then m.progressTimer.control = "start"
-        m.top.SetFocus(true)
-        updateControls()
     else if state = "paused" then
         m.isPlaying = false
         showControls()
@@ -259,114 +225,78 @@ sub onVideoStateChanged()
     end if
 end sub
 
-sub onVisibleChanged()
-    if m.top.visible = true then setTopFocus()
-end sub
-
-sub setTopFocus()
-    m.top.SetFocus(true)
-end sub
-
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    normalizedKey = normalizeKey(key)
-
-    if normalizedKey = "right" or normalizedKey = "forward" then
+    if key = "right" or key = "left" then
         if press then
-            beginSeekHold(normalizedKey, m.seekStep)
+            beginSeekHold(key)
         else
-            finishSeekHold(normalizedKey)
-        end if
-        setTopFocus()
-        updateControls()
-        return true
-    end if
-
-    if normalizedKey = "left" or normalizedKey = "rewind" then
-        if press then
-            beginSeekHold(normalizedKey, -m.seekStep)
-        else
-            finishSeekHold(normalizedKey)
-        end if
-        setTopFocus()
-        updateControls()
-        return true
-    end if
-
-    if normalizedKey = "play" then
-        if press then
-            togglePause()
-            setTopFocus()
-            updateControls()
+            finishSeekHold(key)
         end if
         return true
     end if
 
-    if normalizedKey = "back" then
-        if not press then return true
+    if not press then return false
+
+    if key = "back" then
         return handleBackKeySafely()
-    else if normalizedKey = "OK" then
-        if press then
-            togglePause()
-            setTopFocus()
-            updateControls()
-        end if
+    else if key = "OK" then
+        togglePause()
         return true
-    else if normalizedKey = "options" then
-        if press then
-            toggleControls()
-            setTopFocus()
-            updateControls()
-        end if
+    else if key = "up" then
+        showControls()
         return true
-    else if normalizedKey = "up" then
-        if press then showControls()
+    else if key = "down" then
+        hideControls()
         return true
-    else if normalizedKey = "down" then
-        if press then hideControls()
-        return true
-    else if normalizedKey = "replay" then
-        if press then seekTo(0)
+    else if key = "replay" then
+        seekTo(0)
         return true
     end if
 
     return false
 end function
 
-function handleBackKeySafely() as Boolean
-    stopPlayback()
-    m.top.backRequested = true
-    return true
-end function
-
-sub beginSeekHold(key as String, delta as Integer)
-    if m.heldSeekKey = key then
-        if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "start"
-        showControls()
-        return
-    end if
-
-    stopSeekHold()
+sub beginSeekHold(key as String)
+    if m.heldSeekKey = key then return
     m.heldSeekKey = key
-    m.seekHoldDelta = delta
-    seekBy(delta)
+    m.seekHoldHandled = false
+    m.seekPressTimer = CreateObject("roTimespan")
+    m.seekPressTimer.Mark()
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "start"
     showControls()
 end sub
 
 sub finishSeekHold(key as String)
     if m.heldSeekKey <> key then return
+    elapsedMs = 0
+    if m.seekPressTimer <> invalid then elapsedMs = m.seekPressTimer.TotalMilliseconds()
+    wasLongPress = m.seekHoldHandled = true or elapsedMs >= m.holdThresholdMs
     stopSeekHold()
+    if not wasLongPress then
+        if key = "right" then
+            seekBy(m.seekStep)
+        else
+            seekBy(-m.seekStep)
+        end if
+    end if
 end sub
 
 sub stopSeekHold()
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "stop"
     m.heldSeekKey = ""
-    m.seekHoldDelta = 0
+    m.seekHoldHandled = false
+    m.seekPressTimer = invalid
 end sub
 
 sub onSeekHoldTimerFire()
-    if m.heldSeekKey = "" or m.seekHoldDelta = 0 then return
-    seekBy(m.seekHoldDelta)
+    if m.heldSeekKey = "" or m.seekPressTimer = invalid then return
+    if m.seekPressTimer.TotalMilliseconds() < m.holdThresholdMs then return
+    m.seekHoldHandled = true
+    if m.heldSeekKey = "right" then
+        seekBy(m.longSeekStep)
+    else
+        seekBy(-m.longSeekStep)
+    end if
 end sub
 
 sub togglePause()
@@ -380,54 +310,18 @@ sub togglePause()
         m.isPlaying = true
         hideControls()
     end if
-    updateControls()
+    updatePlayPauseIcon()
 end sub
 
 sub seekBy(delta as Integer)
-    seekToWithDelta(getPlaybackPosition() + delta, delta)
+    seekTo(getPlaybackPosition() + delta)
 end sub
 
 sub seekTo(position as Integer)
-    seekToWithDelta(position, 0)
-end sub
-
-sub seekToWithDelta(position as Integer, delta as Integer)
     if m.video = invalid then return
     if position < 0 then position = 0
-    duration = getPlaybackDuration()
-    if duration > 0 and position > duration then position = duration
     m.video.seek = position
-    m.lastPosition = position
-    m.pendingSeekPosition = position
-    m.pendingSeekTimer = CreateObject("roTimespan")
-    m.pendingSeekTimer.Mark()
-    if delta > 0 then
-        m.seekStatusLabel.text = "+" + delta.ToStr() + "s  " + formatTime(position)
-    else if delta < 0 then
-        m.seekStatusLabel.text = delta.ToStr() + "s  " + formatTime(position)
-    else
-        m.seekStatusLabel.text = formatTime(position)
-    end if
     showControls()
-    updateControls()
-end sub
-
-sub onVideoProgressChanged()
-    if m.video <> invalid and m.video.position <> invalid then
-        videoPosition = Int(m.video.position)
-        if m.pendingSeekPosition = invalid or videoPosition >= Int(m.pendingSeekPosition) - 1 then
-            m.lastPosition = videoPosition
-            m.pendingSeekPosition = invalid
-            m.pendingSeekTimer = invalid
-        end if
-    end if
-    updateControls()
-end sub
-
-sub onProgressTimerFire()
-    if m.top.visible <> true then return
-    m.top.SetFocus(true)
-    updateControls()
 end sub
 
 sub showControls()
@@ -439,33 +333,18 @@ sub hideControls()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
 end sub
 
-sub toggleControls()
-    if m.controlsGroup <> invalid and m.controlsGroup.visible = true then
-        hideControls()
-    else
-        showControls()
-    end if
-end sub
-
 sub updateControls()
-    if m.controlsTitle <> invalid then m.controlsTitle.text = m.movieName
-    position = getPlaybackPosition()
-    duration = getPlaybackDuration()
-    if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = formatTime(position)
-    if m.durationLabel <> invalid then m.durationLabel.text = formatTime(duration)
-    if m.progressTrack <> invalid and m.progressFill <> invalid then
-        fillWidth = 0
-        if duration > 0 then fillWidth = Int((m.progressTrack.width * position) / duration)
-        if fillWidth < 0 then fillWidth = 0
-        if fillWidth > m.progressTrack.width then fillWidth = m.progressTrack.width
-        m.progressFill.width = fillWidth
-    end if
+    updatePlayPauseIcon()
 end sub
 
-function getPlaybackDuration() as Integer
-    if m.video <> invalid and m.video.duration <> invalid then return Int(m.video.duration)
-    return 0
-end function
+sub updatePlayPauseIcon()
+    if m.playPauseIcon = invalid then return
+    if m.isPlaying = true then
+        m.playPauseIcon.text = "Ⅱ"
+    else
+        m.playPauseIcon.text = "▶"
+    end if
+end sub
 
 function formatTime(seconds as Integer) as String
     if seconds < 0 then seconds = 0
@@ -491,4 +370,14 @@ function getStreamFormat(streamUrl as String) as String
     if Instr(1, lowerUrl, ".m3u8") > 0 then return "hls"
     if Instr(1, lowerUrl, ".mp4") > 0 then return "mp4"
     return "ts"
+end function
+
+function getDisplayResolution() as Object
+    deviceInfo = CreateObject("roDeviceInfo")
+    displaySize = deviceInfo.GetDisplaySize()
+
+    return {
+        width: displaySize.w,
+        height: displaySize.h
+    }
 end function

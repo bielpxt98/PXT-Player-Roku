@@ -10,9 +10,6 @@ sub Init()
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.seriesGroup = m.top.FindNode("seriesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
-    m.progressiveLoadTimer = m.top.FindNode("progressiveLoadTimer")
-    m.progressiveLoadTimer.ObserveField("fire", "onProgressiveLoadTimerFire")
-    m.initialRenderLimit = 50 : m.progressiveBatchSize = 25 : m.renderLimit = 50
     m.categories = [] : m.series = [] : m.allSeries = []
     m.categoryNodes = [] : m.itemNodes = []
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
@@ -30,14 +27,14 @@ sub configureLayout()
     m.gridW = w - m.gridX - m.margin : m.gridH = m.panelH - 54
     m.categoryX = m.margin + 18 : m.categoryY = m.panelY + 72
     m.categoryW = m.leftW - 36 : m.categoryItemH = 52
-    m.posterW = 178 : m.posterH = 260
-    m.posterGapX = 88 : m.posterGapY = 46
+    m.posterW = 150 : m.posterH = 220
+    m.posterGapX = 56 : m.posterGapY = 42
     m.titleOffsetY = 10 : m.titleH = 42
-    if h <= 720 then m.posterW = 126 : m.posterH = 184 : m.posterGapX = 64 : m.posterGapY = 22 : m.titleOffsetY = 6 : m.titleH = 30 : m.categoryItemH = 44
+    if h <= 720 then m.posterW = 104 : m.posterH = 152 : m.posterGapX = 48 : m.posterGapY = 16 : m.titleOffsetY = 6 : m.titleH = 30 : m.categoryItemH = 44
     m.itemH = m.posterH + m.titleOffsetY + m.titleH + m.posterGapY
     m.columns = Int((m.gridW + m.posterGapX) / (m.posterW + m.posterGapX)) : if m.columns < 1 then m.columns = 1
-    if m.columns > 5 then m.columns = 5
-    if h <= 720 and m.columns > 4 then m.columns = 4
+    if m.columns > 4 then m.columns = 4
+    if h <= 720 and m.columns > 3 then m.columns = 3
     m.rows = 3
     m.visibleItemCount = m.columns * m.rows
     if m.visibleItemCount > 12 then m.visibleItemCount = 12
@@ -60,8 +57,7 @@ sub show(category as Dynamic)
     if category <> invalid then syncSelectedCategory(category)
     resetGridSelection()
     renderCategories() : renderGrid() : updateFocus()
-    m.top.visible = true
-    if m.top.visible = true then m.top.SetFocus(true)
+    m.top.visible = true : m.top.SetFocus(true)
 end sub
 
 sub focusCategories()
@@ -87,44 +83,14 @@ sub setCategories(categories as Object)
 end sub
 
 sub setLoading(isLoading as Boolean)
-    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
     clearGridNodes()
-    m.series = [] : m.allSeries = [] : m.renderLimit = m.initialRenderLimit
-    if isLoading then
-        m.statusLabel.text = "Carregando séries..."
-    else
-        m.statusLabel.text = ""
-    end if
+    if isLoading then m.statusLabel.text = "Carregando séries..." else m.statusLabel.text = ""
 end sub
 
 sub setSeries(items as Object)
-    if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
-    m.allSeries = normalizeArray(items) : m.renderLimit = m.initialRenderLimit
-    rebuildVisibleSeries()
+    m.allSeries = normalizeArray(items) : m.series = m.allSeries
     if m.series.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
     m.statusLabel.text = "" : resetGridSelection() : renderGrid() : updateFocus()
-    if m.series.Count() < m.allSeries.Count() and m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "start"
-end sub
-
-sub onProgressiveLoadTimerFire()
-    if m.allSeries = invalid or m.series.Count() >= m.allSeries.Count() then
-        if m.progressiveLoadTimer <> invalid then m.progressiveLoadTimer.control = "stop"
-        return
-    end if
-    m.renderLimit = m.renderLimit + m.progressiveBatchSize
-    rebuildVisibleSeries()
-    renderGrid() : updateFocus()
-end sub
-
-sub rebuildVisibleSeries()
-    m.series = []
-    if m.allSeries = invalid then return
-    last = m.renderLimit - 1
-    if last >= m.allSeries.Count() then last = m.allSeries.Count() - 1
-    if last < 0 then return
-    for i = 0 to last
-        if i >= 0 then m.series.Push(m.allSeries[i])
-    end for
 end sub
 
 sub showMessage(message as String)
@@ -132,6 +98,11 @@ sub showMessage(message as String)
     m.statusLabel.color = "#FFCC66" : m.statusLabel.text = message
 end sub
 
+function normalizeArray(items as Dynamic) as Object
+    if items = invalid then return []
+    if Type(items) = "roArray" then return items
+    return []
+end function
 
 sub renderCategories()
     clearCategoryNodes()
@@ -176,8 +147,7 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    normalizedKey = normalizeKey(key)
-    if normalizedKey = "back" then
+    if key = "back" then
         if m.activePane = "grid" or m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         else
@@ -185,7 +155,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if normalizedKey = "left" then
+    if key = "left" then
         if m.activePane = "grid" then
             if (m.selectedIndex mod m.columns) = 0 then
                 m.activePane = "categories" : updateFocus()
@@ -197,7 +167,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if normalizedKey = "right" then
+    if key = "right" then
         if m.activePane = "categories" or m.activePane = "search" then
             if m.series.Count() > 0 then m.activePane = "grid" : updateFocus()
         else
@@ -205,7 +175,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if normalizedKey = "up" then
+    if key = "up" then
         if m.activePane = "categories" then
             if m.selectedCategoryIndex = 0 then
                 m.activePane = "search" : updateFocus()
@@ -217,7 +187,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if normalizedKey = "down" then
+    if key = "down" then
         if m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         else if m.activePane = "categories" then
@@ -227,16 +197,17 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
-    if normalizedKey = "options" then
+    if key = "options" then
         if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then m.top.seriesFavoriteToggled = m.series[m.selectedIndex]
         return true
     end if
-    if normalizedKey = "OK" then
+    if key = "OK" then
         if m.activePane = "search" then
             m.top.searchRequested = true
         else if m.activePane = "categories" then
             if m.categories.Count() > 0 and m.selectedCategoryIndex >= 0 and m.selectedCategoryIndex < m.categories.Count() then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
         else if m.series.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.series.Count() then
+            print "OK opening selectedIndex="; m.selectedIndex : print "OK opening item="; getSeriesLogTitle(m.series[m.selectedIndex])
             m.top.seriesSelected = m.series[m.selectedIndex]
         end if
         return true
@@ -291,11 +262,7 @@ sub updateFocus()
         realIndex = m.firstVisibleCategoryIndex + i : bg = m.categoryNodes[i].FindNode("itemBackground") : label = m.categoryNodes[i].FindNode("itemLabel")
         bg.opacity = 0.0 : label.color = "#C9D4E5"
         if realIndex = m.selectedCategoryIndex then bg.opacity = 1.0 : bg.color = "#061F36" : label.color = "#FFFFFF"
-        if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then
-            m.categoryNodes[i].scale = [1.03, 1.03]
-        else
-            m.categoryNodes[i].scale = [1.0, 1.0]
-        end if
+        if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
     first = m.firstVisibleRow * m.columns
     for i = 0 to m.itemNodes.Count() - 1
@@ -326,7 +293,19 @@ sub clearGridNodes()
     m.itemNodes = []
 end sub
 
+function getCategoryId(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.category_id <> invalid then return category.category_id.ToStr()
+    if category.id <> invalid then return category.id.ToStr()
+    return ""
+end function
 
+function getCategoryName(category as Dynamic) as String
+    if category = invalid then return "Categoria"
+    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
+    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
+    return "Categoria"
+end function
 
 function getSeriesName(item as Dynamic) as String
     if item = invalid then return "Série sem nome"
@@ -346,4 +325,9 @@ function getSeriesCover(item as Dynamic) as String
     if item.series_image <> invalid and item.series_image.ToStr().Trim() <> "" then return item.series_image.ToStr()
     if item.logo <> invalid and item.logo.ToStr().Trim() <> "" then return item.logo.ToStr()
     return ""
+end function
+
+function getDisplayResolution() as Object
+    d = CreateObject("roDeviceInfo") : s = d.GetDisplaySize()
+    return { width: s.w, height: s.h }
 end function

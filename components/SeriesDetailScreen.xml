@@ -9,18 +9,22 @@
         <field id="playRequested" type="boolean" alwaysNotify="true" />
         <field id="favoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
-    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/SeriesDetailScreen.brs" />
     <children>
-        <Rectangle id="background" color="#070A12" translation="[0,0]" />
-        <Poster id="poster" loadDisplayMode="scaleToFill" />
-        <Label id="titleLabel" color="#FFFFFF" wrap="true" />
+        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0,0]" />
+        <Poster id="poster" loadDisplayMode="scaleToFit" />
+        <Label id="titleLabel" color="#FFFFFF" />
         <Label id="ratingLabel" color="#FFD166" />
-        <Label id="genreLabel" color="#B8C3D6" wrap="true" />
+        <Label id="metaLabel" color="#B8C3D6" />
+        <Label id="directorLabel" color="#E5E7EB" />
+        <Label id="castLabel" color="#E5E7EB" wrap="true" />
+        <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
         <Label id="synopsisLabel" color="#D1D5DB" wrap="true" />
-        <Rectangle id="buttonBg" color="#0B3A5E" opacity="1.0" />
-        <Label id="seasonsButton" text="TEMPORADAS" color="#FFFFFF" horizAlign="center" vertAlign="center" />
-        <Label id="statusLabel" text="" color="#93A4B8" horizAlign="center" />
-        <Label id="hintLabel" text="OK temporadas • * favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
+        <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" />
+        <Group id="buttonsGroup">
+            <Label id="watchButton" text="▶ ASSISTIR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="favoriteButton" text="★ FAVORITAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+        </Group>
     </children>
 </component>

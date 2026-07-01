@@ -1,15 +1,14 @@
-' Series seasons screen.
-' This screen displays seasons for one category and notifies MainScene when a
-' season is selected for playback.
+' Series category list screen.
+' This screen displays category metadata and notifies MainScene when a category is selected.
 sub Init()
     m.background = m.top.FindNode("background")
     m.title = m.top.FindNode("title")
     m.subtitle = m.top.FindNode("subtitle")
     m.statusLabel = m.top.FindNode("statusLabel")
-    m.seasonsGroup = m.top.FindNode("seasonsGroup")
+    m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
-    m.seasons = []
+    m.categories = []
     m.itemNodes = []
     m.selectedIndex = 0
     m.firstVisibleIndex = 0
@@ -35,7 +34,7 @@ sub configureLayout()
 
     m.contentX = m.safeMarginX
     m.contentWidth = width - (m.safeMarginX * 2)
-    if m.contentWidth < 360 then
+    if m.contentWidth < 320 then
         m.contentX = 0
         m.contentWidth = width
     end if
@@ -50,18 +49,14 @@ sub configureLayout()
     m.listY = m.titleReservedHeight
     m.footerY = height - m.footerReservedHeight + 18
     m.listHeight = m.footerY - m.listY - 20
-    if m.listHeight < 96 then m.listHeight = 96
+    if m.listHeight < 80 then m.listHeight = 80
 
     if height <= 720 then
-        m.itemHeight = 72
-        m.cardHeight = 62
-        m.coverSize = 42
-        m.coverInset = 10
+        m.itemHeight = 56
+        m.cardHeight = 48
     else
-        m.itemHeight = 88
-        m.cardHeight = 76
-        m.coverSize = 52
-        m.coverInset = 12
+        m.itemHeight = 68
+        m.cardHeight = 58
     end if
 
     m.visibleItemCount = Int(m.listHeight / m.itemHeight)
@@ -82,20 +77,14 @@ sub configureLayout()
     m.statusLabel.font = "font:MediumSystemFont"
     m.statusLabel.translation = [m.contentX, m.listY + Int(m.listHeight / 2)]
 
-    m.seasonsGroup.translation = [m.contentX, m.listY]
+    m.categoriesGroup.translation = [m.contentX, m.listY]
 
     m.hintLabel.width = width
     m.hintLabel.font = "font:SmallSystemFont"
     m.hintLabel.translation = [0, m.footerY]
 end sub
 
-sub show(category as Dynamic)
-    if category <> invalid then
-        m.subtitle.text = "Temporadas • " + getCategoryName(category)
-    else
-        m.subtitle.text = "Temporadas"
-    end if
-
+sub show()
     configureLayout()
     resetSelection()
     updateVisibleWindow()
@@ -121,21 +110,21 @@ sub logInitialSelection()
 end sub
 
 sub setLoading(isLoading as Boolean)
-    clearSeasonNodes()
+    clearCategoryNodes()
     if isLoading then
-        m.statusLabel.text = "Carregando temporadas..."
+        m.statusLabel.text = "Carregando categorias de séries..."
         m.statusLabel.color = "#B8C3D6"
     else
         m.statusLabel.text = ""
     end if
 end sub
 
-sub setSeasons(seasons as Object)
-    m.seasons = normalizeSeasons(seasons)
+sub setCategories(categories as Object)
+    m.categories = normalizeCategories(categories)
     resetSelection()
 
-    if m.seasons.Count() = 0 then
-        showMessage("Nenhum item foi encontrado.")
+    if m.categories.Count() = 0 then
+        showMessage("Nenhuma categoria de séries foi encontrada.")
         return
     end if
 
@@ -146,38 +135,38 @@ sub setSeasons(seasons as Object)
 end sub
 
 sub showMessage(message as String)
-    clearSeasonNodes()
-    m.seasons = []
+    clearCategoryNodes()
+    m.categories = []
     resetSelection()
     m.statusLabel.text = message
     m.statusLabel.color = "#FFCC66"
 end sub
 
-function normalizeSeasons(seasons as Dynamic) as Object
-    if seasons = invalid then return []
-    if Type(seasons) = "roArray" then return seasons
+function normalizeCategories(categories as Dynamic) as Object
+    if categories = invalid then return []
+    if Type(categories) = "roArray" then return categories
     return []
 end function
 
 sub renderList()
-    clearSeasonNodes()
-    if m.seasons.Count() = 0 then return
+    clearCategoryNodes()
+    if m.categories.Count() = 0 then return
 
     lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.seasons.Count() then lastIndex = m.seasons.Count() - 1
+    if lastIndex >= m.categories.Count() then lastIndex = m.categories.Count() - 1
 
     for visualIndex = 0 to lastIndex - m.firstVisibleIndex
         realIndex = m.firstVisibleIndex + visualIndex
-        item = createSeasonItem(m.seasons[realIndex], visualIndex, realIndex)
-        m.seasonsGroup.AppendChild(item)
+        item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
+        m.categoriesGroup.AppendChild(item)
         m.itemNodes.Push(item)
     end for
 end sub
 
-function createSeasonItem(season as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
+function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
     item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "seasonItem" + absoluteIndex.ToStr()
+    item.id = "categoryItem" + absoluteIndex.ToStr()
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
@@ -193,73 +182,37 @@ function createSeasonItem(season as Object, visibleIndex as Integer, absoluteInd
     accent.color = "#009DFF"
     accent.opacity = 0.0
 
-    coverBackground = CreateObject("roSGNode", "Rectangle")
-    coverBackground.id = "coverBackground"
-    coverBackground.width = m.coverSize + 6
-    coverBackground.height = m.coverSize + 6
-    coverBackground.translation = [22, Int((m.cardHeight - (m.coverSize + 6)) / 2)]
-    coverBackground.color = "#1F2937"
-    coverBackground.opacity = 0.95
-
-    cover = CreateObject("roSGNode", "Poster")
-    cover.id = "seasonCover"
-    cover.width = m.coverSize
-    cover.height = m.coverSize
-    cover.translation = [25, m.coverInset]
-    cover.loadDisplayMode = "scaleToFit"
-    cover.uri = getSeasonCover(season)
-
     label = CreateObject("roSGNode", "Label")
     label.id = "itemLabel"
-    label.width = m.contentWidth - 122
+    label.width = m.contentWidth - 40
     label.height = m.cardHeight
-    label.translation = [100, 0]
+    label.translation = [22, 0]
     label.vertAlign = "center"
     label.color = "#F8FAFC"
     label.font = "font:MediumSystemFont"
-    label.text = getSeasonName(season)
-
+    label.text = getCategoryName(category)
     item.AppendChild(background)
     item.AppendChild(accent)
-    item.AppendChild(coverBackground)
-    item.AppendChild(cover)
     item.AppendChild(label)
     return item
 end function
 
-function getSeasonName(season as Dynamic) as String
-    if season = invalid then return "Temporada sem nome"
-    if season.name <> invalid and season.name.ToStr().Trim() <> "" then return season.name.ToStr()
-    if season.title <> invalid and season.title.ToStr().Trim() <> "" then return season.title.ToStr()
-    if season.season_number <> invalid and season.season_number.ToStr().Trim() <> "" then return "Temporada " + season.season_number.ToStr()
-    return "Temporada sem nome"
-end function
-
-function getSeasonLogTitle(season as Dynamic) as String
-    if season = invalid then return ""
-    if season.title <> invalid and season.title.ToStr().Trim() <> "" then return season.title.ToStr()
-    return getSeasonName(season)
-end function
-
-function getSeasonCover(season as Dynamic) as String
-    if season = invalid then return ""
-    if season.stream_icon <> invalid and season.stream_icon.ToStr().Trim() <> "" then return season.stream_icon.ToStr()
-    if season.cover <> invalid and season.cover.ToStr().Trim() <> "" then return season.cover.ToStr()
-    if season.season_image <> invalid and season.season_image.ToStr().Trim() <> "" then return season.season_image.ToStr()
-    if season.logo <> invalid and season.logo.ToStr().Trim() <> "" then return season.logo.ToStr()
-    return ""
-end function
-
 function getCategoryName(category as Dynamic) as String
-    if category = invalid then return "Categoria"
+    if category = invalid then return "Categoria sem nome"
     if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr()
     if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr()
-    return "Categoria"
+    return "Categoria sem nome"
 end function
 
-sub clearSeasonNodes()
-    while m.seasonsGroup.GetChildCount() > 0
-        m.seasonsGroup.RemoveChildIndex(0)
+function getCategoryLogTitle(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.title <> invalid and category.title.ToStr().Trim() <> "" then return category.title.ToStr()
+    return getCategoryName(category)
+end function
+
+sub clearCategoryNodes()
+    while m.categoriesGroup.GetChildCount() > 0
+        m.categoriesGroup.RemoveChildIndex(0)
     end while
     m.itemNodes = []
 end sub
@@ -277,10 +230,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         moveFocus(1)
         return true
     else if key = "OK" then
-        if m.seasons.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.seasons.Count() then
+        if m.categories.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.categories.Count() then
             print "OK opening selectedIndex="; m.selectedIndex
-            print "OK opening item="; getSeasonLogTitle(m.seasons[m.selectedIndex])
-            m.top.seasonSelected = m.seasons[m.selectedIndex]
+            print "OK opening item="; getCategoryLogTitle(m.categories[m.selectedIndex])
+            m.top.categorySelected = m.categories[m.selectedIndex]
         end if
         return true
     end if
@@ -293,7 +246,7 @@ sub moveFocus(direction as Integer)
 end sub
 
 sub handleUpDown(direction as Integer)
-    if m.seasons.Count() = 0 then return
+    if m.categories.Count() = 0 then return
 
     if direction > 0 then
         m.selectedIndex = m.selectedIndex + 1
@@ -314,17 +267,17 @@ sub handleUpDown(direction as Integer)
 end sub
 
 sub updateVisibleWindow()
-    if m.seasons.Count() = 0 then
+    if m.categories.Count() = 0 then
         m.selectedIndex = 0
         m.firstVisibleIndex = 0
         return
     end if
 
     if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= m.seasons.Count() then m.selectedIndex = m.seasons.Count() - 1
+    if m.selectedIndex >= m.categories.Count() then m.selectedIndex = m.categories.Count() - 1
     if m.firstVisibleIndex < 0 then m.firstVisibleIndex = 0
 
-    maxFirstIndex = m.seasons.Count() - m.visibleItemCount
+    maxFirstIndex = m.categories.Count() - m.visibleItemCount
     if maxFirstIndex < 0 then maxFirstIndex = 0
 
     if m.selectedIndex < m.firstVisibleIndex then
@@ -346,14 +299,12 @@ sub updateFocus()
         background = m.itemNodes[i].FindNode("itemBackground")
         accent = m.itemNodes[i].FindNode("itemAccent")
         label = m.itemNodes[i].FindNode("itemLabel")
-        coverBackground = m.itemNodes[i].FindNode("coverBackground")
 
         m.itemNodes[i].scale = [1.0, 1.0]
         background.color = "#111827"
         background.opacity = 0.86
         accent.opacity = 0.0
         label.color = "#F8FAFC"
-        coverBackground.color = "#1F2937"
 
         if realIndex = m.selectedIndex then selectedNode = m.itemNodes[i]
     end for
@@ -362,14 +313,12 @@ sub updateFocus()
         background = selectedNode.FindNode("itemBackground")
         accent = selectedNode.FindNode("itemAccent")
         label = selectedNode.FindNode("itemLabel")
-        coverBackground = selectedNode.FindNode("coverBackground")
 
         selectedNode.scale = [1.02, 1.02]
         background.color = "#0B3A5E"
         background.opacity = 1.0
         accent.opacity = 0.0
         label.color = "#FFFFFF"
-        coverBackground.color = "#0F4F7A"
     end if
 end sub
 

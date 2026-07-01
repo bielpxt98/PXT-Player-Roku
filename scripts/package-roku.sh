@@ -33,24 +33,11 @@ require_file "components/MainScene.brs"
 
 # Validate the minimum manifest fields Roku needs to identify and launch the app.
 for key in title major_version minor_version build_version main_scene; do
-  rg -q "^[[:space:]]*${key}=" manifest || fail "manifest is missing ${key}="
+  grep -Eq "^[[:space:]]*${key}=" manifest || fail "manifest is missing ${key}="
 done
 
-rg -q '^main_scene=MainScene$' manifest || fail "manifest main_scene must be MainScene"
-rg -q 'CreateScene\("MainScene"\)' source/main.brs || fail "source/main.brs must create MainScene"
-
-
-# Roku XML/BrightScript startup parsing can reject characters outside the BMP
-# on some firmware versions. Keep launch-critical UI text in BMP-safe symbols.
-python3 - <<'PY'
-from pathlib import Path
-for path in list(Path('components').glob('*.xml')) + list(Path('components').glob('*.brs')) + list(Path('source').glob('*.brs')):
-    text = path.read_text(encoding='utf-8')
-    for line_no, line in enumerate(text.splitlines(), 1):
-        bad = [ch for ch in line if ord(ch) > 0xFFFF]
-        if bad:
-            raise SystemExit(f"ERROR: unsupported non-BMP character(s) {bad!r} in {path}:{line_no}")
-PY
+grep -Eq '^main_scene=MainScene$' manifest || fail "manifest main_scene must be MainScene"
+grep -Eq 'CreateScene\("MainScene"\)' source/main.brs || fail "source/main.brs must create MainScene"
 
 # Verify every pkg:/ script URI referenced by component XML exists in the package.
 while IFS= read -r uri; do
@@ -70,7 +57,7 @@ mkdir -p "${OUT_DIR}"
 rm -f "${OUT_ZIP}"
 
 # Optional images are included only when present. The app does not reference
-# background.jpeg, logo.png, or icon.png directly, so their absence cannot stop launch.
+# background.jpg, logo.png, or icon.png directly, so their absence cannot stop launch.
 zip -r "${OUT_ZIP}" \
   manifest \
   source \

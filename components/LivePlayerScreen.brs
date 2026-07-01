@@ -45,7 +45,6 @@ sub show(channel as Dynamic)
     m.channelName = getChannelName(channel)
     m.top.channelName = m.channelName
     m.top.visible = true
-    if m.video <> invalid then m.video.visible = true
     showLoading("Preparando " + m.channelName + "...")
     m.top.SetFocus(true)
 end sub
@@ -62,8 +61,6 @@ sub play(streamUrl as String)
     content.streamFormat = getStreamFormat(streamUrl)
     content.live = true
 
-
-    m.video.visible = true
     m.video.content = content
     m.video.control = "play"
     m.isPlaying = true
@@ -112,16 +109,10 @@ sub onVideoStateChanged()
     end if
 end sub
 
-function safeVideoFieldText(value as Dynamic) as String
-    if value = invalid then return ""
-    return value.ToStr()
-end function
-
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    normalizedKey = normalizeKey(key)
 
-    if normalizedKey = "back" then
+    if key = "back" then
         return handleBackKeySafely()
     end if
 
@@ -159,4 +150,14 @@ function getStreamFormat(streamUrl as String) as String
     if Instr(1, lowerUrl, ".m3u8") > 0 then return "hls"
     if Instr(1, lowerUrl, ".mp4") > 0 then return "mp4"
     return "ts"
+end function
+
+function getDisplayResolution() as Object
+    deviceInfo = CreateObject("roDeviceInfo")
+    displaySize = deviceInfo.GetDisplaySize()
+
+    return {
+        width: displaySize.w,
+        height: displaySize.h
+    }
 end function

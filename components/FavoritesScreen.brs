@@ -152,20 +152,19 @@ end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    normalizedKey = normalizeKey(key)
-    if normalizedKey = "back" then
+    if key = "back" then
         m.top.backRequested = true
         return true
     end if
-    if normalizedKey = "up" then
+    if key = "up" then
         moveFocus(-1)
         return true
     end if
-    if normalizedKey = "down" then
+    if key = "down" then
         moveFocus(1)
         return true
     end if
-    if normalizedKey = "OK" then
+    if key = "OK" then
         if canSelectIndex(m.selectedIndex) then m.top.favoriteSelected = m.items[m.selectedIndex]
         return true
     end if
@@ -237,3 +236,9 @@ sub clearFavoriteNodes()
     end while
     m.itemNodes = []
 end sub
+
+function getDisplayResolution() as Object
+    deviceInfo = CreateObject("roDeviceInfo")
+    displaySize = deviceInfo.GetDisplaySize()
+    return { width: displaySize.w, height: displaySize.h }
+end function

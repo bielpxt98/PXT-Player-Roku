@@ -145,7 +145,24 @@ function mergeItem(base as Dynamic, details as Dynamic) as Object
     return merged
 end function
 
+function firstText(item as Dynamic, keys as Object) as String
+    if item = invalid or Type(item) <> "roAssociativeArray" then return ""
+    for each k in keys
+        if item.DoesExist(k) and item[k] <> invalid and item[k].ToStr().Trim() <> "" then return item[k].ToStr().Trim()
+    end for
+    return ""
+end function
 
+function joinText(parts as Object, sep as String) as String
+    out = ""
+    for each part in parts
+        if part <> "" then
+            if out <> "" then out = out + sep
+            out = out + part
+        end if
+    end for
+    return out
+end function
 
 function getYear(value as String) as String
     if Len(value) >= 4 then return Left(value, 4)
@@ -158,6 +175,16 @@ function durationText(value as String) as String
     return value
 end function
 
+function ratingText(value as String) as String
+    if value = "" then return ""
+    n = Val(value)
+    if n > 5 then n = n / 2
+    stars = ""
+    for i = 1 to 5
+        if i <= Int(n + 0.5) then stars = stars + "★" else stars = stars + "☆"
+    end for
+    return stars
+end function
 
 sub updateButtons()
     buttons = [m.watchButton, m.favoriteButton, m.backButton]
@@ -169,20 +196,19 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    normalizedKey = normalizeKey(key)
-    if normalizedKey = "left" then
+    if key = "left" then
         if m.selectedButton > 0 then
             m.selectedButton = m.selectedButton - 1
             updateButtons()
         end if
         return true
-    else if normalizedKey = "right" then
+    else if key = "right" then
         if m.selectedButton < 2 then
             m.selectedButton = m.selectedButton + 1
             updateButtons()
         end if
         return true
-    else if normalizedKey = "OK" then
+    else if key = "OK" then
         if m.selectedButton = 0 then
             m.top.playRequested = true
         else if m.selectedButton = 1 then
@@ -191,7 +217,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.top.backRequested = true
         end if
         return true
-    else if normalizedKey = "back" then
+    else if key = "back" then
         m.top.backRequested = true
         return true
     end if

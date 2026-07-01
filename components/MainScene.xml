@@ -1,12 +1,36 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="MainScene" extends="Scene">
     <script type="text/brightscript" uri="pkg:/source/PlaylistStorage.brs" />
-    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
+    <script type="text/brightscript" uri="pkg:/source/FavoritesStorage.brs" />
+    <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
-        <LoginScreen id="loginScreen" visible="true" />
-        <LiveChannelsScreen id="liveTVScreen" visible="false" />
+        <Poster id="globalBackground" uri="pkg:/images/background.jpeg" translation="[0, 0]" loadDisplayMode="scaleToFill" />
+        <Rectangle id="globalBackgroundOverlay" color="#000000" opacity="0.32" translation="[0, 0]" />
+        <HomeScreen id="homeScreen" visible="false" />
+        <SplashScreen id="splashScreen" visible="false" />
+        <LoginScreen id="loginScreen" visible="false" />
+        <FavoritesScreen id="favoritesScreen" visible="false" />
+        <RecentScreen id="recentScreen" visible="false" />
+        <SearchScreen id="searchScreen" visible="false" />
+        <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
+        <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
+        <LivePlayerScreen id="livePlayerScreen" visible="false" />
+        <MovieCategoriesScreen id="movieCategoriesScreen" visible="false" />
+        <MovieListScreen id="movieListScreen" visible="false" />
+        <MovieDetailScreen id="movieDetailScreen" visible="false" />
+        <MoviePlayerScreen id="moviePlayerScreen" visible="false" />
+        <SeriesCategoriesScreen id="seriesCategoriesScreen" visible="false" />
+        <SeriesListScreen id="seriesListScreen" visible="false" />
+        <SeriesDetailScreen id="seriesDetailScreen" visible="false" />
+        <SeriesSeasonsScreen id="seriesSeasonsScreen" visible="false" />
+        <SeriesEpisodesScreen id="seriesEpisodesScreen" visible="false" />
+        <SeriesPlayerScreen id="seriesPlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
+        <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
+        <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
+        <Timer id="splashMinimumTimer" duration="4" repeat="false" />
+        <Timer id="splashMaximumTimer" duration="6" repeat="false" />
     </children>
 </component>

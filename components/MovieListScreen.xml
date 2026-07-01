@@ -8,15 +8,12 @@
         <function name="setCategories" />
         <function name="showMessage" />
         <function name="resetSelection" />
-        <function name="focusCategories" />
-        <function name="focusMovies" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="categorySelected" type="assocarray" alwaysNotify="true" />
         <field id="searchRequested" type="boolean" alwaysNotify="true" />
         <field id="movieSelected" type="assocarray" alwaysNotify="true" />
         <field id="movieFavoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
-    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/MovieListScreen.brs" />
     <children>
         <Rectangle id="background" color="#05070B" opacity="0.58" translation="[0, 0]" />
@@ -35,8 +32,6 @@
             itemSize="[178, 264]"
             itemSpacing="[149, 54]"
             posterShape="portrait" />
-        <Group id="movieTitlesGroup" />
-        <Timer id="progressiveLoadTimer" duration="0.03" repeat="true" />
         <Label id="hintLabel" text="←/→ alternar painel • OK selecionar • * favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>

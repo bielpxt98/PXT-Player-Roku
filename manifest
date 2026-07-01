@@ -6,8 +6,12 @@ title=PXT Player
 subtitle=PXT Player
 major_version=0
 minor_version=1
-build_version=00002
+build_version=00001
 
 # Runtime settings
 main_scene=MainScene
 bs_const=DEBUG=false
+
+# Splash defaults
+splash_color=#000000
+splash_min_time=0

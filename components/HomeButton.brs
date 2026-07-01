@@ -1,4 +1,4 @@
-' Reusable Home button used by the PXT Player home menu.
+' Reusable premium Home button used by the PXT Player home menu.
 sub Init()
     m.buttonLabel = m.top.FindNode("buttonLabel")
     m.buttonIcon = m.top.FindNode("buttonIcon")

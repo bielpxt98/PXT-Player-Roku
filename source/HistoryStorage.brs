@@ -49,8 +49,7 @@ function GetHistoryPosition(historyType as String, item as Dynamic) as Integer
     if historyType = "episode" then keyPrefix = "episode:"
     key = keyPrefix + historyContentId(item, "stream_id")
     if historyType = "episode" then key = keyPrefix + historyContentId(item, "id")
-    history = LoadViewingHistory()
-    for each bucket in [history.continueWatching, history.movies, history.series]
+    for each bucket in [LoadViewingHistory().continueWatching, LoadViewingHistory().movies, LoadViewingHistory().series]
         for each entry in bucket
             if entry.key <> invalid and entry.key.ToStr() = key and entry.position <> invalid then return entry.position
         end for

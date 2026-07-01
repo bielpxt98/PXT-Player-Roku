@@ -9,7 +9,6 @@
         <field id="playRequested" type="boolean" alwaysNotify="true" />
         <field id="favoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
-    <script type="text/brightscript" uri="pkg:/source/Utils.brs" />
     <script type="text/brightscript" uri="pkg:/components/MovieDetailScreen.brs" />
     <children>
         <Rectangle id="background" color="#000000" opacity="0.58" translation="[0,0]" />
