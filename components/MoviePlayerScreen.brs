@@ -256,6 +256,21 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return false
 end function
 
+function handleBackKeySafely() as Boolean
+    if m.isClosing = true then return true
+    m.isClosing = true
+
+    stopPlayback()
+    if m.video <> invalid then m.video.SetFocus(false)
+    m.top.SetFocus(false)
+    m.top.visible = false
+
+    parentNode = m.top.GetParent()
+    if parentNode <> invalid then parentNode.SetFocus(true)
+    m.top.backRequested = true
+    return true
+end function
+
 sub beginSeekHold(key as String)
     if m.heldSeekKey = key then return
     m.heldSeekKey = key
