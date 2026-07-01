@@ -9,6 +9,7 @@ function LoadSavedPlaylist() as Object
     section = CreateObject("roRegistrySection", PlaylistStorageSectionName())
 
     if not section.Exists("dns") or not section.Exists("username") or not section.Exists("password") then
+        DeleteSavedPlaylist()
         return invalid
     end if
 
@@ -21,6 +22,7 @@ function LoadSavedPlaylist() as Object
     if section.Exists("status") then playlist.status = section.Read("status")
 
     if playlist.dns = "" or playlist.username = "" or playlist.password = "" then
+        DeleteSavedPlaylist()
         return invalid
     end if
 
