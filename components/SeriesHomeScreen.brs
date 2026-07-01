@@ -1,21 +1,53 @@
 sub Init()
-    m.panelBg = m.top.FindNode("panelBg") : m.titleLabel = m.top.FindNode("titleLabel") : m.dividerTop = m.top.FindNode("dividerTop")
+    m.background = m.top.FindNode("background") : m.headerBar = m.top.FindNode("headerBar") : m.titleLabel = m.top.FindNode("titleLabel")
+    m.leftPanel = m.top.FindNode("leftPanel") : m.divider = m.top.FindNode("divider")
     m.categoriesTitle = m.top.FindNode("categoriesTitle") : m.seriesTitle = m.top.FindNode("seriesTitle")
     m.categoriesGroup = m.top.FindNode("categoriesGroup") : m.seriesGroup = m.top.FindNode("seriesGroup") : m.messageLabel = m.top.FindNode("messageLabel")
-    m.hintLabel = m.top.FindNode("hintLabel")
-    m.searchEntry = { isSearch: true, category_name: "🔍 PESQUISAR", name: "🔍 PESQUISAR" }
+    m.selectedTitleBar = m.top.FindNode("selectedTitleBar") : m.selectedTitleLabel = m.top.FindNode("selectedTitleLabel") : m.hintLabel = m.top.FindNode("hintLabel")
+    m.searchEntry = { isSearch: true, category_name: "Pesquisar", name: "Pesquisar" }
     m.categories = [m.searchEntry] : m.allSeries = [] : m.filteredSeries = [] : m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0
-    m.columns = 3 : m.visibleRows = 3 : m.categoryWindow = 9
+    m.categoryWindow = 9 : m.columns = 5 : m.visibleRows = 3
     layoutScreen() : hide()
 end sub
+
 sub layoutScreen()
-    r = getDisplayResolution() : w = r.width : h = r.height : margin = 54
-    m.panelBg.width = w : m.panelBg.height = h : m.titleLabel.translation = [0, 24] : m.titleLabel.width = w : m.titleLabel.height = 44 : m.titleLabel.font = "font:LargeBoldSystemFont"
-    m.dividerTop.translation = [margin, 82] : m.dividerTop.width = w - margin * 2
-    m.categoriesTitle.translation = [76, 104] : m.categoriesTitle.font = "font:MediumBoldSystemFont" : m.seriesTitle.translation = [360, 104] : m.seriesTitle.font = "font:MediumBoldSystemFont"
-    m.categoriesGroup.translation = [76, 146] : m.seriesGroup.translation = [360, 146]
-    m.messageLabel.translation = [330, 310] : m.messageLabel.width = w - 420 : m.messageLabel.height = 44 : m.messageLabel.font = "font:MediumSystemFont"
-    m.hintLabel.translation = [0, h - 38] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
+    r = getDisplayResolution() : w = r.width : h = r.height
+    m.margin = 48 : if h <= 720 then m.margin = 32
+    m.headerH = 78 : m.footerH = 54
+    m.panelY = m.headerH : m.panelH = h - m.headerH - m.footerH
+    m.leftW = 270 : if w <= 1280 then m.leftW = 220
+    m.gridX = m.margin + m.leftW + 28 : m.gridY = m.panelY + 34
+    m.gridW = w - m.gridX - m.margin : m.gridH = m.panelH - 94
+    m.categoryX = m.margin + 18 : m.categoryY = m.panelY + 76
+    m.categoryW = m.leftW - 36 : m.categoryItemH = 48
+    m.posterW = 176 : m.posterH = 260 : m.posterGapX = 38 : m.posterGapY = 34
+    if h <= 720 then m.posterW = 126 : m.posterH = 186 : m.posterGapX = 26 : m.posterGapY = 22 : m.categoryItemH = 42
+    m.columns = Int((m.gridW + m.posterGapX) / (m.posterW + m.posterGapX))
+    if m.columns < 1 then m.columns = 1
+    if m.columns > 6 then m.columns = 6
+    if h <= 720 and m.columns > 5 then m.columns = 5
+    if m.columns > 1 then m.posterGapX = Int((m.gridW - (m.columns * m.posterW)) / (m.columns - 1))
+    if m.posterGapX < 20 then m.posterGapX = 20
+    m.itemH = m.posterH + m.posterGapY
+    m.visibleRows = Int(m.gridH / m.itemH)
+    if m.visibleRows < 2 then m.visibleRows = 2
+    if m.visibleRows > 3 then m.visibleRows = 3
+    m.categoryWindow = Int((m.panelH - 92) / m.categoryItemH)
+    if m.categoryWindow < 1 then m.categoryWindow = 1
+
+    m.background.width = w : m.background.height = h
+    m.headerBar.width = w : m.headerBar.height = m.headerH
+    m.titleLabel.translation = [0, 20] : m.titleLabel.width = w : m.titleLabel.height = 42 : m.titleLabel.font = "font:LargeBoldSystemFont"
+    m.leftPanel.translation = [m.margin, m.panelY] : m.leftPanel.width = m.leftW : m.leftPanel.height = m.panelH
+    m.divider.translation = [m.margin + m.leftW, m.panelY] : m.divider.width = 2 : m.divider.height = m.panelH
+    m.categoriesTitle.translation = [m.margin + 18, m.panelY + 24] : m.categoriesTitle.font = "font:MediumBoldSystemFont"
+    m.seriesTitle.translation = [m.gridX, m.panelY + 20] : m.seriesTitle.width = m.gridW : m.seriesTitle.font = "font:SmallSystemFont"
+    m.categoriesGroup.translation = [m.categoryX, m.categoryY]
+    m.seriesGroup.translation = [m.gridX, m.gridY]
+    m.messageLabel.translation = [m.gridX, m.gridY + Int(m.gridH / 2)] : m.messageLabel.width = m.gridW : m.messageLabel.height = 44 : m.messageLabel.font = "font:MediumSystemFont"
+    m.selectedTitleBar.translation = [m.gridX, h - m.footerH + 6] : m.selectedTitleBar.width = m.gridW : m.selectedTitleBar.height = 30
+    m.selectedTitleLabel.translation = [m.gridX + 14, h - m.footerH + 5] : m.selectedTitleLabel.width = m.gridW - 28 : m.selectedTitleLabel.height = 34 : m.selectedTitleLabel.font = "font:SmallSystemFont"
+    m.hintLabel.translation = [0, h - 30] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
 end sub
 sub show()
     m.top.visible = true : m.top.SetFocus(true) : renderAll()
@@ -58,50 +90,64 @@ sub renderAll()
 end sub
 sub renderCategories()
     clearGroup(m.categoriesGroup)
-    first = m.categoryIndex - 4
+    first = m.categoryIndex - Int(m.categoryWindow / 2)
     if first < 0 then first = 0
     last = first + m.categoryWindow - 1
     if last >= m.categories.Count() then last = m.categories.Count() - 1
     y = 0
 
     for i = first to last
-        label = CreateObject("roSGNode", "Label")
-        label.width = 250
-        label.height = 34
-        label.translation = [0, y]
-        label.font = "font:MediumSystemFont"
-        label.color = "#DDE6F3"
-        prefix = "  "
-        if i = m.categoryIndex then prefix = "> "
-        label.text = prefix + getCategoryName(m.categories[i])
-        m.categoriesGroup.AppendChild(label)
-        y = y + 38
+        item = CreateObject("roSGNode", "Group") : item.translation = [0, y]
+        bg = CreateObject("roSGNode", "Rectangle") : bg.width = m.categoryW : bg.height = m.categoryItemH - 8 : bg.color = "#061F36" : bg.opacity = 0.0
+        label = CreateObject("roSGNode", "Label") : label.translation = [14, 0] : label.width = m.categoryW - 24 : label.height = m.categoryItemH - 8 : label.vertAlign = "center" : label.font = "font:SmallSystemFont" : label.color = "#C9D4E5" : label.text = getCategoryName(m.categories[i])
+        item.AppendChild(bg) : item.AppendChild(label) : m.categoriesGroup.AppendChild(item)
+        y = y + m.categoryItemH
     end for
 
     updateFocus()
 end sub
 sub renderSeries()
-    clearGroup(m.seriesGroup) : m.messageLabel.text = "" : maxItems = 50 : count = m.filteredSeries.Count() : if count = 0 then m.messageLabel.text = "Nenhuma série encontrada." : updateFocus() : return
-    if count < maxItems then maxItems = count
-    first = Int(m.seriesIndex / m.columns) * m.columns : if first > maxItems - 1 then first = 0
-    last = first + (m.columns * m.visibleRows) - 1 : if last >= maxItems then last = maxItems - 1
+    clearGroup(m.seriesGroup) : m.messageLabel.text = "" : m.selectedTitleLabel.text = "" : m.selectedTitleBar.opacity = 0.0
+    count = m.filteredSeries.Count() : if count = 0 then m.messageLabel.text = "Nenhuma série encontrada." : updateFocus() : return
+    m.firstSeriesIndex = Int(m.seriesIndex / m.columns) * m.columns
+    first = m.firstSeriesIndex
+    last = first + (m.columns * m.visibleRows) - 1 : if last >= count then last = count - 1
     for i = first to last
         visual = i - first : col = visual mod m.columns : row = Int(visual / m.columns)
-        g = CreateObject("roSGNode", "Group") : g.translation = [col * 190, row * 126]
-        p = CreateObject("roSGNode", "Poster") : p.width = 124 : p.height = 82 : p.loadDisplayMode = "scaleToFill" : p.uri = getSeriesCover(m.filteredSeries[i])
-        l = CreateObject("roSGNode", "Label") : l.translation = [0, 86] : l.width = 170 : l.height = 34 : l.font = "font:SmallSystemFont" : l.color = "#DDE6F3" : l.text = getSeriesName(m.filteredSeries[i])
-        g.AppendChild(p) : g.AppendChild(l) : m.seriesGroup.AppendChild(g)
+        g = CreateObject("roSGNode", "Group") : g.translation = [col * (m.posterW + m.posterGapX), row * m.itemH]
+        border = CreateObject("roSGNode", "Rectangle") : border.id = "posterFocus" : border.translation = [-5, -5] : border.width = m.posterW + 10 : border.height = m.posterH + 10 : border.color = "#38BDF8" : border.opacity = 0.0
+        p = CreateObject("roSGNode", "Poster") : p.width = m.posterW : p.height = m.posterH : p.loadDisplayMode = "scaleToFill" : p.uri = getSeriesCover(m.filteredSeries[i])
+        g.AppendChild(border) : g.AppendChild(p) : m.seriesGroup.AppendChild(g)
     end for
     updateFocus()
 end sub
 sub updateFocus()
-    colorNodes(m.categoriesGroup, m.activePane = "categories", getVisibleCategorySelectionIndex()) : colorNodes(m.seriesGroup, m.activePane = "series", m.seriesIndex mod (m.columns * m.visibleRows))
+    colorCategoryNodes(m.categoriesGroup, m.activePane = "categories", getVisibleCategorySelectionIndex()) : colorSeriesNodes()
 end sub
-sub colorNodes(group as Object, active as Boolean, selected as Integer)
+sub colorCategoryNodes(group as Object, active as Boolean, selected as Integer)
     for i = 0 to group.GetChildCount() - 1
-        node = group.GetChild(i) : target = node : if node.GetChildCount() > 1 then target = node.GetChild(1)
-        target.color = "#DDE6F3" : if active and i = selected then target.color = "#38BDF8"
+        node = group.GetChild(i) : bg = node.GetChild(0) : label = node.GetChild(1)
+        bg.opacity = 0.0 : label.color = "#C9D4E5" : node.scale = [1.0, 1.0]
+        if i = selected then
+            bg.opacity = 1.0 : label.color = "#FFFFFF"
+            if active then node.scale = [1.03, 1.03]
+        end if
     end for
+end sub
+sub colorSeriesNodes()
+    selectedVisual = m.seriesIndex - m.firstSeriesIndex
+    for i = 0 to m.seriesGroup.GetChildCount() - 1
+        node = m.seriesGroup.GetChild(i) : border = node.GetChild(0)
+        border.opacity = 0.0 : node.scale = [1.0, 1.0]
+        if m.activePane = "series" and i = selectedVisual then
+            border.opacity = 1.0 : node.scale = [1.035, 1.035]
+        end if
+    end for
+    if m.activePane = "series" and m.filteredSeries.Count() > 0 then
+        m.selectedTitleBar.opacity = 0.88 : m.selectedTitleLabel.text = getSeriesName(m.filteredSeries[m.seriesIndex])
+    else
+        m.selectedTitleBar.opacity = 0.0 : m.selectedTitleLabel.text = ""
+    end if
 end sub
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
@@ -155,7 +201,7 @@ function isSearchEntry(category as Dynamic) as Boolean
 end function
 
 function getVisibleCategorySelectionIndex() as Integer
-    first = m.categoryIndex - 4
+    first = m.categoryIndex - Int(m.categoryWindow / 2)
     if first < 0 then first = 0
     return m.categoryIndex - first
 end function

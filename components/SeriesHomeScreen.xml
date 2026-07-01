@@ -16,14 +16,18 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesHomeScreen.brs" />
     <children>
-        <Rectangle id="panelBg" color="#08111F" opacity="0.92" />
-        <Label id="titleLabel" text="SÉRIES" color="#FFFFFF" horizAlign="center" />
-        <Rectangle id="dividerTop" color="#263244" height="2" />
-        <Label id="categoriesTitle" text="CATEGORIAS" color="#BFD0E6" />
-        <Label id="seriesTitle" text="SÉRIES" color="#BFD0E6" />
+        <Rectangle id="background" color="#05070B" opacity="0.62" translation="[0, 0]" />
+        <Rectangle id="headerBar" color="#101722" opacity="0.84" />
+        <Label id="titleLabel" text="S É R I E S" color="#FFFFFF" horizAlign="center" />
+        <Rectangle id="leftPanel" color="#0B111B" opacity="0.84" />
+        <Rectangle id="divider" color="#1D2A3A" />
+        <Label id="categoriesTitle" text="CATEGORIAS" color="#FFFFFF" />
+        <Label id="seriesTitle" text="SÉRIES" color="#9FAEC4" horizAlign="right" />
         <Group id="categoriesGroup" />
         <Group id="seriesGroup" />
         <Label id="messageLabel" color="#AAB8CC" horizAlign="center" />
-        <Label id="hintLabel" text="OK = Abrir • ←/→ Trocar painel • VOLTAR = Home" color="#91A3BA" horizAlign="center" />
+        <Rectangle id="selectedTitleBar" color="#061F36" opacity="0.0" />
+        <Label id="selectedTitleLabel" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+        <Label id="hintLabel" text="OK = Abrir • ←/→ Trocar painel • VOLTAR = Home" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
