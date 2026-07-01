@@ -107,6 +107,12 @@ sub onBackSelected()
     m.top.backRequested = true
 end sub
 
+
+function isOkKey(key as String) as Boolean
+    k = LCase(key)
+    return k = "ok" or k = "enter" or k = "return" or k = "select"
+end function
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     normalizedKey = normalizeKey(key)
@@ -133,7 +139,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if normalizedKey = "back" then
         onBackSelected()
         return true
-    else if normalizedKey = "OK" then
+    else if isOkKey(key) then
         if m.focusIndex <= 2 then
             openTextKeyboard(m.focusIndex)
             return true
