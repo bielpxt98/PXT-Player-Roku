@@ -26,6 +26,6 @@
         <Group id="keyboardGroup" />
         <Label id="resultsTitle" text="RESULTADOS EM GRADE" color="#D7E2F4" />
         <Group id="resultsGroup" />
-        <Label id="hintLabel" text="←/→ navega • ↑/↓ alterna campo, teclado e resultados • OK seleciona • Voltar retorna" color="#7D8CA3" horizAlign="center" />
+        <Label id="hintLabel" text="Navegação manual: letras, números, ações e resultados • OK seleciona • Voltar fecha" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
