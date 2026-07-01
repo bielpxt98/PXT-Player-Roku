@@ -12,6 +12,7 @@ sub Init()
     m.channel = invalid
     m.channelName = "Canal ao vivo"
     m.isPlaying = false
+    m.isClosing = false
 
     configureLayout()
     m.video.ObserveField("state", "onVideoStateChanged")
@@ -44,6 +45,7 @@ sub show(channel as Dynamic)
     m.channel = channel
     m.channelName = getChannelName(channel)
     m.top.channelName = m.channelName
+    m.isClosing = false
     m.top.visible = true
     showLoading("Preparando " + m.channelName + "...")
     m.top.SetFocus(true)
@@ -73,8 +75,10 @@ sub hide()
 end sub
 
 sub stopPlayback()
+    m.isClosing = true
     if m.video <> invalid then
         m.video.control = "stop"
+        m.video.visible = false
         m.video.content = invalid
     end if
     m.isPlaying = false
@@ -97,13 +101,14 @@ sub showError(message as String)
 end sub
 
 sub onVideoStateChanged()
+    if m.isClosing = true or m.video = invalid then return
     state = LCase(m.video.state)
     if state = "playing" then
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
     else if state = "error" or state = "finished" then
-        if m.top.visible = true then
+        if m.top.visible = true and m.isClosing <> true then
             showError("O stream de " + m.channelName + " não carregou ou foi encerrado pelo servidor.")
         end if
     end if
@@ -120,20 +125,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 function handleBackKeySafely() as Boolean
-    if m.videoPlayer <> invalid then
-        m.videoPlayer.control = "stop"
-        m.videoPlayer.visible = false
-        m.videoPlayer.content = invalid
-    end if
+    if m.isClosing = true then return true
+    m.isClosing = true
 
     stopPlayback()
+    if m.video <> invalid then m.video.SetFocus(false)
+    m.top.SetFocus(false)
     m.top.visible = false
+
     parentNode = m.top.GetParent()
-    if parentNode <> invalid then
-        parentNode.SetFocus(true)
-    else
-        m.top.SetFocus(true)
-    end if
+    if parentNode <> invalid then parentNode.SetFocus(true)
     m.top.backRequested = true
     return true
 end function
