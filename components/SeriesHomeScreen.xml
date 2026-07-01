@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SeriesHomeScreen" extends="Group">
+    <interface>
+        <function name="show" />
+        <function name="hide" />
+        <function name="setCategories" />
+        <function name="setSeries" />
+        <function name="setLoading" />
+        <function name="showMessage" />
+        <function name="resetSelection" />
+        <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="categorySelected" type="assocarray" alwaysNotify="true" />
+        <field id="seriesSelected" type="assocarray" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/SeriesHomeScreen.brs" />
+    <children>
+        <Rectangle id="panelBg" color="#08111F" opacity="0.92" />
+        <Label id="titleLabel" text="SÉRIES" color="#FFFFFF" horizAlign="center" />
+        <Rectangle id="dividerTop" color="#263244" height="2" />
+        <Label id="categoriesTitle" text="CATEGORIAS" color="#BFD0E6" />
+        <Label id="seriesTitle" text="SÉRIES" color="#BFD0E6" />
+        <Group id="categoriesGroup" />
+        <Group id="seriesGroup" />
+        <Label id="messageLabel" color="#AAB8CC" horizAlign="center" />
+        <Rectangle id="searchBg" color="#101B2B" opacity="0.95" />
+        <Label id="searchLabel" text="BUSCAR:" color="#FFFFFF" />
+        <Rectangle id="searchFieldBg" color="#FFFFFF" opacity="0.14" />
+        <Label id="searchText" color="#FFFFFF" />
+        <Group id="keyboardGroup" />
+        <Label id="hintLabel" text="OK selecionar • ←/→ trocar área • Voltar" color="#91A3BA" horizAlign="center" />
+    </children>
+</component>
