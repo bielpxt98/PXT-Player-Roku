@@ -23,6 +23,7 @@ sub Init()
     m.xtreamService = m.top.FindNode("xtreamService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
+    m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
     m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
     m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
@@ -30,6 +31,8 @@ sub Init()
     m.pendingAccount = invalid
     m.loginFormAccount = invalid
     m.loginConnecting = false
+    m.isConnecting = false
+    m.connectionMode = ""
     m.loginErrorActive = false
     m.liveCategories = []
     m.liveCategoriesLoading = false
@@ -119,16 +122,56 @@ sub Init()
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
+    m.autoConnectTimer.ObserveField("fire", "onAutoConnectTimerFire")
     m.splashMinimumTimer.ObserveField("fire", "onSplashMinimumElapsed")
     m.splashMaximumTimer.ObserveField("fire", "onSplashMaximumElapsed")
 
+    startInitialFlow()
+end sub
+
+sub startInitialFlow()
+    m.localFavoritesCache = LoadFavorites()
+    m.localHistoryCache = LoadViewingHistory()
+
     if hasAccount(m.account) then
-        updateConnectionStatus(true, "Conectado")
+        showHome()
+        updateConnectionStatus(false, "Conectando...")
+        startAutoConnectTimer()
     else
+        if m.account <> invalid then DeleteSavedPlaylist()
+        m.account = invalid
         updateConnectionStatus(false, "Nenhuma playlist conectada")
+        showLogin()
+    end if
+end sub
+
+sub startAutoConnectTimer()
+    if m.autoConnectTimer = invalid then
+        onAutoConnectTimerFire()
+        return
     end if
 
-    startSplashBootstrap()
+    m.autoConnectTimer.control = "stop"
+    m.autoConnectTimer.duration = 0.3
+    m.autoConnectTimer.control = "start"
+end sub
+
+sub onAutoConnectTimerFire()
+    if m.isConnecting = true then return
+
+    if not hasAccount(m.account) then
+        m.account = invalid
+        DeleteSavedPlaylist()
+        updateConnectionStatus(false, "Nenhuma playlist conectada")
+        showLogin()
+        return
+    end if
+
+    m.pendingAccount = m.account
+    m.connectionMode = "auto"
+    updateConnectionStatus(false, "Conectando...")
+    startLoginTimeout()
+    connectXtream(m.account)
 end sub
 
 sub startSplashBootstrap()
@@ -216,6 +259,7 @@ function handleBackKeySafely() as Boolean
         return true
     else if m.loginConnecting = true then
         m.loginConnecting = false
+        m.isConnecting = false
         stopLoginTimeout()
         cancelXtreamRequest()
         updateConnectionStatus(false, "Conexão cancelada")
@@ -640,6 +684,7 @@ sub onLoginSubmit()
     m.loginFormAccount = account
     m.loginConnecting = true
     m.loginErrorActive = false
+    m.connectionMode = "manual"
 
     showHome()
     updateConnectionStatus(false, "Conectando...")
@@ -650,6 +695,8 @@ end sub
 sub onLoginBack()
     stopLoginTimeout()
     m.loginConnecting = false
+    m.isConnecting = false
+    m.connectionMode = ""
     m.loginErrorActive = false
     cancelXtreamRequest()
     showHome()
@@ -871,6 +918,14 @@ sub buildMovieStreamUrl(movie as Object)
 end sub
 
 sub connectXtream(account as Object)
+    if m.isConnecting = true then return
+    if not hasAccount(account) then
+        m.isConnecting = false
+        updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
+        return
+    end if
+
+    m.isConnecting = true
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "connect"
     m.xtreamService.cacheEnabled = false
@@ -988,12 +1043,16 @@ end sub
 
 sub handleLoginConnectionResult(result as Object)
     stopLoginTimeout()
+    m.isConnecting = false
     m.loginConnecting = false
     m.loginScreen.callFunc("setLoading", false)
 
     if m.pendingAccount = invalid then
+        m.connectionMode = ""
         return
     end if
+
+    connectionMode = m.connectionMode
 
     if isValidXtreamConnectionResult(result) then
         m.account = m.pendingAccount
@@ -1003,14 +1062,21 @@ sub handleLoginConnectionResult(result as Object)
         updateConnectionStatus(true, "Conectado")
         m.pendingAccount = invalid
         m.loginErrorActive = false
+        m.connectionMode = ""
         resetAccountLoadedData()
         showHome()
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
-        m.loginErrorActive = true
         resetAccountLoadedData()
-        updateConnectionStatus(false, "Não foi possível conectar. Pressione Voltar para corrigir os dados.")
+        if connectionMode = "auto" then
+            m.loginErrorActive = false
+            updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
+        else
+            m.loginErrorActive = true
+            updateConnectionStatus(false, "Não foi possível conectar. Pressione Voltar para corrigir os dados.")
+        end if
+        m.connectionMode = ""
         showHome()
     end if
 end sub

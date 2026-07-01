@@ -27,6 +27,7 @@
         <XtreamService id="xtreamService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
+        <Timer id="autoConnectTimer" duration="0.3" repeat="false" />
         <Timer id="splashMinimumTimer" duration="4" repeat="false" />
         <Timer id="splashMaximumTimer" duration="6" repeat="false" />
     </children>
