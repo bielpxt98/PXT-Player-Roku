@@ -17,6 +17,9 @@ sub Init()
     m.progressUpdateTimer = m.top.FindNode("progressUpdateTimer")
     m.seekHoldTimer = m.top.FindNode("seekHoldTimer")
     m.controlsAutoHideTimer = m.top.FindNode("controlsAutoHideTimer")
+    m.skipEpisodeButton = m.top.FindNode("skipEpisodeButton")
+    m.skipEpisodeButtonBackground = m.top.FindNode("skipEpisodeButtonBackground")
+    m.skipEpisodeButtonLabel = m.top.FindNode("skipEpisodeButtonLabel")
 
     m.isClosing = false
     m.isPlaying = false
@@ -29,6 +32,7 @@ sub Init()
     m.lastPosition = 0
     m.pendingStreamUrl = ""
     m.pendingEpisode = invalid
+    m.nextEpisode = invalid
     m.resumeDialog = invalid
 
     configureLayout()
@@ -83,6 +87,13 @@ sub configureLayout()
     m.progressFill.translation = [120, 82]
     m.progressFill.width = 0
     m.progressFill.height = 8
+
+    m.skipEpisodeButton.translation = [size.w - 342, size.h - controlsHeight - 82]
+    m.skipEpisodeButtonBackground.width = 260
+    m.skipEpisodeButtonBackground.height = 56
+    m.skipEpisodeButtonLabel.width = 260
+    m.skipEpisodeButtonLabel.height = 56
+    m.skipEpisodeButtonLabel.font = "font:MediumBoldSystemFont"
 end sub
 
 sub show(episode as Dynamic)
@@ -96,6 +107,7 @@ sub show(episode as Dynamic)
     m.top.visible = true
     m.top.SetFocus(true)
     hideControls()
+    hideSkipEpisodeButton()
     if streamUrl = "" then
         showError("Episódio sem link disponível.")
         return
@@ -132,6 +144,11 @@ end sub
 
 sub setResumePosition(position as Dynamic)
     if position = invalid then m.resumePosition = 0 else m.resumePosition = Int(position)
+end sub
+
+sub setNextEpisode(episode as Dynamic)
+    m.nextEpisode = episode
+    updateSkipEpisodeButton()
 end sub
 
 sub showResumeDialog()
@@ -180,6 +197,7 @@ sub stopPlayback()
     stopSeekHold()
     stopControlsAutoHideTimer()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
+    hideSkipEpisodeButton()
 end sub
 
 sub showLoading(message as String)
@@ -248,7 +266,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         closeSeriesPlayer()
         return true
     else if key = "OK" then
-        togglePause()
+        if m.skipEpisodeButton <> invalid and m.skipEpisodeButton.visible = true then
+            requestNextEpisode()
+        else
+            togglePause()
+        end if
         return true
     else if key = "up" then
         showControls()
@@ -388,6 +410,7 @@ end sub
 sub hideControls()
     stopControlsAutoHideTimer()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
+    hideSkipEpisodeButton()
 end sub
 
 sub startControlsAutoHideTimer()
@@ -417,6 +440,7 @@ end sub
 sub updateControls()
     updatePlayPauseIcon()
     updateProgress()
+    updateSkipEpisodeButton()
 end sub
 
 sub updateProgress()
@@ -431,6 +455,28 @@ sub updateProgress()
         if progressWidth > m.progressBackground.width then progressWidth = m.progressBackground.width
         m.progressFill.width = progressWidth
     end if
+end sub
+
+sub updateSkipEpisodeButton()
+    if m.skipEpisodeButton = invalid then return
+    shouldShow = false
+    duration = getPlaybackDuration()
+    position = getPlaybackPosition()
+    if m.nextEpisode <> invalid and m.isPlaying = true and duration > 0 and position > 0 then
+        remaining = duration - position
+        if remaining <= 40 and remaining >= 0 then shouldShow = true
+    end if
+    m.skipEpisodeButton.visible = shouldShow
+end sub
+
+sub hideSkipEpisodeButton()
+    if m.skipEpisodeButton <> invalid then m.skipEpisodeButton.visible = false
+end sub
+
+sub requestNextEpisode()
+    if m.nextEpisode = invalid then return
+    hideSkipEpisodeButton()
+    m.top.nextEpisodeRequested = true
 end sub
 
 sub updatePlayPauseIcon()
