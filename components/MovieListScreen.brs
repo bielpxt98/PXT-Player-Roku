@@ -15,7 +15,12 @@ sub Init()
     m.categories = [m.searchEntry, m.favoritesEntry] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.categoryRefs = []
     m.movieNodes = [] : m.movieRefs = []
-    m.batchSize = 60 : m.loadedMovieCount = 0
+    m.batchSize = 30 : m.loadedMovieCount = 0
+    m.posterPlaceholderUri = "" : m.posterUriCache = {}
+    m.posterLoadTimer = CreateObject("roSGNode", "Timer")
+    m.posterLoadTimer.duration = 0.05
+    m.posterLoadTimer.repeat = false
+    m.posterLoadTimer.ObserveField("fire", "onPosterLoadTimerFire")
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
     m.selectedMovieIndex = 0 : m.firstVisibleMovieIndex = 0 : m.activePane = "categories"
     configureLayout()
@@ -166,16 +171,17 @@ sub renderGrid()
     end for
 
     m.moviesGrid.visible = true
+    scheduleVisiblePosterLoads()
 end sub
 
 function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group") : col = visualIndex mod m.columns : row = Int(visualIndex / m.columns)
     item.translation = [col * (m.posterW + m.posterGapX), row * m.itemH]
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#063B66" : bg.opacity = 0.0
-    poster = CreateObject("roSGNode", "Poster") : poster.id = "poster" : poster.width = m.posterW : poster.height = m.posterH : poster.loadDisplayMode = "scaleToFill" : poster.uri = getMovieCover(itemData)
+    poster = CreateObject("roSGNode", "Poster") : poster.id = "poster" : poster.width = m.posterW : poster.height = m.posterH : poster.loadDisplayMode = "scaleToFill" : poster.uri = m.posterPlaceholderUri
     label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [0, m.posterH + m.titleOffsetY] : label.width = m.posterW : label.height = m.titleH : label.font = "font:SmallSystemFont" : label.color = "#DDE6F3" : label.text = getMovieName(itemData) : label.horizAlign = "center" : label.vertAlign = "top"
     item.AppendChild(bg) : item.AppendChild(poster) : item.AppendChild(label)
-    m.lastMovieRefs = { background: bg, poster: poster, label: label }
+    m.lastMovieRefs = { background: bg, poster: poster, label: label, itemData: itemData, absoluteIndex: absoluteIndex }
     return item
 end function
 
@@ -428,6 +434,10 @@ sub clearCategoryNodes()
 end sub
 
 sub clearGridNodes()
+    if m.posterLoadTimer <> invalid then m.posterLoadTimer.control = "stop"
+    for each refs in m.movieRefs
+        if refs.poster <> invalid then refs.poster.uri = m.posterPlaceholderUri
+    end for
     while m.moviesGrid.GetChildCount() > 0
         m.moviesGrid.RemoveChildIndex(0)
     end while
@@ -479,11 +489,48 @@ end function
 
 function getMovieCover(item as Dynamic) as String
     if item = invalid then return ""
-    if item.stream_icon <> invalid and item.stream_icon.ToStr().Trim() <> "" then return item.stream_icon.ToStr()
-    if item.cover <> invalid and item.cover.ToStr().Trim() <> "" then return item.cover.ToStr()
-    if item.movie_image <> invalid and item.movie_image.ToStr().Trim() <> "" then return item.movie_image.ToStr()
-    if item.logo <> invalid and item.logo.ToStr().Trim() <> "" then return item.logo.ToStr()
-    return ""
+    key = getMovieCacheKey(item)
+    if key <> "" and m.posterUriCache[key] <> invalid then return m.posterUriCache[key]
+
+    uri = ""
+    if item.stream_icon <> invalid and item.stream_icon.ToStr().Trim() <> "" then uri = item.stream_icon.ToStr()
+    if uri = "" and item.cover <> invalid and item.cover.ToStr().Trim() <> "" then uri = item.cover.ToStr()
+    if uri = "" and item.movie_image <> invalid and item.movie_image.ToStr().Trim() <> "" then uri = item.movie_image.ToStr()
+    if uri = "" and item.logo <> invalid and item.logo.ToStr().Trim() <> "" then uri = item.logo.ToStr()
+    uri = normalizeMovieCardImageUri(uri)
+    if key <> "" then m.posterUriCache[key] = uri
+    return uri
+end function
+
+sub scheduleVisiblePosterLoads()
+    if m.posterLoadTimer = invalid then return
+    m.posterLoadTimer.control = "stop"
+    m.posterLoadTimer.control = "start"
+end sub
+
+sub onPosterLoadTimerFire()
+    for each refs in m.movieRefs
+        if refs.poster <> invalid and refs.itemData <> invalid then
+            refs.poster.uri = getMovieCover(refs.itemData)
+        end if
+    end for
+end sub
+
+function getMovieCacheKey(item as Dynamic) as String
+    if item = invalid then return ""
+    if item.stream_id <> invalid then return "stream_" + item.stream_id.ToStr()
+    if item.id <> invalid then return "id_" + item.id.ToStr()
+    return getMovieName(item)
+end function
+
+function normalizeMovieCardImageUri(uri as Dynamic) as String
+    if uri = invalid then return ""
+    value = uri.ToStr().Trim()
+    if value = "" then return ""
+    value = value.Replace("/w780/", "/w342/")
+    value = value.Replace("/w500/", "/w342/")
+    value = value.Replace("/original/", "/w342/")
+    return value
 end function
 
 function getDisplayResolution() as Object
