@@ -106,8 +106,6 @@ sub Init()
     m.homeScreen.ObserveField("openLiveCategories", "onOpenLiveCategoriesRequested")
     m.homeScreen.ObserveField("openMovieCategories", "onOpenMovieCategoriesRequested")
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesRequested")
-    m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
-    m.homeScreen.ObserveField("openRecent", "onOpenRecentRequested")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
     m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
     m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
@@ -596,44 +594,11 @@ sub loadSearchSeries()
     m.xtreamService.control = "RUN"
 end sub
 
-sub onOpenRecentRequested()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.movieSearchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
-    m.recentScreen.callFunc("setHistory", LoadViewingHistory())
-    m.recentScreen.callFunc("show")
-end sub
 
 sub onRecentBack()
     showHome()
 end sub
 
-sub onOpenFavoritesRequested()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.movieSearchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    hideSeriesScreens()
-    m.favoritesScreen.callFunc("setFavorites", LoadFavorites())
-    m.favoritesScreen.callFunc("show")
-end sub
 
 sub onFavoritesBack()
     showHome()
@@ -835,6 +800,13 @@ end sub
 sub onMovieListCategorySelected()
     category = m.movieListScreen.categorySelected
     if category = invalid then return
+    if isFavoritesCategory(category) then
+        showFavoriteMoviesInMovieList()
+        return
+    else if isRecentCategory(category) then
+        showRecentMoviesInMovieList()
+        return
+    end if
     newCategoryId = getCategoryId(category)
     m.selectedMovieCategory = category
     if newCategoryId = m.selectedMovieCategoryId and m.movies <> invalid and m.movies.Count() > 0 then
@@ -1130,6 +1102,76 @@ sub loadLiveCategories(account as Object)
     m.xtreamService.control = "RUN"
 end sub
 
+
+sub showFavoriteMoviesInMovieList()
+    m.selectedMovieCategory = { category_name: "FAVORITOS", name: "FAVORITOS", isFavorites: true }
+    m.selectedMovieCategoryId = ""
+    m.movies = favoriteContents(LoadFavorites().movies)
+    m.moviesLoading = false
+    m.movieListScreen.callFunc("setLoading", false)
+    m.movieListScreen.callFunc("setMovies", m.movies)
+end sub
+
+sub showRecentMoviesInMovieList()
+    m.selectedMovieCategory = { category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS", isRecent: true }
+    m.selectedMovieCategoryId = ""
+    history = LoadViewingHistory()
+    m.movies = historyContents(history.movies, "content")
+    m.moviesLoading = false
+    m.movieListScreen.callFunc("setLoading", false)
+    m.movieListScreen.callFunc("setMovies", m.movies)
+end sub
+
+sub showFavoriteSeriesInSeriesHome()
+    m.selectedSeriesCategory = { category_name: "FAVORITOS", name: "FAVORITOS", isFavorites: true }
+    m.selectedSeriesCategoryId = ""
+    m.series = favoriteContents(LoadFavorites().series)
+    m.seriesLoading = false
+    m.seriesHomeScreen.callFunc("setLoading", false)
+    m.seriesHomeScreen.callFunc("setSeries", m.series)
+end sub
+
+sub showRecentSeriesInSeriesHome()
+    m.selectedSeriesCategory = { category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS", isRecent: true }
+    m.selectedSeriesCategoryId = ""
+    history = LoadViewingHistory()
+    m.series = historyContents(history.series, "series")
+    m.seriesLoading = false
+    m.seriesHomeScreen.callFunc("setLoading", false)
+    m.seriesHomeScreen.callFunc("setSeries", m.series)
+end sub
+
+function favoriteContents(items as Dynamic) as Object
+    contents = []
+    if items = invalid or Type(items) <> "roArray" then return contents
+    for each item in items
+        if item <> invalid and item.content <> invalid then contents.Push(item.content)
+    end for
+    return contents
+end function
+
+function historyContents(items as Dynamic, contentField as String) as Object
+    contents = []
+    if items = invalid or Type(items) <> "roArray" then return contents
+    for each item in items
+        if item <> invalid then
+            if contentField = "series" and item.series <> invalid then
+                contents.Push(item.series)
+            else if item.content <> invalid then
+                contents.Push(item.content)
+            end if
+        end if
+    end for
+    return contents
+end function
+
+function isFavoritesCategory(category as Dynamic) as Boolean
+    return category <> invalid and category.isFavorites = true
+end function
+
+function isRecentCategory(category as Dynamic) as Boolean
+    return category <> invalid and category.isRecent = true
+end function
 
 sub showMoviesFromCacheOrLoad(category as Object)
     cached = filterItemsByCategory(m.cachedMovies, getCategoryId(category))
@@ -1635,6 +1677,13 @@ end sub
 sub onSeriesHomeCategorySelected()
     category = m.seriesHomeScreen.categorySelected
     if category = invalid then return
+    if isFavoritesCategory(category) then
+        showFavoriteSeriesInSeriesHome()
+        return
+    else if isRecentCategory(category) then
+        showRecentSeriesInSeriesHome()
+        return
+    end if
     m.selectedSeriesCategory = category
     m.selectedSeriesCategoryId = getCategoryId(category)
     m.series = []
