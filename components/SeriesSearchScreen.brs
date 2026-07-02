@@ -69,12 +69,19 @@ sub applyFilter()
         return
     end if
     needle = normalizeText(m.query)
+    startsWithMatches = []
+    containsMatches = []
     for each series in m.allSeries
-        if m.results.Count() >= 5 then exit for
         name = getSeriesName(series)
         hay = normalizeText(name)
-        if needle = "" or Instr(1, hay, needle) > 0 then m.results.Push(series)
+        if needle = "" or Left(hay, Len(needle)) = needle then
+            startsWithMatches.Push(series)
+        else if Instr(1, hay, needle) > 0 then
+            containsMatches.Push(series)
+        end if
     end for
+    appendLimitedResults(startsWithMatches)
+    appendLimitedResults(containsMatches)
     if m.results.Count() = 0 then
         showMessage("Nenhuma série encontrada.")
         if m.focusArea = "posters" then m.focusArea = "keyboard"
@@ -84,6 +91,13 @@ sub applyFilter()
         renderPosters()
     end if
     updateFocus()
+end sub
+
+sub appendLimitedResults(items as Object)
+    for each item in items
+        if m.results.Count() >= 5 then exit for
+        m.results.Push(item)
+    end for
 end sub
 
 sub renderPosters()

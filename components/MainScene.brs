@@ -65,10 +65,13 @@ sub Init()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
     m.cachedSeries = m.searchIndexCache.series
+    m.allMoviesCache = m.searchIndexCache.movies
+    m.allSeriesCache = m.searchIndexCache.series
     m.seriesCategories = m.searchIndexCache.seriesCategories
     m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
     m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
+    m.allLiveCache = m.searchIndexCache.liveChannels
     m.searchIndexQueue = []
     m.searchIndexKind = ""
     m.searchIndexCategoryId = ""
@@ -77,6 +80,9 @@ sub Init()
     m.previewKind = ""
     m.previewCategory = invalid
     m.searchIndexUpdating = false
+    m.allCatalogLoadingMovies = false
+    m.allCatalogLoadingSeries = false
+    m.allCatalogLoadingLive = false
     m.searchMode = "all"
     m.searchBackTarget = "home"
     m.splashMinimumElapsed = false
@@ -98,6 +104,9 @@ sub Init()
     m.isReturningFromPlayer = false
     if m.cachedMovies = invalid then m.cachedMovies = []
     if m.cachedSeries = invalid then m.cachedSeries = []
+    if m.allMoviesCache = invalid then m.allMoviesCache = []
+    if m.allSeriesCache = invalid then m.allSeriesCache = []
+    if m.allLiveCache = invalid then m.allLiveCache = []
     if m.seriesCategories = invalid then m.seriesCategories = []
     if m.cachedLiveChannels = invalid then m.cachedLiveChannels = []
     if m.movieCategoryPreviewCache = invalid then m.movieCategoryPreviewCache = []
@@ -289,6 +298,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 function handleBackKeySafely() as Boolean
+    if m.movieSearchScreen <> invalid and m.movieSearchScreen.visible = true then
+        onMovieSearchBack()
+        return true
+    else if m.seriesSearchScreen <> invalid and m.seriesSearchScreen.visible = true then
+        onSeriesSearchBack()
+        return true
+    end if
     if m.loginErrorActive = true then
         m.loginErrorActive = false
         m.loginConnecting = false
@@ -400,6 +416,7 @@ sub showHome()
     m.simpleSeriesScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("hide")
     m.homeScreen.callFunc("show")
+    startBackgroundCatalogCache()
 end sub
 
 sub showLogin()
@@ -482,7 +499,10 @@ sub onMovieSearchRequested()
     m.movieSearchScreen.callFunc("show")
     movieSearchData = getMoviesForSearch()
     m.movieSearchScreen.callFunc("setMovies", movieSearchData)
-    if movieSearchData.Count() = 0 and hasAccount(m.account) then loadSearchMovies()
+    if movieSearchData.Count() = 0 and hasAccount(m.account) then
+        m.movieSearchScreen.callFunc("showMessage", "Carregando filmes...")
+        loadSearchMovies()
+    end if
 end sub
 
 sub onSeriesSearchRequested()
@@ -491,7 +511,10 @@ sub onSeriesSearchRequested()
     m.seriesSearchScreen.callFunc("show")
     seriesSearchData = getSeriesForSearch()
     m.seriesSearchScreen.callFunc("setSeries", seriesSearchData)
-    if seriesSearchData.Count() = 0 and hasAccount(m.account) then loadSearchSeries()
+    if seriesSearchData.Count() = 0 and hasAccount(m.account) then
+        m.seriesSearchScreen.callFunc("showMessage", "Carregando séries...")
+        loadSearchSeries()
+    end if
 end sub
 
 sub onMovieSearchBack()
@@ -535,19 +558,19 @@ end sub
 
 
 function getMoviesForSearch() as Object
-    if m.cachedMovies <> invalid then return m.cachedMovies
+    if m.allMoviesCache <> invalid then return m.allMoviesCache
     return []
 end function
 
 function getSeriesForSearch() as Object
-    if m.cachedSeries <> invalid then return m.cachedSeries
+    if m.allSeriesCache <> invalid then return m.allSeriesCache
     return []
 end function
 
 function getSearchDataForMode(mode as String) as Object
-    channels = m.cachedLiveChannels
-    movies = m.movieSearchIndex
-    series = m.cachedSeries
+    channels = m.allLiveCache
+    movies = m.allMoviesCache
+    series = m.allSeriesCache
     if mode = "live" and m.liveChannels <> invalid and m.liveChannels.Count() > 0 then channels = m.liveChannels
     return { channels: channels, movies: movies, series: series }
 end function
@@ -1568,14 +1591,17 @@ sub resetAccountLoadedData()
     m.liveCategories = []
     m.liveChannels = []
     m.cachedLiveChannels = []
+    m.allLiveCache = []
     m.liveCategoriesLoading = false
     m.liveChannelsLoading = false
     m.movieCategories = []
     m.movies = []
     m.cachedMovies = []
+    m.allMoviesCache = []
     m.movieCategoryPreviewCache = []
     m.seriesCategoryPreviewCache = []
     m.cachedSeries = []
+    m.allSeriesCache = []
     m.seriesCategories = []
     m.searchChannels = []
     m.searchMovies = []
@@ -1669,21 +1695,41 @@ sub loadLocalSearchIndexCache()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
     m.cachedSeries = m.searchIndexCache.series
+    m.allMoviesCache = m.searchIndexCache.movies
+    m.allSeriesCache = m.searchIndexCache.series
     m.seriesCategories = m.searchIndexCache.seriesCategories
     m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
     m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
     if m.searchIndexCache.liveCategories.Count() > 0 then m.liveCategories = m.searchIndexCache.liveCategories
-    if m.searchIndexCache.liveChannels.Count() > 0 then m.cachedLiveChannels = m.searchIndexCache.liveChannels
+    if m.searchIndexCache.liveChannels.Count() > 0 then
+        m.cachedLiveChannels = m.searchIndexCache.liveChannels
+        m.allLiveCache = m.searchIndexCache.liveChannels
+    end if
     if m.searchIndexCache.movieCategories.Count() > 0 then m.movieCategories = m.searchIndexCache.movieCategories
-    if m.searchIndexCache.movies.Count() > 0 then m.cachedMovies = m.searchIndexCache.movies
+    if m.searchIndexCache.movies.Count() > 0 then
+        m.cachedMovies = m.searchIndexCache.movies
+        m.allMoviesCache = m.searchIndexCache.movies
+    end if
     if m.searchIndexCache.seriesCategories.Count() > 0 then m.seriesCategories = m.searchIndexCache.seriesCategories
-    if m.searchIndexCache.series.Count() > 0 then m.cachedSeries = m.searchIndexCache.series
+    if m.searchIndexCache.series.Count() > 0 then
+        m.cachedSeries = m.searchIndexCache.series
+        m.allSeriesCache = m.searchIndexCache.series
+    end if
     if m.searchIndexCache.movieCategoryPreviewCache <> invalid then m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
     if m.searchIndexCache.seriesCategoryPreviewCache <> invalid then m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
-    m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+    m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
 end sub
 
+sub startBackgroundCatalogCache()
+    if m.isDemoMode = true then return
+    if not hasAccount(m.account) then return
+    if m.searchIndexUpdating = true then return
+    if m.previewUpdating = true then return
+    if (m.allMoviesCache = invalid or m.allMoviesCache.Count() = 0) or (m.allSeriesCache = invalid or m.allSeriesCache.Count() = 0) or (m.allLiveCache = invalid or m.allLiveCache.Count() = 0) then
+        startSearchIndexRefresh()
+    end if
+end sub
 
 sub cancelSearchIndexRefresh()
     if m.searchIndexTimer <> invalid then m.searchIndexTimer.control = "stop"
@@ -1703,9 +1749,10 @@ sub startSearchIndexRefresh()
     if m.searchIndexUpdating = true then return
     m.searchIndexQueue = []
     if m.liveCategories = invalid or m.liveCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveCategories", kind: "liveCategories", categoryId: "" })
-    if m.cachedLiveChannels = invalid or m.cachedLiveChannels.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveStreams", kind: "live", categoryId: "" })
+    if m.allLiveCache = invalid or m.allLiveCache.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveStreams", kind: "live", categoryId: "" })
     if m.movieCategories = invalid or m.movieCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovieCategories", kind: "movieCategories", categoryId: "" })
-    ' Do not load full movie/series catalogs into the registry; preview cache handles startup.
+    if m.allMoviesCache = invalid or m.allMoviesCache.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: "" })
+    if m.allSeriesCache = invalid or m.allSeriesCache.Count() = 0 then m.searchIndexQueue.Push({ action: "getSeries", kind: "series", categoryId: "" })
     m.searchIndexUpdating = true
     m.searchIndexTimer.control = "stop"
     m.searchIndexTimer.control = "start"
@@ -1758,16 +1805,24 @@ function handleSearchIndexResult(result as Object) as Boolean
             m.liveCategories = normalizeLiveCategories(result.data)
             m.searchIndexCache.liveCategories = m.liveCategories
         else if kind = "live" then
-            m.cachedLiveChannels = normalizeLiveChannels(result.data)
-            m.searchIndexCache.liveChannels = m.cachedLiveChannels
+            m.allLiveCache = normalizeLiveChannels(result.data)
+            m.cachedLiveChannels = m.allLiveCache
+            m.searchIndexCache.liveChannels = m.allLiveCache
         else if kind = "movieCategories" then
             m.movieCategories = normalizeMovieCategories(result.data)
             m.searchIndexCache.movieCategories = m.movieCategories
         else if kind = "movies" then
-            m.cachedMovies = normalizeMovies(result.data)
-            m.searchIndexCache.movies = m.cachedMovies
-            m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+            m.allMoviesCache = normalizeMovies(result.data)
+            m.cachedMovies = m.allMoviesCache
+            m.searchIndexCache.movies = m.allMoviesCache
+            m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
             m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
+            if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.allMoviesCache)
+        else if kind = "series" then
+            m.allSeriesCache = normalizeSeries(result.data)
+            m.cachedSeries = m.allSeriesCache
+            m.searchIndexCache.series = m.allSeriesCache
+            if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", m.allSeriesCache)
         end if
         SaveSearchIndexCache(m.searchIndexCache)
     end if
@@ -1809,9 +1864,16 @@ sub onSeriesResult(result as Object)
     resultCategoryId = getSeriesResultCategoryId(result)
     if result.success = true then
         fresh = normalizeSeries(result.data)
-        m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, fresh, resultCategoryId)
+        if resultCategoryId = "" then
+            m.allSeriesCache = fresh
+            m.cachedSeries = fresh
+            m.searchIndexCache.series = m.allSeriesCache
+            SaveSearchIndexCache(m.searchIndexCache)
+        else
+            m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, fresh, resultCategoryId)
+        end if
         if m.simpleSeriesScreen.visible = true then m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
-        if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", m.cachedSeries)
+        if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", m.allSeriesCache)
     end if
 end sub
 
@@ -2044,14 +2106,21 @@ sub onMoviesResult(result as Object)
     if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setLoading", false)
 
     if result.success = true then
-        m.cachedMovies = replaceCachedCategoryItems(m.cachedMovies, normalizeMovies(result.data), resultCategoryId)
-        m.searchIndexCache.movies = m.cachedMovies
-        m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+        fresh = normalizeMovies(result.data)
+        if resultCategoryId = "" then
+            m.allMoviesCache = fresh
+            m.cachedMovies = fresh
+        else
+            m.cachedMovies = replaceCachedCategoryItems(m.cachedMovies, fresh, resultCategoryId)
+            if m.allMoviesCache = invalid or m.allMoviesCache.Count() = 0 then m.allMoviesCache = m.cachedMovies
+        end if
+        m.searchIndexCache.movies = m.allMoviesCache
+        m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
         m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
         SaveSearchIndexCache(m.searchIndexCache)
         m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
-        if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.cachedMovies)
+        if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.allMoviesCache)
     else if m.movieListScreen.visible = true then
         m.movieListScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
         m.movieListScreen.callFunc("focusCategories")
