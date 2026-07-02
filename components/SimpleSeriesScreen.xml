@@ -3,10 +3,12 @@
     <interface>
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="seriesSelected" type="assocarray" alwaysNotify="true" />
+        <field id="categorySelected" type="assocarray" alwaysNotify="true" />
         <function name="show" />
         <function name="hide" />
         <function name="setSeries" />
         <function name="setCategories" />
+        <function name="setPreviewCache" />
     </interface>
 
     <script type="text/brightscript" uri="pkg:/components/SimpleSeriesScreen.brs" />

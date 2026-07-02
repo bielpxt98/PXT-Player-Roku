@@ -15,6 +15,8 @@ sub Init()
     m.firstVisibleCategoryIndex = 0
     m.activePanel = "categories"
     m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS ASSISTIDOS"]
+    m.previewCache = []
+    m.currentCategoryId = ""
 
     m.background = m.top.FindNode("background")
     m.overlay = m.top.FindNode("overlay")
@@ -204,7 +206,12 @@ sub setSeries(series as Object)
     else
         m.allSeriesItems = series
     end if
-    m.seriesItems = m.allSeriesItems
+    if m.currentCategoryId <> "" then
+        m.seriesItems = filterSeriesItems(m.allSeriesItems, m.currentCategoryId)
+        if m.seriesItems.Count() = 0 then m.seriesItems = getSeriesPreviewItems(m.currentCategoryId)
+    else
+        m.seriesItems = m.allSeriesItems
+    end if
     m.selectedSeriesIndex = 0
     m.firstVisibleSeriesIndex = 0
     updateSeriesWindow()
@@ -213,6 +220,10 @@ sub setSeries(series as Object)
     updateNavigationState()
 end sub
 
+
+sub setPreviewCache(cache as Object)
+    if cache = invalid or Type(cache) <> "roArray" then m.previewCache = [] else m.previewCache = cache
+end sub
 
 sub setCategories(categories as Object)
     if categories = invalid or Type(categories) <> "roArray" then
@@ -260,13 +271,18 @@ end function
 
 sub filterSeriesByCategory(category as Dynamic)
     categoryId = getCategoryIdValue(category)
+    m.currentCategoryId = categoryId
     filtered = []
+    fullMatches = []
     if categoryId = "" then
-        filtered = m.allSeriesItems
+        fullMatches = m.allSeriesItems
     else
-        for each series in m.allSeriesItems
-            if series <> invalid and series.category_id <> invalid and series.category_id.ToStr() = categoryId then filtered.Push(series)
-        end for
+        fullMatches = filterSeriesItems(m.allSeriesItems, categoryId)
+    end if
+    if fullMatches.Count() > 0 then
+        filtered = fullMatches
+    else
+        filtered = getSeriesPreviewItems(categoryId)
     end if
     m.seriesItems = filtered
     m.selectedSeriesIndex = 0
@@ -529,6 +545,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             if m.categoryItems <> invalid and m.selectedIndex < m.categoryItems.Count() then
                 selected = m.categoryItems[m.selectedIndex]
                 if selected.fixed = true then
+                    m.currentCategoryId = ""
                     m.seriesItems = m.allSeriesItems
                     m.selectedSeriesIndex = 0
                     m.firstVisibleSeriesIndex = 0
@@ -536,6 +553,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                     m.activePanel = "series"
                 else
                     filterSeriesByCategory(selected.category)
+                    m.top.categorySelected = selected.category
                 end if
             end if
         else
@@ -547,4 +565,23 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
 
     return false
+end function
+
+
+function getSeriesPreviewItems(categoryId as String) as Object
+    if m.previewCache = invalid or Type(m.previewCache) <> "roArray" then return []
+    for each preview in m.previewCache
+        if preview <> invalid and preview.categoryId <> invalid and preview.categoryId.ToStr() = categoryId and preview.items <> invalid and Type(preview.items) = "roArray" then return preview.items
+    end for
+    return []
+end function
+
+
+function filterSeriesItems(items as Dynamic, categoryId as String) as Object
+    filtered = []
+    if items = invalid or Type(items) <> "roArray" then return filtered
+    for each series in items
+        if series <> invalid and series.category_id <> invalid and series.category_id.ToStr() = categoryId then filtered.Push(series)
+    end for
+    return filtered
 end function

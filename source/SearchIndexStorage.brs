@@ -11,12 +11,21 @@ end function
 
 sub SaveSearchIndexCache(cache as Object)
     section = CreateObject("roRegistrySection", "PXTPlayerSearchIndex")
-    section.Write("cache", FormatJson(normalizeSearchIndexCache(cache)))
+    section.Write("cache", FormatJson(limitSearchIndexCacheForRegistry(normalizeSearchIndexCache(cache))))
     section.Flush()
 end sub
 
+function limitSearchIndexCacheForRegistry(cache as Object) as Object
+    ' Registry is only for lightweight startup data. Full 30k+ lists stay in memory/service cache.
+    cache.movies = []
+    cache.series = []
+    cache.movieSearchIndex = []
+    cache.seriesSearchIndex = []
+    return cache
+end function
+
 function createEmptySearchIndexCache() as Object
-    return { liveCategories: [], liveChannels: [], movieCategories: [], movies: [], seriesCategories: [], series: [], seriesInfo: {}, movieSearchIndex: [], seriesSearchIndex: [], updatedAt: "" }
+    return { liveCategories: [], liveChannels: [], movieCategories: [], movies: [], seriesCategories: [], series: [], seriesInfo: {}, movieSearchIndex: [], seriesSearchIndex: [], movieCategoryPreviewCache: [], seriesCategoryPreviewCache: [], updatedAt: "" }
 end function
 
 function normalizeSearchIndexCache(data as Dynamic) as Object
@@ -31,6 +40,8 @@ function normalizeSearchIndexCache(data as Dynamic) as Object
     if data.seriesInfo <> invalid and Type(data.seriesInfo) = "roAssociativeArray" then normalized.seriesInfo = data.seriesInfo
     if data.movieSearchIndex <> invalid and Type(data.movieSearchIndex) = "roArray" then normalized.movieSearchIndex = data.movieSearchIndex
     if data.seriesSearchIndex <> invalid and Type(data.seriesSearchIndex) = "roArray" then normalized.seriesSearchIndex = data.seriesSearchIndex
+    if data.movieCategoryPreviewCache <> invalid and Type(data.movieCategoryPreviewCache) = "roArray" then normalized.movieCategoryPreviewCache = data.movieCategoryPreviewCache
+    if data.seriesCategoryPreviewCache <> invalid and Type(data.seriesCategoryPreviewCache) = "roArray" then normalized.seriesCategoryPreviewCache = data.seriesCategoryPreviewCache
     if data.updatedAt <> invalid then normalized.updatedAt = data.updatedAt.ToStr()
     return normalized
 end function
