@@ -156,15 +156,16 @@ end sub
 
 sub applyFilter()
     query = normalizeSearchQuery(m.searchInput.text)
-    if query <> "" and m.lastQuery <> "" and Left(query, Len(m.lastQuery)) = m.lastQuery then
-        m.results = filterExistingResults(m.results, query)
-    else
-        m.results = []
-        if m.searchMode = "live" then addMatches("channel", m.channels, query)
-        if m.searchMode = "movies" then addMatches("movie", m.movies, query)
-        if m.searchMode = "series" then addMatches("series", m.series, query)
-        if query = "" then m.results = pickInitialSearchItems(m.results)
-    end if
+
+    ' Always rebuild results from the current source list. Filtering previously
+    ' rendered results can keep stale entries after edits and can also drop
+    ' valid matches because display entries do not contain the source sort key.
+    m.results = []
+    if m.searchMode = "live" then addMatches("channel", m.channels, query)
+    if m.searchMode = "movies" then addMatches("movie", m.movies, query)
+    if m.searchMode = "series" then addMatches("series", m.series, query)
+    if query = "" then m.results = pickInitialSearchItems(m.results)
+
     m.lastQuery = query
     m.searchResultIndex = 0 : m.searchResultOffset = 0 : m.renderedResultLimit = m.resultBatchSize
     if m.results.Count() = 0 then
@@ -224,7 +225,9 @@ function pickInitialSearchItems(entries as Object) as Object
 end function
 
 function getSearchableTitle(item as Dynamic, fallbackName as String) as String
-    if item <> invalid and item.normalizedTitle <> invalid and item.normalizedTitle.ToStr().Trim() <> "" then return item.normalizedTitle.ToStr()
+    ' Search must compare against the real visible title/name, normalized only
+    ' for case, accents, punctuation, and spacing. Cached normalizedTitle values
+    ' may come from older index data and should not override the displayed name.
     return normalizeSearchQuery(fallbackName)
 end function
 
