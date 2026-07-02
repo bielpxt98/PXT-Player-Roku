@@ -17,7 +17,7 @@
         <RecentScreen id="recentScreen" visible="false" />
         <SearchScreen id="searchScreen" visible="false" />
         <MovieSearchScreen id="movieSearchScreen" visible="false" />
-        <SeriesSearchScreen id="seriesSearchScreen" visible="false" />
+        <SeriesSearchScreen id="SeriesSearchScreen" visible="false" />
         <LiveCategoriesScreen id="liveCategoriesScreen" visible="false" />
         <LiveChannelsScreen id="liveChannelsScreen" visible="false" />
         <LivePlayerScreen id="livePlayerScreen" visible="false" />
