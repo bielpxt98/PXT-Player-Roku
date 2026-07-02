@@ -1781,6 +1781,11 @@ sub updateConnectionStatus(connected as Boolean, message as String)
     })
 end sub
 
+function safeText(value as Dynamic) as String
+    if value = invalid then return ""
+    return value.ToStr()
+end function
+
 function hasAccount(account as Dynamic) as Boolean
     if account = invalid then return false
     return safeText(account.dns) <> "" and safeText(account.username) <> "" and safeText(account.password) <> ""
