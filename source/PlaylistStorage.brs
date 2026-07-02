@@ -38,6 +38,10 @@ sub SavePlaylist(playlist as Object)
     section.Flush()
 end sub
 
+sub ClearSavedPlaylist()
+    DeleteSavedPlaylist()
+end sub
+
 sub DeleteSavedPlaylist()
     section = CreateObject("roRegistrySection", PlaylistStorageSectionName())
     if section.Exists("dns") then section.Delete("dns")

@@ -623,6 +623,7 @@ sub onOpenPlaylistRequested()
 end sub
 
 sub onOpenLiveCategoriesRequested()
+    cancelSearchIndexRefresh()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
@@ -1105,7 +1106,6 @@ sub handleLoginConnectionResult(result as Object)
         resetAccountLoadedData()
         loadLocalSearchIndexCache()
         showHome()
-        startSearchIndexRefresh()
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
@@ -1224,6 +1224,19 @@ sub loadLocalSearchIndexCache()
     m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
     if m.searchIndexCache.movieCategories.Count() > 0 then m.movieCategories = m.searchIndexCache.movieCategories
     if m.searchIndexCache.seriesCategories.Count() > 0 then m.seriesCategories = m.searchIndexCache.seriesCategories
+end sub
+
+
+sub cancelSearchIndexRefresh()
+    if m.searchIndexTimer <> invalid then m.searchIndexTimer.control = "stop"
+    if m.searchIndexUpdating = true and m.searchIndexKind <> "" then
+        if m.xtreamService <> invalid then m.xtreamService.control = "STOP"
+        completeXtreamRequest()
+    end if
+    m.searchIndexUpdating = false
+    m.searchIndexQueue = []
+    m.searchIndexKind = ""
+    m.searchIndexCategoryId = ""
 end sub
 
 sub startSearchIndexRefresh()
