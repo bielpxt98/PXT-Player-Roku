@@ -1548,31 +1548,15 @@ sub resetSeriesData()
 end sub
 
 sub onOpenSeriesRequested()
-    if m.isOpeningSeries = true then return
-    m.isOpeningSeries = true
-    cancelSearchIndexRefresh()
-
-    hideAllScreensExcept(m.seriesHomeScreen)
-    m.seriesHomeScreen.callFunc("resetSelection")
-    m.seriesHomeScreen.callFunc("setCategories", [])
-    m.seriesHomeScreen.callFunc("setSeries", [])
-    m.seriesHomeScreen.callFunc("show")
-    m.seriesHomeScreen.SetFocus(true)
-
-    if not isValidAccount(m.account) then
-        m.seriesHomeScreen.callFunc("setLoading", false)
-        m.seriesHomeScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de séries.")
-        m.isOpeningSeries = false
-        return
-    end if
-
-    m.seriesHomeScreen.callFunc("showMessage", "Carregando categorias de séries...")
-    runXtreamRequest("getSeriesCategories", "")
-    m.isOpeningSeries = false
+    ' TESTE TEMPORÁRIO:
+    ' botão Séries abre Filmes para isolar travamento da tela de Séries.
+    onOpenMovieCategoriesRequested()
 end sub
 
 sub onOpenSeriesCategoriesRequested()
-    onOpenSeriesRequested()
+    ' TESTE TEMPORÁRIO:
+    ' mantém qualquer entrada de Séries no mesmo fluxo do botão Filmes.
+    onOpenMovieCategoriesRequested()
 end sub
 
 sub startSeriesOpenTimeout()
