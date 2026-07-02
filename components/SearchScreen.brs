@@ -239,8 +239,10 @@ sub appendSearchEntries(entries as Object)
 end sub
 
 sub renderResults()
-    clearResultNodes()
-    if m.results.Count() = 0 then return
+    if m.results.Count() = 0 then
+        clearResultNodes()
+        return
+    end if
     updateResultWindow()
     lastIndex = m.searchResultOffset + m.visibleItemCount - 1
     maxLoadedIndex = getLoadedResultCount() - 1
@@ -261,8 +263,35 @@ function createCardResultNode(result as Object, visualIndex as Integer) as Objec
     title = CreateObject("roSGNode", "Label") : title.id = "itemLabel" : title.width = m.cardWidth - 12 : title.height = 30 : title.translation = [6, m.cardHeight - 58] : title.horizAlign = "center" : title.vertAlign = "center" : title.color = "#FFFFFF" : title.font = "font:SmallBoldSystemFont" : title.text = result.title
     meta = CreateObject("roSGNode", "Label") : meta.id = "itemMeta" : meta.width = m.cardWidth - 12 : meta.height = 24 : meta.translation = [6, m.cardHeight - 28] : meta.horizAlign = "center" : meta.vertAlign = "center" : meta.color = "#9FB0C8" : meta.font = "font:TinySystemFont" : meta.text = result.meta
     group.AppendChild(bg) : group.AppendChild(imageBg) : group.AppendChild(poster) : group.AppendChild(title) : group.AppendChild(meta)
-    m.lastItemRefs = { background: bg, label: title }
+    m.lastItemRefs = { background: bg, label: title, meta: meta, poster: poster, imageBg: imageBg, resultKey: getResultKey(result) }
     return group
+end function
+
+sub updateCardResultNode(group as Object, refs as Object, result as Object, visualIndex as Integer)
+    col = visualIndex MOD m.resultCols : row = Int(visualIndex / m.resultCols)
+    group.translation = [col * (m.cardWidth + m.cardGap), row * (m.cardHeight + 12)]
+    refs.background.width = m.cardWidth : refs.background.height = m.cardHeight
+    refs.imageBg.width = m.cardWidth - 18 : refs.imageBg.height = m.cardHeight - 70
+    refs.poster.width = m.cardWidth - 18 : refs.poster.height = m.cardHeight - 70
+    refs.label.width = m.cardWidth - 12 : refs.label.translation = [6, m.cardHeight - 58]
+    refs.meta.width = m.cardWidth - 12 : refs.meta.translation = [6, m.cardHeight - 28]
+    key = getResultKey(result)
+    if refs.resultKey = key then return
+    refs.resultKey = key
+    refs.poster.uri = getItemImage(result.item)
+    refs.label.text = result.title
+    refs.meta.text = result.meta
+end sub
+
+function getResultKey(result as Object) as String
+    item = result.item
+    if item <> invalid then
+        if item.stream_id <> invalid then return result.type + ":" + item.stream_id.ToStr()
+        if item.series_id <> invalid then return result.type + ":" + item.series_id.ToStr()
+        if item.title <> invalid then return result.type + ":" + item.title.ToStr()
+        if item.name <> invalid then return result.type + ":" + item.name.ToStr()
+    end if
+    return result.type + ":" + result.title
 end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
