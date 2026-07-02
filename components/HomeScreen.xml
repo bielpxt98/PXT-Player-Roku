@@ -16,10 +16,9 @@
     <children>
         <Poster id="homeBackground" uri="pkg:/images/background.jpeg" opacity="0" translation="[0, 0]" loadDisplayMode="scaleToFill" />
         <Rectangle id="homeOverlay" color="#000000" opacity="0.24" translation="[0, 0]" />
-        <Label id="homeTitle" text="PXT PLAYER" color="#FFFFFF" horizAlign="center" />
-        <HomeButton id="liveTvButton" labelText="TV AO VIVO" iconText="▣" accentColor="#E50914" />
-        <HomeButton id="moviesButton" labelText="FILMES" iconText="🎬" accentColor="#208CFF" />
-        <HomeButton id="seriesButton" labelText="SÉRIES" iconText="▤" accentColor="#8B5CF6" />
+        <HomeTile id="liveTvButton" title="TV AO VIVO" iconUri="pkg:/images/icons/tv.svg" baseColor="#8B0000" />
+        <HomeTile id="moviesButton" title="FILMES" iconUri="pkg:/images/icons/movies.svg" baseColor="#0B3A75" />
+        <HomeTile id="seriesButton" title="SÉRIES" iconUri="pkg:/images/icons/series.svg" baseColor="#4C1D95" />
         <Label id="accountIconLabel" text="●" color="#D8E2F3" horizAlign="center" />
         <Label id="accountFooterLabel" text="CONTA" color="#D8E2F3" horizAlign="center" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />
