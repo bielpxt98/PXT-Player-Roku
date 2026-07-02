@@ -43,7 +43,7 @@ sub Init()
     m.liveCategories = []
     m.liveCategoriesLoading = false
     m.liveChannels = []
-    m.liveChannelsLoading = false
+    m.liveChannelsLoading = true
     m.selectedLiveCategory = invalid
     m.selectedLiveCategoryId = ""
     m.selectedLiveChannel = invalid
@@ -51,7 +51,7 @@ sub Init()
     m.movieCategories = []
     m.movieCategoriesLoading = false
     m.movies = []
-    m.moviesLoading = false
+    m.moviesLoading = true
     m.selectedMovieCategory = invalid
     m.selectedMovieCategoryId = ""
     m.selectedMovie = invalid
@@ -172,9 +172,8 @@ sub startInitialFlow()
 
     if hasAccount(m.account) then
         m.isDemoMode = false
-        showHome()
         updateConnectionStatus(false, "Conectando...")
-        startAutoConnectTimer()
+        startSplashBootstrap()
     else
         if m.account <> invalid then DeleteSavedPlaylist()
         m.account = invalid
@@ -275,6 +274,7 @@ sub finishSplashIfReady()
     m.splashMaximumTimer.control = "stop"
     m.splashScreen.callFunc("hide")
     showHome()
+    if hasAccount(m.account) and m.isDemoMode <> true and m.isConnecting <> true then startAutoConnectTimer()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -321,6 +321,9 @@ function closeActivePlayerScreen() as Boolean
         return true
     else if m.livePlayerScreen <> invalid and m.livePlayerScreen.visible = true then
         onLivePlayerBack()
+        return true
+    else if m.seriesPlayerScreen <> invalid and m.seriesPlayerScreen.visible = true then
+        onSeriesPlayerBack()
         return true
     end if
 
@@ -563,8 +566,7 @@ sub onSearchChannelSelected()
     m.selectedLiveChannel = channel
     m.openedFromSearch = true
     m.searchScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("show", channel)
-    buildLiveStreamUrl(channel)
+    openPlayer(channel, "live")
 end sub
 
 sub onSearchMovieSelected()
@@ -572,10 +574,8 @@ sub onSearchMovieSelected()
     if movie = invalid then return
     m.selectedMovie = movie
     m.openedFromSearch = true
-    hideAllScreensExcept(m.moviePlayerScreen)
-    m.moviePlayerScreen.callFunc("show", movie)
     m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
-    buildMovieStreamUrl(movie)
+    openPlayer(movie, "movie")
 end sub
 
 sub onSearchSeriesSelected()
@@ -632,16 +632,13 @@ sub onHistorySelected()
     m.openedFromRecent = true
     if item.type = "movie" then
         m.selectedMovie = item.content
-        hideAllScreensExcept(m.moviePlayerScreen)
-        m.moviePlayerScreen.callFunc("show", item.content)
         m.moviePlayerScreen.callFunc("setResumePosition", item.position)
-        buildMovieStreamUrl(item.content)
+        openPlayer(item.content, "movie")
     else if item.type = "series" then
         m.selectedSeries = item.series
         m.selectedEpisode = item.content
-        hideAllScreensExcept(m.seriesPlayerScreen)
         m.seriesPlayerScreen.callFunc("setResumePosition", item.position)
-        m.seriesPlayerScreen.callFunc("show", item.content)
+        openPlayer(item.content, "series")
     end if
 end sub
 
@@ -654,14 +651,11 @@ sub onFavoriteSelected()
     m.openedFromFavorites = true
     if favorite.type = "live" then
         m.selectedLiveChannel = content
-        m.livePlayerScreen.callFunc("show", content)
-        buildLiveStreamUrl(content)
+        openPlayer(content, "live")
     else if favorite.type = "movie" then
         m.selectedMovie = content
-        hideAllScreensExcept(m.moviePlayerScreen)
-        m.moviePlayerScreen.callFunc("show", content)
         m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", content))
-        buildMovieStreamUrl(content)
+        openPlayer(content, "movie")
     end if
 end sub
 
@@ -889,6 +883,8 @@ sub onMovieCategorySelected()
     m.movieListScreen.callFunc("setCategories", m.movieCategories)
     m.movieListScreen.callFunc("resetSelection")
     m.movieListScreen.callFunc("show", category)
+    m.movieListScreen.callFunc("setLoading", true)
+    m.movieListScreen.callFunc("showMessage", "Carregando categoria...")
     showMoviesFromCacheOrLoad(category)
 end sub
 
@@ -910,6 +906,8 @@ sub onMovieListCategorySelected()
     m.movies = []
     m.moviesLoading = false
     m.movieListScreen.callFunc("show", category)
+    m.movieListScreen.callFunc("setLoading", true)
+    m.movieListScreen.callFunc("showMessage", "Carregando categoria...")
     showMoviesFromCacheOrLoad(category)
 end sub
 
@@ -968,10 +966,8 @@ sub startSelectedMovieFromDetail(resumePosition as Integer)
         m.movieDetailScreen.callFunc("setLoading", false)
         return
     end if
-    hideAllScreensExcept(m.moviePlayerScreen)
-    m.moviePlayerScreen.callFunc("show", m.selectedMovie)
     m.moviePlayerScreen.callFunc("setResumePosition", resumePosition)
-    buildMovieStreamUrl(m.selectedMovie)
+    openPlayer(m.selectedMovie, "movie")
 end sub
 
 sub onMovieDetailFavoriteToggled()
@@ -1063,6 +1059,8 @@ sub onLiveCategorySelected()
     m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
     m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", category)
+    m.liveChannelsScreen.callFunc("setLoading", true)
+    m.liveChannelsScreen.callFunc("showMessage", "Carregando categoria...")
     showLiveChannelsFromCacheOrLoad(category)
 end sub
 
@@ -1083,6 +1081,8 @@ sub onLiveChannelsCategorySelected()
     m.liveChannels = []
     m.liveChannelsLoading = false
     m.liveChannelsScreen.callFunc("show", category)
+    m.liveChannelsScreen.callFunc("setLoading", true)
+    m.liveChannelsScreen.callFunc("showMessage", "Carregando categoria...")
     showLiveChannelsFromCacheOrLoad(category)
 end sub
 
@@ -1099,8 +1099,7 @@ sub onLiveChannelSelected()
     m.selectedLiveChannel = channel
     m.liveChannelsRestoreState = m.liveChannelsScreen.callFunc("getState")
     m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("show", channel)
-    buildLiveStreamUrl(channel)
+    openPlayer(channel, "live")
 end sub
 
 sub onLivePlayerBack()
@@ -1125,11 +1124,36 @@ sub onLivePlayerBack()
     m.liveChannelsRestoreState = invalid
 end sub
 
+sub openPlayer(item as Dynamic, itemType as String)
+    cleanType = LCase(itemType)
+    if cleanType = "live" then
+        hideAllScreensExcept(m.livePlayerScreen)
+        m.livePlayerScreen.callFunc("show", item)
+        buildLiveStreamUrl(item)
+    else if cleanType = "movie" then
+        hideAllScreensExcept(m.moviePlayerScreen)
+        m.moviePlayerScreen.callFunc("show", item)
+        buildMovieStreamUrl(item)
+    else if cleanType = "series" then
+        hideAllScreensExcept(m.seriesPlayerScreen)
+        if getDirectUrl(item) = "" then
+            m.seriesPlayerScreen.callFunc("show", item)
+            m.seriesPlayerScreen.callFunc("showError", "Stream sem URL válida")
+        else
+            m.seriesPlayerScreen.callFunc("show", item)
+        end if
+    end if
+end sub
+
 sub buildLiveStreamUrl(channel as Object)
     directUrl = getDirectUrl(channel)
     if directUrl = "" and m.isDemoMode = true then directUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
     if directUrl <> "" then
         m.livePlayerScreen.callFunc("play", directUrl)
+        return
+    end if
+    if getStreamId(channel) = "" then
+        m.livePlayerScreen.callFunc("showError", "Stream sem URL válida")
         return
     end if
     cancelBlockingRequestForPlayback()
@@ -1140,7 +1164,7 @@ sub buildLiveStreamUrl(channel as Object)
     m.xtreamService.streamId = getStreamId(channel)
     m.xtreamService.streamExtension = getStreamExtension(channel)
     if not hasAccount(m.account) then
-        m.livePlayerScreen.callFunc("play", "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8")
+        m.livePlayerScreen.callFunc("showError", "Stream sem URL válida")
         return
     end if
     m.xtreamService.dns = m.account.dns
@@ -1166,6 +1190,10 @@ sub buildMovieStreamUrl(movie as Object)
     directUrl = getDirectUrl(movie)
     if directUrl <> "" then
         m.moviePlayerScreen.callFunc("play", directUrl)
+        return
+    end if
+    if getStreamId(movie) = "" then
+        m.moviePlayerScreen.callFunc("showError", "Stream sem URL válida")
         return
     end if
     cancelBlockingRequestForPlayback()
@@ -1833,9 +1861,10 @@ sub onSeriesEpisodeSelected()
     streamUrl = ""
     if episode.title <> invalid then title = episode.title.ToStr().Trim()
     if episode.streamUrl <> invalid then streamUrl = episode.streamUrl.ToStr().Trim()
+    if streamUrl = "" then streamUrl = getDirectUrl(episode)
     if title = "" then title = "Episódio"
     if streamUrl = "" then
-        m.seriesDetailsScreen.callFunc("showMessage", "Episódio sem link disponível.")
+        m.seriesDetailsScreen.callFunc("showMessage", "Stream sem URL válida")
         return
     end if
     m.selectedEpisode = episode
@@ -1845,7 +1874,7 @@ sub onSeriesEpisodeSelected()
     resumePosition = GetHistoryPosition("episode", episodeToPlay)
     m.seriesDetailsScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("setResumePosition", 0)
-    m.seriesPlayerScreen.callFunc("show", episodeToPlay)
+    openPlayer(episodeToPlay, "series")
     UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, 0, 0)
 end sub
 
@@ -2034,8 +2063,10 @@ end function
 
 function getDirectUrl(item as Dynamic) as String
     if item = invalid then return ""
-    if item.direct_url <> invalid and item.direct_url.ToStr().Trim() <> "" then return item.direct_url.ToStr().Trim()
-    if item.directUrl <> invalid and item.directUrl.ToStr().Trim() <> "" then return item.directUrl.ToStr().Trim()
+    urlFields = ["stream_url", "streamUrl", "url", "movie_url", "movieUrl", "direct_source", "direct_url", "directUrl", "playbackUrl"]
+    for each field in urlFields
+        if item.DoesExist(field) and item[field] <> invalid and item[field].ToStr().Trim() <> "" then return item[field].ToStr().Trim()
+    end for
     return ""
 end function
 
