@@ -2,6 +2,7 @@
 sub Init()
     m.tileTitle = m.top.FindNode("tileTitle")
     m.tileIcon = m.top.FindNode("tileIcon")
+    m.tileIconText = m.top.FindNode("tileIconText")
     m.tileBackground = m.top.FindNode("tileBackground")
     m.tileBorder = m.top.FindNode("tileBorder")
     m.tileColorWash = m.top.FindNode("tileColorWash")
@@ -9,9 +10,11 @@ sub Init()
     m.focusInAnimation = m.top.FindNode("focusInAnimation")
     m.focusOutAnimation = m.top.FindNode("focusOutAnimation")
 
-    m.tileTitle.font = "font:MediumBoldSystemFont"
+    m.tileTitle.font = "font:LargeBoldSystemFont"
+    if m.tileIconText <> invalid then m.tileIconText.font = "font:LargeBoldSystemFont"
     onTitleChanged()
     onIconUriChanged()
+    onIconTextChanged()
     onBaseColorChanged()
     onFocusedChanged()
 end sub
@@ -22,6 +25,15 @@ end sub
 
 sub onIconUriChanged()
     if m.tileIcon <> invalid and m.top.iconUri <> invalid then m.tileIcon.uri = m.top.iconUri
+end sub
+
+sub onIconTextChanged()
+    if m.tileIconText = invalid then return
+    iconText = ""
+    if m.top.iconText <> invalid then iconText = m.top.iconText
+    m.tileIconText.text = iconText
+    m.tileIconText.visible = iconText <> ""
+    if m.tileIcon <> invalid then m.tileIcon.visible = not m.tileIconText.visible
 end sub
 
 sub onBaseColorChanged()
