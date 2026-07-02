@@ -82,6 +82,7 @@ sub Init()
     m.bootstrapQueue = []
     m.localFavoritesCache = []
     m.localHistoryCache = []
+    m.movieListRestoreState = invalid
 
     configureScene()
 
@@ -795,6 +796,7 @@ end sub
 
 sub onMovieDetailPlay()
     if m.selectedMovie = invalid then return
+    m.movieListRestoreState = m.movieListScreen.callFunc("getState")
     if getStreamId(m.selectedMovie) = "" then
         m.movieDetailScreen.callFunc("setLoading", false)
         return
@@ -822,7 +824,12 @@ sub onMoviePlayerBack()
         m.openedFromSearch = false
         showHome()
     else
-        m.movieDetailScreen.callFunc("show", m.selectedMovie)
+        m.movieDetailScreen.callFunc("hide")
+        m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+        if m.movieListRestoreState <> invalid then
+            m.movieListScreen.callFunc("restoreState", m.movieListRestoreState)
+            m.movieListRestoreState = invalid
+        end if
     end if
 end sub
 
