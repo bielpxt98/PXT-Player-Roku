@@ -5,6 +5,7 @@
         <function name="hide" />
         <function name="setLoading" />
         <function name="showError" />
+        <function name="showMessage" />
         <field id="submit" type="assocarray" alwaysNotify="true" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="demoRequested" type="boolean" alwaysNotify="true" />

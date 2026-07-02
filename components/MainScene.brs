@@ -675,7 +675,7 @@ sub onLoginSubmit()
     m.isDemoMode = false
     account = m.loginScreen.submit
     if not hasAccount(account) then
-        m.loginScreen.callFunc("showError", "Informe DNS, usuário e senha para conectar.")
+        m.loginScreen.callFunc("showError", "Informe DNS, usuário e senha.")
         return
     end if
 
@@ -685,7 +685,8 @@ sub onLoginSubmit()
     m.loginErrorActive = false
     m.connectionMode = "manual"
 
-    showHome()
+    m.loginScreen.callFunc("showMessage", "Tentando conectar...")
+    m.loginScreen.callFunc("setLoading", true)
     updateConnectionStatus(false, "Conectando...")
     startLoginTimeout()
     connectXtream(account)
@@ -1292,6 +1293,7 @@ sub handleLoginConnectionResult(result as Object)
         m.connectionMode = ""
         resetAccountLoadedData()
         loadLocalSearchIndexCache()
+        m.loginScreen.callFunc("showMessage", "Login confirmado. Carregando...")
         showHome()
         startSearchIndexRefresh()
     else
@@ -1301,12 +1303,19 @@ sub handleLoginConnectionResult(result as Object)
         if connectionMode = "auto" then
             m.loginErrorActive = false
             updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
+            m.connectionMode = ""
+            showHome()
         else
             m.loginErrorActive = true
-            updateConnectionStatus(false, "Não foi possível conectar. Pressione Voltar para corrigir os dados.")
+            updateConnectionStatus(false, "Não foi possível conectar. Verifique os dados.")
+            m.connectionMode = ""
+            showLogin()
+            if result <> invalid and result.message = "Tempo esgotado ao conectar." then
+                m.loginScreen.callFunc("showError", "Tempo esgotado ao conectar.")
+            else
+                m.loginScreen.callFunc("showError", "Não foi possível conectar. Verifique os dados.")
+            end if
         end if
-        m.connectionMode = ""
-        showHome()
     end if
 end sub
 

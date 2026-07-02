@@ -10,8 +10,9 @@
     <script type="text/brightscript" uri="pkg:/components/SimpleSeriesScreen.brs" />
 
     <children>
-        <Rectangle id="background" color="#071018" translation="[0, 0]" width="1920" height="1080" />
-        <Rectangle id="panel" color="#101B25" opacity="0.96" translation="[120, 80]" width="1680" height="920" />
+        <Poster id="background" uri="pkg:/images/background.jpeg" opacity="1.0" translation="[0, 0]" loadDisplayMode="scaleToFill" />
+        <Rectangle id="overlay" color="#000000" opacity="0.58" translation="[0, 0]" />
+        <Rectangle id="panel" color="#101B25" opacity="0.0" translation="[120, 80]" width="1680" height="920" />
 
         <Label id="titleLabel" text="SÉRIES" horizAlign="center" vertAlign="center" translation="[120, 96]" width="1680" height="88" color="#FFFFFF" />
         <Rectangle id="topDivider" color="#FFFFFF" opacity="0.28" translation="[120, 202]" width="1680" height="2" />
@@ -23,8 +24,7 @@
         <Rectangle id="categoryFocus" color="#23384A" opacity="0.95" translation="[150, 326]" width="390" height="58" />
         <Label id="searchLabel" text="> PESQUISAR" translation="[185, 338]" width="340" height="42" color="#FFFFFF" />
         <Label id="favoritesLabel" text="  FAVORITOS" translation="[185, 408]" width="340" height="42" color="#B9C4CF" />
-        <Label id="recentLabel" text="  ÚLTIMOS" translation="[185, 478]" width="360" height="42" color="#B9C4CF" />
-        <Label id="watchedLabel" text="  ASSISTIDOS" translation="[185, 548]" width="360" height="42" color="#B9C4CF" />
+        <Label id="recentLabel" text="  ÚLTIMOS ASSISTIDOS" translation="[185, 478]" width="360" height="42" color="#B9C4CF" />
 
         <Group id="seriesGridGroup" translation="[620, 300]" />
         <Label id="emptyMessageLabel" text="Conecte uma lista Xtream&#10;para carregar as séries." horizAlign="center" vertAlign="center" translation="[620, 420]" width="1120" height="180" color="#FFFFFF" />
