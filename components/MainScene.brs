@@ -797,6 +797,7 @@ end sub
 
 sub onMovieDetailPlay()
     if m.selectedMovie = invalid then return
+    cancelSearchIndexRefresh()
     m.movieListRestoreState = m.movieListScreen.callFunc("getState")
     if getStreamId(m.selectedMovie) = "" then
         m.movieDetailScreen.callFunc("setLoading", false)
@@ -906,6 +907,7 @@ sub onLivePlayerBack()
 end sub
 
 sub buildLiveStreamUrl(channel as Object)
+    cancelBlockingRequestForPlayback()
     if not beginXtreamRequest("buildLiveStreamUrl") then return
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "buildLiveStreamUrl"
@@ -932,6 +934,7 @@ sub loadMovieInfo(movie as Object)
 end sub
 
 sub buildMovieStreamUrl(movie as Object)
+    cancelBlockingRequestForPlayback()
     if not beginXtreamRequest("buildMovieStreamUrl") then return
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "buildMovieStreamUrl"
@@ -1197,6 +1200,14 @@ sub cancelXtreamRequest()
     completeXtreamRequest()
 end sub
 
+sub cancelBlockingRequestForPlayback()
+    if m.isLoadingRequest <> true then return
+    if m.pendingRequest = "buildLiveStreamUrl" then return
+    if m.pendingRequest = "buildMovieStreamUrl" then return
+    if m.pendingRequest = "buildSeriesStreamUrl" then return
+    cancelXtreamRequest()
+end sub
+
 function beginXtreamRequest(action as String) as Boolean
     if m.isLoadingRequest = true then return false
     m.isLoadingRequest = true
@@ -1354,6 +1365,7 @@ sub resetSeriesData()
 end sub
 
 sub onOpenSeriesCategoriesRequested()
+    cancelSearchIndexRefresh()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
@@ -1439,6 +1451,7 @@ end sub
 sub onSeriesEpisodeSelected()
     episode = m.seriesDetailScreen.episodeSelected
     if episode = invalid then return
+    cancelSearchIndexRefresh()
     if not hasAccount(m.account) then
         m.seriesDetailScreen.callFunc("showMessage", "Conecte uma lista Xtream para reproduzir episódios.")
         return
@@ -1509,6 +1522,7 @@ sub loadSeriesInfo(series as Object)
 end sub
 
 sub buildSeriesStreamUrl(episode as Object)
+    cancelBlockingRequestForPlayback()
     if not beginXtreamRequest("buildSeriesStreamUrl") then return
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "buildSeriesStreamUrl"
@@ -1653,6 +1667,15 @@ sub onLiveStreamUrlResult(result as Object)
         m.livePlayerScreen.callFunc("play", result.data.url)
     else
         m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
+    end if
+end sub
+
+sub onMovieStreamUrlResult(result as Object)
+    if m.moviePlayerScreen.visible <> true then return
+    if result.success = true and result.data <> invalid and result.data.url <> invalid then
+        m.moviePlayerScreen.callFunc("play", result.data.url)
+    else
+        m.moviePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste filme.")
     end if
 end sub
 
