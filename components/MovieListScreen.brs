@@ -15,6 +15,7 @@ sub Init()
     m.categories = [m.searchEntry, m.favoritesEntry] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.categoryRefs = []
     m.movieNodes = [] : m.movieRefs = []
+    m.batchSize = 60 : m.loadedMovieCount = 0
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
     m.selectedMovieIndex = 0 : m.firstVisibleMovieIndex = 0 : m.activePane = "categories"
     configureLayout()
@@ -105,8 +106,11 @@ sub setLoading(isLoading as Boolean)
 end sub
 
 sub setMovies(items as Object)
-    m.allMovie = normalizeArray(items) : m.movies = m.allMovie
-    if m.movies.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
+    m.allMovie = normalizeArray(items)
+    m.loadedMovieCount = 0
+    m.movies = []
+    if m.allMovie.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
+    appendMovieBatch()
     m.statusLabel.text = ""
     resetGridSelection()
     m.activePane = "grid"
@@ -115,7 +119,7 @@ sub setMovies(items as Object)
 end sub
 
 sub showMessage(message as String)
-    clearGridNodes() : m.movies = [] : m.allMovie = [] : resetGridSelection()
+    clearGridNodes() : m.movies = [] : m.loadedMovieCount = 0 : resetGridSelection()
     m.statusLabel.color = "#FFCC66" : m.statusLabel.text = message
 end sub
 
@@ -260,8 +264,11 @@ sub moveGrid(dx as Integer, dy as Integer)
     if m.movies.Count() = 0 then return
     oldSelected = m.selectedMovieIndex
     oldFirst = m.firstVisibleMovieIndex
-    m.selectedMovieIndex = m.selectedMovieIndex + (dy * m.columns) + dx
+    targetIndex = m.selectedMovieIndex + (dy * m.columns) + dx
+    if targetIndex >= m.movies.Count() - m.columns then appendMovieBatch()
+    m.selectedMovieIndex = targetIndex
     updateGridWindow()
+    appendMovieBatchIfNeeded()
     if oldSelected <> m.selectedMovieIndex or oldFirst <> m.firstVisibleMovieIndex then renderGrid()
     updateFocus()
 end sub
@@ -367,13 +374,17 @@ function getState() as Object
         selectedIndex: m.selectedMovieIndex,
         firstVisibleRow: Int(m.firstVisibleMovieIndex / m.columns),
         activePane: m.activePane,
-        movies: m.movies
+        movies: m.movies,
+        allMovies: m.allMovie,
+        loadedMovieCount: m.loadedMovieCount
     }
 end function
 
 sub restoreState(state as Dynamic)
     if state = invalid then return
-    if state.movies <> invalid then m.movies = normalizeArray(state.movies) : m.allMovie = m.movies
+    if state.allMovies <> invalid then m.allMovie = normalizeArray(state.allMovies)
+    if state.movies <> invalid then m.movies = normalizeArray(state.movies)
+    if state.loadedMovieCount <> invalid then m.loadedMovieCount = state.loadedMovieCount else m.loadedMovieCount = m.movies.Count()
     if state.selectedCategoryIndex <> invalid then m.selectedCategoryIndex = state.selectedCategoryIndex
     if state.firstVisibleCategoryIndex <> invalid then m.firstVisibleCategoryIndex = state.firstVisibleCategoryIndex
     if state.selectedIndex <> invalid then m.selectedMovieIndex = state.selectedIndex
@@ -445,6 +456,22 @@ function getMovieName(item as Dynamic) as String
     if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
     return "Filme sem nome"
 end function
+
+sub appendMovieBatch()
+    if m.allMovie = invalid then return
+    nextLimit = m.loadedMovieCount + m.batchSize
+    if nextLimit > m.allMovie.Count() then nextLimit = m.allMovie.Count()
+    if nextLimit <= m.loadedMovieCount then return
+    for i = m.loadedMovieCount to nextLimit - 1
+        m.movies.Push(m.allMovie[i])
+    end for
+    m.loadedMovieCount = nextLimit
+end sub
+
+sub appendMovieBatchIfNeeded()
+    if m.allMovie = invalid or m.loadedMovieCount >= m.allMovie.Count() then return
+    if m.selectedMovieIndex >= m.movies.Count() - (m.columns * 2) then appendMovieBatch()
+end sub
 
 function getMovieLogTitle(item as Dynamic) as String
     return getMovieName(item)
