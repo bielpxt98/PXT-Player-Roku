@@ -558,8 +558,7 @@ end sub
 
 
 function getMoviesForSearch() as Object
-    if m.allMoviesCache <> invalid then return m.allMoviesCache
-    return []
+    return limitArrayForUiBatch(m.allMoviesCache, 100)
 end function
 
 function getSeriesForSearch() as Object
@@ -1251,7 +1250,7 @@ sub connectXtream(account as Object)
     if m.isLoadingRequest = true then return
     if not hasAccount(account) then
         m.isConnecting = false
-        updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
+        showReconnectErrorIfNoValidCache()
         return
     end if
 
@@ -1559,13 +1558,18 @@ sub handleLoginConnectionResult(result as Object)
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
-        resetAccountLoadedData()
         if connectionMode = "auto" then
             m.loginErrorActive = false
-            updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
             m.connectionMode = ""
+            if hasValidLocalCatalogData() then
+                clearAccountReconnectError()
+            else
+                resetAccountLoadedData()
+                updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
+            end if
             showHome()
         else
+            resetAccountLoadedData()
             m.loginErrorActive = true
             updateConnectionStatus(false, "Não foi possível conectar. Verifique os dados.")
             m.connectionMode = ""
@@ -1801,6 +1805,7 @@ function handleSearchIndexResult(result as Object) as Boolean
     kind = m.searchIndexKind
     m.searchIndexKind = ""
     if result.success = true then
+        clearAccountReconnectError()
         if kind = "liveCategories" then
             m.liveCategories = normalizeLiveCategories(result.data)
             m.searchIndexCache.liveCategories = m.liveCategories
@@ -1817,7 +1822,7 @@ function handleSearchIndexResult(result as Object) as Boolean
             m.searchIndexCache.movies = m.allMoviesCache
             m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
             m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
-            if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.allMoviesCache)
+            if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", limitArrayForUiBatch(m.allMoviesCache, 100))
         else if kind = "series" then
             m.allSeriesCache = normalizeSeries(result.data)
             m.cachedSeries = m.allSeriesCache
@@ -1854,6 +1859,7 @@ end sub
 
 sub onSeriesCategoriesResult(result as Object)
     if result.success = true then
+        clearAccountReconnectError()
         m.seriesCategories = normalizeSeriesCategories(result.data)
         m.searchIndexCache.seriesCategories = m.seriesCategories
         SaveSearchIndexCache(m.searchIndexCache)
@@ -1863,6 +1869,7 @@ end sub
 sub onSeriesResult(result as Object)
     resultCategoryId = getSeriesResultCategoryId(result)
     if result.success = true then
+        clearAccountReconnectError()
         fresh = normalizeSeries(result.data)
         if resultCategoryId = "" then
             m.allSeriesCache = fresh
@@ -2042,6 +2049,7 @@ sub onLiveCategoriesResult(result as Object)
     m.homeScreen.callFunc("setLiveCategoriesLoading", false)
 
     if result.success = true then
+        clearAccountReconnectError()
         m.liveCategories = normalizeLiveCategories(result.data)
         m.searchIndexCache.liveCategories = m.liveCategories
         SaveSearchIndexCache(m.searchIndexCache)
@@ -2065,6 +2073,7 @@ sub onLiveChannelsResult(result as Object)
     if m.liveChannelsScreen.visible = true then m.liveChannelsScreen.callFunc("setLoading", false)
 
     if result.success = true then
+        clearAccountReconnectError()
         m.cachedLiveChannels = normalizeLiveChannels(result.data)
         m.searchIndexCache.liveChannels = m.cachedLiveChannels
         SaveSearchIndexCache(m.searchIndexCache)
@@ -2083,6 +2092,7 @@ sub onMovieCategoriesResult(result as Object)
     m.homeScreen.callFunc("setMovieCategoriesLoading", false)
 
     if result.success = true then
+        clearAccountReconnectError()
         m.movieCategories = normalizeMovieCategories(result.data)
         m.searchIndexCache.movieCategories = m.movieCategories
         SaveSearchIndexCache(m.searchIndexCache)
@@ -2106,6 +2116,7 @@ sub onMoviesResult(result as Object)
     if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setLoading", false)
 
     if result.success = true then
+        clearAccountReconnectError()
         fresh = normalizeMovies(result.data)
         if resultCategoryId = "" then
             m.allMoviesCache = fresh
@@ -2120,7 +2131,7 @@ sub onMoviesResult(result as Object)
         SaveSearchIndexCache(m.searchIndexCache)
         m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
-        if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.allMoviesCache)
+        if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", limitArrayForUiBatch(m.allMoviesCache, 100))
     else if m.movieListScreen.visible = true then
         m.movieListScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
         m.movieListScreen.callFunc("focusCategories")
@@ -2278,6 +2289,43 @@ function normalizeLiveCategories(data as Dynamic) as Object
     if data = invalid then return []
     if Type(data) = "roArray" then return data
     return []
+end function
+
+sub showReconnectErrorIfNoValidCache()
+    if hasValidLocalCatalogData() then
+        clearAccountReconnectError()
+    else
+        updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
+    end if
+end sub
+
+sub clearAccountReconnectError()
+    m.accountError = ""
+    m.reconnectError = ""
+    if m.homeScreen <> invalid then updateConnectionStatus(true, "Conectado")
+end sub
+
+function hasValidLocalCatalogData() as Boolean
+    if m.liveCategories <> invalid and m.liveCategories.Count() > 0 then return true
+    if m.cachedLiveChannels <> invalid and m.cachedLiveChannels.Count() > 0 then return true
+    if m.allLiveCache <> invalid and m.allLiveCache.Count() > 0 then return true
+    if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then return true
+    if m.cachedMovies <> invalid and m.cachedMovies.Count() > 0 then return true
+    if m.allMoviesCache <> invalid and m.allMoviesCache.Count() > 0 then return true
+    if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then return true
+    if m.cachedSeries <> invalid and m.cachedSeries.Count() > 0 then return true
+    if m.allSeriesCache <> invalid and m.allSeriesCache.Count() > 0 then return true
+    return false
+end function
+
+function limitArrayForUiBatch(items as Dynamic, maxItems as Integer) as Object
+    limited = []
+    if items = invalid or Type(items) <> "roArray" then return limited
+    for each item in items
+        if limited.Count() >= maxItems then exit for
+        limited.Push(item)
+    end for
+    return limited
 end function
 
 sub updateConnectionStatus(connected as Boolean, message as String)

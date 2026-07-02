@@ -8,7 +8,7 @@ sub Init()
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.keyboardGroup = m.top.FindNode("keyboardGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
-    m.allMovies = [] : m.results = [] : m.query = ""
+    m.allMovies = [] : m.results = [] : m.query = "" : m.maxMovieBatch = 100
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
@@ -52,7 +52,7 @@ sub hide()
 end sub
 
 sub setMovies(items as Object)
-    m.allMovies = normalizeArray(items)
+    m.allMovies = limitMovieBatch(normalizeArray(items), m.maxMovieBatch)
     applyFilter()
 end sub
 
@@ -272,4 +272,14 @@ function getMovieImage(movie as Dynamic) as String
     if movie.cover <> invalid and movie.cover.ToStr().Trim() <> "" then return movie.cover.ToStr()
     if movie.poster <> invalid and movie.poster.ToStr().Trim() <> "" then return movie.poster.ToStr()
     return ""
+end function
+
+function limitMovieBatch(items as Object, maxItems as Integer) as Object
+    limited = []
+    if items = invalid then return limited
+    for each item in items
+        if limited.Count() >= maxItems then exit for
+        limited.Push(item)
+    end for
+    return limited
 end function
