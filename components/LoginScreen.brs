@@ -14,6 +14,10 @@ sub Init()
     m.loadingSpinner = m.top.FindNode("loadingSpinner")
     m.loadingLabel = m.top.FindNode("loadingLabel")
     m.messageLabel = m.top.FindNode("messageLabel")
+    m.customKeyboard = m.top.FindNode("customKeyboard")
+    m.keyboardTitle = m.top.FindNode("keyboardTitle")
+    m.keyboardText = m.top.FindNode("keyboardText")
+    m.keyboardGrid = m.top.FindNode("keyboardGrid")
 
     m.focusRings = [
         m.top.FindNode("dnsFocus"),
@@ -23,8 +27,18 @@ sub Init()
     m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.backButton]
     m.textFieldMaxLengths = [200, 100, 100]
     m.textFieldTitles = ["DNS", "USUÁRIO", "SENHA"]
+    m.textFieldLogNames = ["dns", "username", "password"]
+    m.keyboardKeys = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+        "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+        "U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3",
+        "4", "5", "6", "7", "8", "9", ".", "/", ":", "-",
+        "_", "@", "APAGAR", "ESPAÇO", "OK", "CANCELAR"
+    ]
+    m.keyboardColumns = 10
     m.activeTextFieldIndex = invalid
-    m.keyboardDialog = invalid
+    m.keyboardTextValue = ""
+    m.keyboardFocusIndex = 0
     m.focusIndex = 0
     m.isLoading = false
 
@@ -32,6 +46,7 @@ sub Init()
     m.backButton.ObserveField("buttonSelected", "onBackSelected")
 
     configureLayout()
+    buildCustomKeyboard()
     setLoading(false)
     clearMessage()
     updateFocus()
@@ -56,6 +71,8 @@ sub configureLayout()
     m.formGroup.translation = [Int((width - 600) / 2), 230]
     m.messageLabel.width = 600
     m.loadingLabel.width = 500
+
+    m.customKeyboard.translation = [Int((width - 900) / 2), Int((height - 520) / 2)]
 end sub
 
 sub show(account as Object)
@@ -65,6 +82,7 @@ sub show(account as Object)
         m.userInput.text = account.username
         m.passwordInput.text = account.password
     end if
+    closeCustomKeyboard(false)
     setLoading(false)
     clearMessage()
     m.focusIndex = 0
@@ -72,6 +90,7 @@ sub show(account as Object)
 end sub
 
 sub hide()
+    closeCustomKeyboard(false)
     m.top.visible = false
     setLoading(false)
 end sub
@@ -119,6 +138,7 @@ sub onEnterSelected()
     ' LoginScreen only validates and submits data. MainScene owns navigation
     ' and all Xtream network work so focus never stays trapped on ENTRAR.
     setLoading(false)
+    print "LOGIN_SUBMIT"
     m.top.submit = account
 end sub
 
@@ -129,6 +149,11 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+
+    if m.customKeyboard.visible then
+        return handleCustomKeyboardKey(key)
+    end if
+
     if key = "up" then
         moveFocus(-1)
         return true
@@ -150,7 +175,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "back" then
         onBackSelected()
         return true
-    else if key = "OK" then
+    else if isConfirmKey(key) then
         if m.focusIndex <= 2 then
             openTextKeyboard(m.focusIndex)
             return true
@@ -162,40 +187,143 @@ end function
 
 sub openTextKeyboard(fieldIndex as Integer)
     m.activeTextFieldIndex = fieldIndex
-    input = m.focusableControls[fieldIndex]
-
-    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
-    dialog.title = "Editar " + m.textFieldTitles[fieldIndex]
-    dialog.text = input.text
-    dialog.buttons = ["OK", "Cancelar"]
-
-    if dialog.keyboard <> invalid and dialog.keyboard.textEditBox <> invalid then
-        dialog.keyboard.textEditBox.maxTextLength = m.textFieldMaxLengths[fieldIndex]
-        dialog.keyboard.textEditBox.leadingEllipsis = true
-        dialog.keyboard.textEditBox.clearOnDownKey = false
-        dialog.keyboard.textEditBox.secureMode = (fieldIndex = 2)
-    end if
-
-    dialog.ObserveField("buttonSelected", "onKeyboardDialogButtonSelected")
-    m.keyboardDialog = dialog
-    m.top.getScene().dialog = dialog
+    m.keyboardTextValue = m.focusableControls[fieldIndex].text
+    m.keyboardFocusIndex = 0
+    m.keyboardTitle.text = "Editar " + m.textFieldTitles[fieldIndex]
+    m.customKeyboard.visible = true
+    print "CUSTOM_KEYBOARD_OPEN field=" + m.textFieldLogNames[fieldIndex]
+    updateKeyboardText()
+    updateKeyboardFocus()
 end sub
 
-sub onKeyboardDialogButtonSelected()
-    if m.keyboardDialog = invalid or m.activeTextFieldIndex = invalid then return
-
-    selectedButton = m.keyboardDialog.buttonSelected
-    if selectedButton = 0 then
-        ' Use the complete final value from Roku's native text component so pasted
-        ' content from the Roku mobile app keeps the exact character order.
-        m.focusableControls[m.activeTextFieldIndex].text = m.keyboardDialog.text
+function handleCustomKeyboardKey(key as String) as Boolean
+    if key = "back" then
+        closeCustomKeyboard(false)
+        return true
+    else if key = "left" then
+        moveKeyboardFocus(-1, 0)
+        return true
+    else if key = "right" then
+        moveKeyboardFocus(1, 0)
+        return true
+    else if key = "up" then
+        moveKeyboardFocus(0, -1)
+        return true
+    else if key = "down" then
+        moveKeyboardFocus(0, 1)
+        return true
+    else if isConfirmKey(key) then
+        selectKeyboardKey()
+        return true
     end if
 
-    m.top.getScene().dialog = invalid
-    m.keyboardDialog = invalid
+    return true
+end function
+
+sub moveKeyboardFocus(horizontal as Integer, vertical as Integer)
+    nextIndex = m.keyboardFocusIndex + horizontal + (vertical * m.keyboardColumns)
+    if nextIndex < 0 then nextIndex = m.keyboardKeys.Count() - 1
+    if nextIndex >= m.keyboardKeys.Count() then nextIndex = 0
+    m.keyboardFocusIndex = nextIndex
+    updateKeyboardFocus()
+end sub
+
+sub selectKeyboardKey()
+    selectedKey = m.keyboardKeys[m.keyboardFocusIndex]
+    if selectedKey = "APAGAR" then
+        if Len(m.keyboardTextValue) > 0 then
+            m.keyboardTextValue = Left(m.keyboardTextValue, Len(m.keyboardTextValue) - 1)
+        end if
+        updateKeyboardText()
+    else if selectedKey = "ESPAÇO" then
+        appendKeyboardText(" ")
+    else if selectedKey = "OK" then
+        if m.activeTextFieldIndex <> invalid then
+            m.focusableControls[m.activeTextFieldIndex].text = m.keyboardTextValue
+        end if
+        print "CUSTOM_KEYBOARD_SAVE"
+        closeCustomKeyboard(true)
+    else if selectedKey = "CANCELAR" then
+        closeCustomKeyboard(false)
+    else
+        appendKeyboardText(selectedKey)
+    end if
+end sub
+
+sub appendKeyboardText(value as String)
+    if m.activeTextFieldIndex = invalid then return
+    if Len(m.keyboardTextValue) >= m.textFieldMaxLengths[m.activeTextFieldIndex] then return
+    m.keyboardTextValue = m.keyboardTextValue + value
+    updateKeyboardText()
+end sub
+
+sub closeCustomKeyboard(saved as Boolean)
+    if m.customKeyboard = invalid then return
+    m.customKeyboard.visible = false
+    m.keyboardTextValue = ""
+    m.keyboardFocusIndex = 0
     m.activeTextFieldIndex = invalid
     updateFocus()
 end sub
+
+sub buildCustomKeyboard()
+    while m.keyboardGrid.GetChildCount() > 0
+        m.keyboardGrid.RemoveChild(m.keyboardGrid.GetChild(0))
+    end while
+
+    keyWidth = 78
+    keyHeight = 52
+    keyGap = 8
+
+    for index = 0 to m.keyboardKeys.Count() - 1
+        keyGroup = CreateObject("roSGNode", "Group")
+        row = Int(index / m.keyboardColumns)
+        column = index MOD m.keyboardColumns
+        keyGroup.translation = [column * (keyWidth + keyGap), row * (keyHeight + keyGap)]
+
+        background = CreateObject("roSGNode", "Rectangle")
+        background.width = keyWidth
+        background.height = keyHeight
+        background.color = "#26364F"
+
+        label = CreateObject("roSGNode", "Label")
+        label.width = keyWidth
+        label.height = keyHeight
+        label.text = m.keyboardKeys[index]
+        label.color = "#FFFFFF"
+        label.horizAlign = "center"
+        label.vertAlign = "center"
+        label.font = "font:SmallBoldSystemFont"
+
+        keyGroup.AppendChild(background)
+        keyGroup.AppendChild(label)
+        m.keyboardGrid.AppendChild(keyGroup)
+    end for
+end sub
+
+sub updateKeyboardFocus()
+    for index = 0 to m.keyboardGrid.GetChildCount() - 1
+        keyGroup = m.keyboardGrid.GetChild(index)
+        background = keyGroup.GetChild(0)
+        if index = m.keyboardFocusIndex then
+            background.color = "#147DFF"
+        else
+            background.color = "#26364F"
+        end if
+    end for
+end sub
+
+sub updateKeyboardText()
+    if m.activeTextFieldIndex = 2 then
+        m.keyboardText.text = String(Len(m.keyboardTextValue), "*")
+    else
+        m.keyboardText.text = m.keyboardTextValue
+    end if
+end sub
+
+function isConfirmKey(key as String) as Boolean
+    return key = "OK" or key = "enter"
+end function
 
 sub moveFocus(direction as Integer)
     nextIndex = m.focusIndex + direction
