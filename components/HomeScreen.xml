@@ -17,9 +17,9 @@
         <Poster id="homeBackground" uri="pkg:/images/background.jpeg" opacity="1" translation="[0, 0]" loadDisplayMode="scaleToFill" />
         <Rectangle id="homeOverlay" color="#000000" opacity="0.14" translation="[0, 0]" />
         <Rectangle id="buttonReadabilityScrim" color="#000000" opacity="0.18" />
-        <HomeTile id="liveTvButton" title="TV AO VIVO" imageUri="pkg:/images/tv.png" />
-        <HomeTile id="moviesButton" title="FILMES" imageUri="pkg:/images/filmes.png" />
-        <HomeTile id="seriesButton" title="SÉRIES" imageUri="pkg:/images/series.png" />
+        <HomeTile id="liveTvButton" title="TV AO VIVO" imageUri="" iconText="TV" baseColor="#1D4ED8" />
+        <HomeTile id="moviesButton" title="FILMES" imageUri="" iconText="FILMES" baseColor="#7C3AED" />
+        <HomeTile id="seriesButton" title="SÉRIES" imageUri="" iconText="SÉRIES" baseColor="#0891B2" />
         <Label id="accountIconLabel" text="●" color="#D8E2F3" horizAlign="center" />
         <Label id="accountFooterLabel" text="CONTA" color="#D8E2F3" horizAlign="center" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />

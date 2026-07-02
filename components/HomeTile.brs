@@ -2,6 +2,7 @@
 sub Init()
     m.tileTitle = m.top.FindNode("tileTitle")
     m.tileImage = m.top.FindNode("tileImage")
+    m.tileFill = m.top.FindNode("tileFill")
     m.tileIcon = m.top.FindNode("tileIcon")
     m.tileIconText = m.top.FindNode("tileIconText")
     m.tileBorder = m.top.FindNode("tileBorder")
@@ -25,7 +26,18 @@ sub onTitleChanged()
 end sub
 
 sub onImageUriChanged()
-    if m.tileImage <> invalid and m.top.imageUri <> invalid then m.tileImage.uri = m.top.imageUri
+    if m.tileImage = invalid then return
+
+    imageUri = ""
+    if m.top.imageUri <> invalid then imageUri = m.top.imageUri.ToStr().Trim()
+
+    if imageUri = "" then
+        m.tileImage.uri = ""
+        m.tileImage.visible = false
+    else
+        m.tileImage.uri = imageUri
+        m.tileImage.visible = true
+    end if
 end sub
 
 sub onIconUriChanged()
@@ -44,6 +56,7 @@ end sub
 sub onBaseColorChanged()
     if m.top.baseColor = invalid or m.top.baseColor = "" then return
 
+    if m.tileFill <> invalid then m.tileFill.color = m.top.baseColor
     if m.tileBorder <> invalid then m.tileBorder.color = m.top.baseColor
     if m.outerGlow <> invalid then m.outerGlow.color = m.top.baseColor
 end sub

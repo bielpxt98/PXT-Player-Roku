@@ -145,7 +145,6 @@ sub onEnterSelected()
     ' LoginScreen only validates and submits data. MainScene owns navigation
     ' and all Xtream network work so focus never stays trapped on ENTRAR.
     setLoading(true)
-    print "LOGIN_SUBMIT"
     m.top.submit = account
 end sub
 
@@ -213,7 +212,6 @@ sub openTextKeyboard(fieldIndex as Integer)
     m.keyboardFocusIndex = 0
     m.keyboardTitle.text = "Editar " + m.textFieldTitles[fieldIndex]
     m.customKeyboard.visible = true
-    print "CUSTOM_KEYBOARD_OPEN field=" + m.textFieldLogNames[fieldIndex]
     updateKeyboardText()
     updateKeyboardFocus()
 end sub
@@ -263,7 +261,6 @@ sub selectKeyboardKey()
         if m.activeTextFieldIndex <> invalid then
             m.focusableControls[m.activeTextFieldIndex].text = m.keyboardTextValue
         end if
-        print "CUSTOM_KEYBOARD_SAVE"
         closeCustomKeyboard(true)
     else if selectedKey = "CANCELAR" then
         closeCustomKeyboard(false)

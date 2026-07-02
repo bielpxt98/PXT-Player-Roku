@@ -17,6 +17,7 @@
         <Group id="tileGroup" scaleRotateCenter="[147, 101]">
             <Rectangle id="tileShadow" width="294" height="202" color="#000000" opacity="0.52" translation="[8, 10]" />
             <Rectangle id="tileBorder" width="294" height="202" color="#FFFFFF" opacity="0.16" />
+            <Rectangle id="tileFill" width="286" height="194" color="#101827" opacity="0.94" translation="[4, 4]" />
             <Poster id="tileImage" width="286" height="194" translation="[4, 4]" loadDisplayMode="scaleToFill" />
             <Rectangle id="tileFocusOverlay" width="286" height="194" color="#FFFFFF" opacity="0" translation="[4, 4]" />
             <Poster id="tileIcon" width="82" height="82" translation="[106, 36]" loadDisplayMode="scaleToFit" visible="false" />

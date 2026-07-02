@@ -12,7 +12,12 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
-    m.maxMovies = 100 : m.maxResults = 40
+    m.posterPlaceholderUri = "" : m.posterUriCache = {}
+    m.posterLoadTimer = CreateObject("roSGNode", "Timer")
+    m.posterLoadTimer.duration = 0.05
+    m.posterLoadTimer.repeat = false
+    m.posterLoadTimer.ObserveField("fire", "onPosterLoadTimerFire")
+    m.maxMovies = 100 : m.maxResults = 5
     m.debounceTimer = CreateObject("roSGNode", "Timer")
     m.debounceTimer.duration = 0.4
     m.debounceTimer.repeat = false
@@ -116,14 +121,19 @@ sub renderPosters()
         movie = m.results[i]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
-        poster = CreateObject("roSGNode", "Poster") : poster.width = 120 : poster.height = 180 : poster.translation = [Int((m.posterW - 120) / 2), 6] : poster.loadDisplayMode = "scaleToFit" : poster.uri = getMovieImage(movie)
+        poster = CreateObject("roSGNode", "Poster") : poster.width = 120 : poster.height = 180 : poster.translation = [Int((m.posterW - 120) / 2), 6] : poster.loadDisplayMode = "scaleToFit" : poster.uri = m.posterPlaceholderUri
         label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getMovieName(movie)
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
-        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, label: label })
+        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, poster: poster, label: label, movie: movie })
     end for
+    scheduleVisiblePosterLoads()
 end sub
 
 sub clearPosters()
+    if m.posterLoadTimer <> invalid then m.posterLoadTimer.control = "stop"
+    for each node in m.posterNodes
+        if node.poster <> invalid then node.poster.uri = m.posterPlaceholderUri
+    end for
     while m.resultsGroup.GetChildCount() > 0 : m.resultsGroup.RemoveChildIndex(0) : end while
     m.posterNodes = []
 end sub
@@ -289,10 +299,45 @@ end function
 
 function getMovieImage(movie as Dynamic) as String
     if movie = invalid then return ""
-    if movie.stream_icon <> invalid and movie.stream_icon.ToStr().Trim() <> "" then return movie.stream_icon.ToStr()
-    if movie.cover <> invalid and movie.cover.ToStr().Trim() <> "" then return movie.cover.ToStr()
-    if movie.poster <> invalid and movie.poster.ToStr().Trim() <> "" then return movie.poster.ToStr()
-    return ""
+    key = getMovieCacheKey(movie)
+    if key <> "" and m.posterUriCache[key] <> invalid then return m.posterUriCache[key]
+
+    uri = ""
+    if movie.stream_icon <> invalid and movie.stream_icon.ToStr().Trim() <> "" then uri = movie.stream_icon.ToStr()
+    if uri = "" and movie.cover <> invalid and movie.cover.ToStr().Trim() <> "" then uri = movie.cover.ToStr()
+    if uri = "" and movie.poster <> invalid and movie.poster.ToStr().Trim() <> "" then uri = movie.poster.ToStr()
+    uri = normalizeMovieCardImageUri(uri)
+    if key <> "" then m.posterUriCache[key] = uri
+    return uri
+end function
+
+sub scheduleVisiblePosterLoads()
+    if m.posterLoadTimer = invalid then return
+    m.posterLoadTimer.control = "stop"
+    m.posterLoadTimer.control = "start"
+end sub
+
+sub onPosterLoadTimerFire()
+    for each node in m.posterNodes
+        if node.poster <> invalid and node.movie <> invalid then node.poster.uri = getMovieImage(node.movie)
+    end for
+end sub
+
+function getMovieCacheKey(movie as Dynamic) as String
+    if movie = invalid then return ""
+    if movie.stream_id <> invalid then return "stream_" + movie.stream_id.ToStr()
+    if movie.id <> invalid then return "id_" + movie.id.ToStr()
+    return getMovieName(movie)
+end function
+
+function normalizeMovieCardImageUri(uri as Dynamic) as String
+    if uri = invalid then return ""
+    value = uri.ToStr().Trim()
+    if value = "" then return ""
+    value = value.Replace("/w780/", "/w342/")
+    value = value.Replace("/w500/", "/w342/")
+    value = value.Replace("/original/", "/w342/")
+    return value
 end function
 
 function limitMovieBatch(items as Object, maxItems as Integer) as Object
