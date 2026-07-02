@@ -17,6 +17,10 @@ sub UpsertMovieHistory(movie as Dynamic, position as Dynamic, duration as Dynami
     key = "movie:" + id
     if key = "movie:" then return
 
+    safePosition = historyInt(position)
+    existingPosition = GetHistoryPosition("movie", movie)
+    if safePosition = 0 and existingPosition > 0 then safePosition = existingPosition
+
     item = {
         type: "movie",
         key: key,
@@ -24,7 +28,7 @@ sub UpsertMovieHistory(movie as Dynamic, position as Dynamic, duration as Dynami
         url: historyUrl(movie),
         title: historyTitle(movie, ""),
         poster: historyPoster(movie),
-        position: historyInt(position),
+        position: safePosition,
         duration: historyInt(duration),
         updatedAt: historyNowIso(),
         content: minimalMovieContent(movie)

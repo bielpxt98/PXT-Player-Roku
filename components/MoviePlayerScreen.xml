@@ -5,6 +5,7 @@
         <function name="play" />
         <function name="setResumePosition" />
         <function name="getPlaybackPosition" />
+        <function name="getPlaybackDuration" />
         <function name="hide" />
         <function name="closeMoviePlayer" />
         <function name="showError" />
