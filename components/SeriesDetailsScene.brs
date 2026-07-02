@@ -23,6 +23,7 @@ sub Init()
     m.episodesMessageLabel = m.top.FindNode("episodesMessageLabel")
     m.loadingLabel = m.top.FindNode("loadingLabel")
     m.selectedArea = 0 ' 0 jogar, 1 continuar, 2 temporada, 3 episódios
+    m.focusArea = "posterButton"
     m.selectedSeasonIndex = 0
     m.selectedEpisodeIndex = 0
     m.episodeWindowStart = 0
@@ -200,8 +201,9 @@ sub populate(item as Dynamic)
     genres = firstText(item, ["genre", "genres"])
     if genres = "" then genres = "Não informado"
     m.genreLabel.text = "Gêneros: " + genres
-    setupSeasons(item)
-    setupEpisodes(item)
+    if item <> invalid and Type(item) = "roAssociativeArray" then m.item = normalizeSeriesDetailsForPlayback(item)
+    setupSeasons(m.item)
+    setupEpisodes(m.item)
     updateContinueButton()
     updateFocus()
 end sub
@@ -304,7 +306,7 @@ end function
 
 sub setupSeasons(item as Dynamic)
     m.seasons = getSeasonLabels(item)
-    if m.selectedSeasonIndex >= m.seasons.Count() then m.selectedSeasonIndex = 0
+    clampFocusState()
     renderSeasonButtons()
 end sub
 
@@ -323,7 +325,6 @@ function getSeasonLabels(item as Dynamic) as Object
             end for
         end if
     end if
-    if labels.Count() = 0 then labels.Push("TEMPORADA 1")
     return labels
 end function
 
@@ -365,7 +366,7 @@ end sub
 
 sub setupEpisodes(item as Dynamic)
     m.episodes = getEpisodesForSelectedSeason(item)
-    if m.selectedEpisodeIndex >= m.episodes.Count() then m.selectedEpisodeIndex = 0
+    clampFocusState()
     ensureEpisodeVisible()
     renderEpisodes(m.episodes)
 end sub
@@ -381,7 +382,7 @@ function getEpisodesForSelectedSeason(item as Dynamic) as Object
             end for
         end if
     end if
-    if episodes.Count() = 0 and item.DoesExist("episodes") and item.episodes <> invalid and Type(item.episodes) = "roArray" then
+    if episodes.Count() = 0 and (not item.DoesExist("seasons") or item.seasons = invalid or Type(item.seasons) <> "roArray" or item.seasons.Count() = 0) and item.DoesExist("episodes") and item.episodes <> invalid and Type(item.episodes) = "roArray" then
         for each ep in item.episodes
             if ep <> invalid then episodes.Push(ep)
         end for
@@ -483,6 +484,8 @@ end sub
 
 sub updateFocus()
     updateContinueButton()
+    clampFocusState()
+    logFocusState()
     m.playButtonFocus.opacity = 0
     m.continueButtonFocus.opacity = 0
     m.playButtonBg.color = "#1F2937"
@@ -517,6 +520,7 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    clampFocusState()
     if key = "left" then
         if m.selectedArea = 1 then
             m.selectedArea = 0
@@ -557,13 +561,17 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "down" then
         if m.selectedArea = 0 or m.selectedArea = 1 then
-            if m.seasons.Count() > 1 then
+            if hasSeasons() then
                 m.selectedArea = 2
+                m.selectedSeasonIndex = 0
+                setupEpisodes(m.item)
             else
-                m.selectedArea = 3
+                m.selectedArea = 0
             end if
         else if m.selectedArea = 2 then
-            m.selectedArea = 3
+            if hasEpisodes() then
+                m.selectedArea = 3
+            end if
         end if
         updateFocus()
         return true
@@ -574,7 +582,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             openContinueEpisode()
         else if m.selectedArea = 2 then
             setupEpisodes(m.item)
-            m.selectedArea = 3
+            if hasEpisodes() then m.selectedArea = 3
             updateFocus()
         else if m.selectedArea = 3 then
             openSelectedEpisode()
@@ -587,7 +595,55 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return false
 end function
 
+function hasSeasons() as Boolean
+    return m.seasons <> invalid and m.seasons.Count() > 0
+end function
+
+function hasEpisodes() as Boolean
+    return m.episodes <> invalid and m.episodes.Count() > 0
+end function
+
+sub clampFocusState()
+    if m.seasons = invalid then m.seasons = []
+    if m.episodes = invalid then m.episodes = []
+    if m.selectedSeasonIndex < 0 then m.selectedSeasonIndex = 0
+    if m.seasons.Count() = 0 then
+        m.selectedSeasonIndex = 0
+        if m.selectedArea = 2 then m.selectedArea = 0
+    else if m.selectedSeasonIndex >= m.seasons.Count() then
+        m.selectedSeasonIndex = m.seasons.Count() - 1
+    end if
+    if m.selectedEpisodeIndex < 0 then m.selectedEpisodeIndex = 0
+    if m.episodes.Count() = 0 then
+        m.selectedEpisodeIndex = 0
+        if m.selectedArea = 3 then m.selectedArea = 2
+        if m.seasons.Count() = 0 and m.selectedArea = 2 then m.selectedArea = 0
+    else if m.selectedEpisodeIndex >= m.episodes.Count() then
+        m.selectedEpisodeIndex = m.episodes.Count() - 1
+    end if
+    if m.selectedArea = 1 and m.continueEpisode = invalid then m.selectedArea = 0
+    if m.selectedArea = 0 or m.selectedArea = 1 then
+        m.focusArea = "posterButton"
+    else if m.selectedArea = 2 then
+        m.focusArea = "seasons"
+    else if m.selectedArea = 3 then
+        m.focusArea = "episodes"
+    else
+        m.selectedArea = 0
+        m.focusArea = "posterButton"
+    end if
+end sub
+
+sub logFocusState()
+    seasonCount = 0
+    episodeCount = 0
+    if m.seasons <> invalid then seasonCount = m.seasons.Count()
+    if m.episodes <> invalid then episodeCount = m.episodes.Count()
+    print "SERIES_DETAILS_FOCUS selectedSeasonIndex="; m.selectedSeasonIndex; " seasons.count="; seasonCount; " episodes.count="; episodeCount; " focusArea="; m.focusArea
+end sub
+
 sub ensureEpisodeVisible()
+    clampFocusState()
     if m.selectedEpisodeIndex < m.episodeWindowStart then m.episodeWindowStart = m.selectedEpisodeIndex
     if m.selectedEpisodeIndex >= m.episodeWindowStart + m.maxEpisodeCards then m.episodeWindowStart = m.selectedEpisodeIndex - m.maxEpisodeCards + 1
     if m.episodeWindowStart < 0 then m.episodeWindowStart = 0
@@ -606,6 +662,8 @@ end sub
 
 sub openSelectedEpisode()
     if m.episodes = invalid or m.episodes.Count() = 0 then return
+    clampFocusState()
+    if m.selectedEpisodeIndex >= m.episodes.Count() then return
     episode = m.episodes[m.selectedEpisodeIndex]
     emitEpisodeSelected(episode, m.selectedEpisodeIndex)
 end sub
