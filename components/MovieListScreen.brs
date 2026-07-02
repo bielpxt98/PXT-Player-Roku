@@ -10,10 +10,13 @@ sub Init()
     m.categoriesGroup = m.top.FindNode("categoriesGroup")
     m.moviesGrid = m.top.FindNode("moviesGrid")
     m.hintLabel = m.top.FindNode("hintLabel")
-    m.categories = [] : m.movies = [] : m.allMovie = []
+    m.searchEntry = { isSearch: true, category_name: "PESQUISAR", name: "PESQUISAR" }
+    m.favoritesEntry = { isFavorites: true, category_name: "FAVORITOS", name: "FAVORITOS" }
+    m.recentEntry = { isRecent: true, category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS" }
+    m.categories = [m.searchEntry, m.favoritesEntry, m.recentEntry] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.categoryRefs = [] : m.itemNodes = [] : m.itemRefs = []
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
-    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "search"
+    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "categories"
     configureLayout()
 end sub
 
@@ -60,7 +63,7 @@ end sub
 
 sub show(category as Dynamic)
     if category <> invalid then syncSelectedCategory(category)
-    if m.activePane = "" then m.activePane = "search"
+    if m.activePane = "" then m.activePane = "categories"
     renderCategories() : renderGrid() : updateFocus()
     m.top.visible = true : m.top.SetFocus(true)
 end sub
@@ -76,7 +79,7 @@ end sub
 
 sub resetSelection()
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0 : resetGridSelection()
-    m.activePane = "search"
+    m.activePane = "categories"
 end sub
 
 sub resetGridSelection()
@@ -85,9 +88,20 @@ sub resetGridSelection()
 end sub
 
 sub setCategories(categories as Object)
-    m.categories = normalizeArray(categories)
+    m.categories = getFixedCategories()
+    for each category in normalizeArray(categories)
+        m.categories.Push(category)
+    end for
     renderCategories() : updateFocus()
 end sub
+
+function getFixedCategories() as Object
+    return [m.searchEntry, m.favoritesEntry, m.recentEntry]
+end function
+
+function isSearchEntry(category as Dynamic) as Boolean
+    return category <> invalid and category.isSearch = true
+end function
 
 sub setLoading(isLoading as Boolean)
     clearGridNodes()
@@ -185,11 +199,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     if key = "up" then
         if m.activePane = "categories" then
-            if m.selectedCategoryIndex = 0 then
-                m.activePane = "search" : updateFocus()
-            else
-                moveCategory(-1)
-            end if
+            moveCategory(-1)
         else if m.activePane = "grid" then
             moveGrid(0, -1)
         end if
@@ -213,7 +223,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if m.activePane = "search" then
             m.top.searchRequested = true
         else if m.activePane = "categories" then
-            if m.categories.Count() > 0 then m.top.categorySelected = m.categories[m.selectedCategoryIndex]
+            if m.categories.Count() > 0 then
+                if isSearchEntry(m.categories[m.selectedCategoryIndex]) then
+                    m.top.searchRequested = true
+                else
+                    m.top.categorySelected = m.categories[m.selectedCategoryIndex]
+                end if
+            end if
         else if m.movies.Count() > 0 then
             m.top.movieSelected = m.movies[m.selectedIndex]
         end if

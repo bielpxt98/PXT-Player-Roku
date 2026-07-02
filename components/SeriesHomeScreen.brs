@@ -4,8 +4,10 @@ sub Init()
     m.categoriesTitle = m.top.FindNode("categoriesTitle") : m.seriesTitle = m.top.FindNode("seriesTitle")
     m.categoriesGroup = m.top.FindNode("categoriesGroup") : m.seriesGroup = m.top.FindNode("seriesGroup") : m.messageLabel = m.top.FindNode("messageLabel")
     m.selectedTitleBar = m.top.FindNode("selectedTitleBar") : m.selectedTitleLabel = m.top.FindNode("selectedTitleLabel") : m.hintLabel = m.top.FindNode("hintLabel")
-    m.searchEntry = { isSearch: true, category_name: "Pesquisar", name: "Pesquisar" }
-    m.categories = [m.searchEntry] : m.allSeries = [] : m.filteredSeries = [] : m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0
+    m.searchEntry = { isSearch: true, category_name: "PESQUISAR", name: "PESQUISAR" }
+    m.favoritesEntry = { isFavorites: true, category_name: "FAVORITOS", name: "FAVORITOS" }
+    m.recentEntry = { isRecent: true, category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS" }
+    m.categories = [m.searchEntry, m.favoritesEntry, m.recentEntry] : m.allSeries = [] : m.filteredSeries = [] : m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0
     m.categoryWindow = 9 : m.columns = 5 : m.visibleRows = 3
     layoutScreen() : hide()
 end sub
@@ -59,7 +61,7 @@ sub resetSelection()
     focusSearchEntry()
 end sub
 sub setCategories(items as Object)
-    m.categories = [m.searchEntry]
+    m.categories = getFixedCategories()
     if items <> invalid then
         for each category in items
             m.categories.Push(category)
@@ -195,6 +197,10 @@ sub focusSearchEntry()
     m.activePane = "categories" : m.categoryIndex = 0 : m.seriesIndex = 0
     renderCategories()
 end sub
+
+function getFixedCategories() as Object
+    return [m.searchEntry, m.favoritesEntry, m.recentEntry]
+end function
 
 function isSearchEntry(category as Dynamic) as Boolean
     return category <> invalid and category.isSearch = true

@@ -6,13 +6,11 @@ sub Init()
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
-    m.favoritesButton = m.top.FindNode("favoritesButton")
-    m.recentButton = m.top.FindNode("recentButton")
     m.accountIconLabel = m.top.FindNode("accountIconLabel")
     m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton]
     m.focusIndex = 0
     m.focusArea = "cards"
     configureLayout()
@@ -95,13 +93,6 @@ sub onSeriesSelected()
     m.top.openSeriesCategories = true
 end sub
 
-sub onFavoritesSelected()
-    m.top.openFavorites = true
-end sub
-
-sub onRecentSelected()
-    m.top.openRecent = true
-end sub
 
 sub onPlaylistSelected()
     m.top.openPlaylist = true
@@ -195,10 +186,6 @@ sub selectFocusedButton()
         onMoviesSelected()
     else if m.focusIndex = 2 then
         onSeriesSelected()
-    else if m.focusIndex = 3 then
-        onFavoritesSelected()
-    else if m.focusIndex = 4 then
-        onRecentSelected()
     end if
 end sub
 
