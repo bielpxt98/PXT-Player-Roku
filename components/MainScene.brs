@@ -105,7 +105,7 @@ sub Init()
     m.homeScreen.ObserveField("openPlaylist", "onOpenPlaylistRequested")
     m.homeScreen.ObserveField("openLiveCategories", "onOpenLiveCategoriesRequested")
     m.homeScreen.ObserveField("openMovieCategories", "onOpenMovieCategoriesRequested")
-    m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesCategoriesRequested")
+    m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesRequested")
     m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
     m.homeScreen.ObserveField("openRecent", "onOpenRecentRequested")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
@@ -360,6 +360,27 @@ function getDisplayResolution() as Object
         height: displaySize.h
     }
 end function
+
+
+sub hideAllScreensExcept(visibleScreen as Object)
+    visibleId = ""
+    if visibleScreen <> invalid then visibleId = visibleScreen.id
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.seriesHomeScreen, m.seriesDetailScreen, m.seriesPlayerScreen]
+    for each screen in screens
+        if screen <> invalid and screen.id <> visibleId then screen.callFunc("hide")
+    end for
+end sub
+
+function isValidAccount(account as Dynamic) as Boolean
+    return hasAccount(account)
+end function
+
+sub runXtreamRequest(action as String, categoryId as String)
+    if action = "getSeriesCategories" then
+        startSeriesOpenTimeout()
+        loadSeriesCategories(m.account)
+    end if
+end sub
 
 sub showHome()
     if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
@@ -1526,43 +1547,32 @@ sub resetSeriesData()
     m.selectedSeriesCategoryId = ""
 end sub
 
-sub onOpenSeriesCategoriesRequested()
+sub onOpenSeriesRequested()
     if m.isOpeningSeries = true then return
     m.isOpeningSeries = true
     cancelSearchIndexRefresh()
-    startSeriesOpenTimeout()
-    m.homeScreen.callFunc("hide")
-    m.loginScreen.callFunc("hide")
-    m.favoritesScreen.callFunc("hide")
-    m.recentScreen.callFunc("hide")
-    m.searchScreen.callFunc("hide")
-    m.movieSearchScreen.callFunc("hide")
-    m.liveCategoriesScreen.callFunc("hide")
-    m.liveChannelsScreen.callFunc("hide")
-    m.livePlayerScreen.callFunc("hide")
-    m.movieCategoriesScreen.callFunc("hide")
-    m.movieListScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("hide")
-    m.moviePlayerScreen.callFunc("hide")
-    m.seriesDetailScreen.callFunc("hide")
-    m.seriesPlayerScreen.callFunc("hide")
-    m.seriesHomeScreen.callFunc("resetSelection")
-    m.seriesHomeScreen.callFunc("show")
 
-    if not hasAccount(m.account) then
-        stopSeriesOpenTimeout()
+    hideAllScreensExcept(m.seriesHomeScreen)
+    m.seriesHomeScreen.callFunc("resetSelection")
+    m.seriesHomeScreen.callFunc("setCategories", [])
+    m.seriesHomeScreen.callFunc("setSeries", [])
+    m.seriesHomeScreen.callFunc("show")
+    m.seriesHomeScreen.SetFocus(true)
+
+    if not isValidAccount(m.account) then
         m.seriesHomeScreen.callFunc("setLoading", false)
         m.seriesHomeScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de séries.")
-    else if m.seriesCategoriesLoading then
-        m.seriesHomeScreen.callFunc("setLoading", true)
-    else if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
-        stopSeriesOpenTimeout()
-        m.seriesHomeScreen.callFunc("setCategories", m.seriesCategories)
-        m.seriesHomeScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
-    else
-        m.seriesHomeScreen.callFunc("setLoading", true)
-        loadSeriesCategories(m.account)
+        m.isOpeningSeries = false
+        return
     end if
+
+    m.seriesHomeScreen.callFunc("showMessage", "Carregando categorias de séries...")
+    runXtreamRequest("getSeriesCategories", "")
+    m.isOpeningSeries = false
+end sub
+
+sub onOpenSeriesCategoriesRequested()
+    onOpenSeriesRequested()
 end sub
 
 sub startSeriesOpenTimeout()
