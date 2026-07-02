@@ -37,6 +37,8 @@ sub Init()
     configureLayout()
     m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
+    m.video.ObserveField("position", "onVideoPositionChanged")
+    m.video.ObserveField("duration", "onVideoDurationChanged")
     m.progressUpdateTimer.ObserveField("fire", "onProgressUpdateTimerFire")
     m.seekHoldTimer.ObserveField("fire", "onSeekHoldTick")
     m.controlsAutoHideTimer.ObserveField("fire", "onControlsAutoHideTimerFire")
@@ -205,15 +207,21 @@ sub stopPlayback()
 end sub
 
 sub showLoading(message as String)
-    m.errorGroup.visible = false
-    m.loadingLabel.text = message
-    m.loadingGroup.visible = true
-    m.loadingSpinner.control = "start"
+    if m.errorGroup <> invalid then m.errorGroup.visible = false
+    if m.loadingLabel <> invalid then m.loadingLabel.text = message
+    if m.loadingGroup <> invalid then m.loadingGroup.visible = true
+    if m.loadingSpinner <> invalid then m.loadingSpinner.control = "start"
+end sub
+
+sub hideLoading()
+    if m.loadingGroup <> invalid then m.loadingGroup.visible = false
+    if m.loadingSpinner <> invalid then m.loadingSpinner.control = "stop"
+    if m.loadingLabel <> invalid then m.loadingLabel.visible = true
 end sub
 
 sub showError(message as String)
     stopPlayback()
-    m.loadingGroup.visible = false
+    hideLoading()
     m.errorTitle.text = "Não foi possível reproduzir o filme"
     m.errorMessage.text = message + Chr(10) + "Pressione Voltar e tente novamente."
     m.errorGroup.visible = true
@@ -226,21 +234,25 @@ sub onVideoStateChanged()
     if state = "playing" then
         m.isPlaying = true
         m.video.visible = true
-        m.loadingGroup.visible = false
-        m.loadingSpinner.control = "stop"
-        m.errorGroup.visible = false
+        hideLoading()
+        if m.errorGroup <> invalid then m.errorGroup.visible = false
         startProgressUpdateTimer()
+        updateProgress()
         showControls()
     else if state = "buffering" or state = "loading" then
         showLoading("Carregando " + m.movieName + "...")
     else if state = "paused" then
         m.isPlaying = false
+        hideLoading()
         showControls()
-    else if state = "finished" then
+    else if state = "finished" or state = "stopped" then
         m.isPlaying = false
+        hideLoading()
         stopProgressUpdateTimer()
         showControls()
     else if state = "error" then
+        stopProgressUpdateTimer()
+        hideLoading()
         if m.top.visible = true and m.isClosing <> true then
             showError("O stream de " + m.movieName + " não carregou ou foi encerrado pelo servidor.")
         end if
@@ -340,7 +352,20 @@ sub stopSeekHold()
     m.pendingSeekPosition = invalid
 end sub
 
+sub onVideoPositionChanged()
+    if m.video = invalid or m.video.position = invalid then return
+    position = Int(m.video.position)
+    if position > 0 then m.lastPosition = position
+    if m.pendingSeekPosition <> invalid and Abs(position - Int(m.pendingSeekPosition)) <= 2 then m.pendingSeekPosition = invalid
+    updateProgress()
+end sub
+
+sub onVideoDurationChanged()
+    updateProgress()
+end sub
+
 sub onProgressUpdateTimerFire()
+    m.pendingSeekPosition = invalid
     updateControls()
 end sub
 
@@ -451,7 +476,8 @@ sub updateControls()
 end sub
 
 sub updateProgress()
-    position = getSeekBasePosition()
+    position = getPlaybackPosition()
+    if m.pendingSeekPosition <> invalid then position = Int(m.pendingSeekPosition)
     duration = getPlaybackDuration()
     if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = formatTime(position)
     if m.durationLabel <> invalid then m.durationLabel.text = formatTime(duration)
