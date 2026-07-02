@@ -25,6 +25,11 @@ sub Init()
     m.seekStep = 20
     m.pendingSeekPosition = invalid
     m.title = "Episódio"
+    m.resumePosition = 0
+    m.lastPosition = 0
+    m.pendingStreamUrl = ""
+    m.pendingEpisode = invalid
+    m.resumeDialog = invalid
 
     configureLayout()
     m.video.showPlaybackInfo = false
@@ -96,20 +101,58 @@ sub show(episode as Dynamic)
         return
     end if
 
+    if m.resumePosition > 30 then
+        m.pendingStreamUrl = streamUrl
+        m.pendingEpisode = episode
+        showResumeDialog()
+        return
+    end if
+
+    startPlayback(streamUrl, title, 0)
+end sub
+
+sub startPlayback(streamUrl as String, title as String, startPosition as Integer)
     content = CreateObject("roSGNode", "ContentNode")
     content.url = streamUrl
     content.title = title
     content.streamFormat = getStreamFormat(streamUrl)
     content.live = false
 
+    m.lastPosition = startPosition
     m.video.content = invalid
     m.video.visible = true
     m.video.content = content
+    if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
     startProgressUpdateTimer()
     showLoading("Carregando " + title + "...")
     showControls()
+end sub
+
+sub setResumePosition(position as Dynamic)
+    if position = invalid then m.resumePosition = 0 else m.resumePosition = Int(position)
+end sub
+
+sub showResumeDialog()
+    dialog = CreateObject("roSGNode", "StandardMessageDialog")
+    dialog.title = "Continuar de onde parou?"
+    dialog.message = "Escolha como deseja iniciar a reprodução."
+    dialog.buttons = ["Continuar", "Começar do início"]
+    dialog.ObserveField("buttonSelected", "onResumeDialogButtonSelected")
+    m.resumeDialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onResumeDialogButtonSelected()
+    if m.resumeDialog = invalid then return
+    selected = m.resumeDialog.buttonSelected
+    streamUrl = m.pendingStreamUrl
+    title = m.title
+    m.top.GetScene().dialog = invalid
+    m.resumeDialog = invalid
+    m.pendingStreamUrl = ""
+    if selected = 0 then startPlayback(streamUrl, title, m.resumePosition) else startPlayback(streamUrl, title, 0)
 end sub
 
 sub hide()
@@ -118,7 +161,13 @@ sub hide()
 end sub
 
 sub stopPlayback()
+    m.lastPosition = getPlaybackPosition()
     m.isClosing = true
+    if m.resumeDialog <> invalid then
+        m.top.GetScene().dialog = invalid
+        m.resumeDialog = invalid
+    end if
+    m.pendingStreamUrl = ""
     if m.video <> invalid then
         m.video.control = "stop"
         m.video.visible = false
@@ -320,6 +369,7 @@ function clampSeekPosition(position as Integer) as Integer
 end function
 
 function getPlaybackPosition() as Integer
+    if m.lastPosition <> invalid and m.lastPosition > 0 and (m.video = invalid or m.video.position = invalid or Int(m.video.position) = 0) then return Int(m.lastPosition)
     if m.video <> invalid and m.video.position <> invalid then return Int(m.video.position)
     return 0
 end function

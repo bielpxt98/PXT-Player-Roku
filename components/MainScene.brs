@@ -632,6 +632,12 @@ sub onHistorySelected()
         m.moviePlayerScreen.callFunc("show", item.content)
         m.moviePlayerScreen.callFunc("setResumePosition", item.position)
         buildMovieStreamUrl(item.content)
+    else if item.type = "series" then
+        m.selectedSeries = item.series
+        m.selectedEpisode = item.content
+        hideAllScreensExcept(m.seriesPlayerScreen)
+        m.seriesPlayerScreen.callFunc("setResumePosition", item.position)
+        m.seriesPlayerScreen.callFunc("show", item.content)
     end if
 end sub
 
@@ -952,9 +958,11 @@ sub onMovieDetailPlay()
         m.movieDetailScreen.callFunc("setLoading", false)
         return
     end if
+    resumePosition = GetHistoryPosition("movie", m.selectedMovie)
+    UpsertMovieHistory(m.selectedMovie, resumePosition, 0)
     hideAllScreensExcept(m.moviePlayerScreen)
     m.moviePlayerScreen.callFunc("show", m.selectedMovie)
-    m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", m.selectedMovie))
+    m.moviePlayerScreen.callFunc("setResumePosition", resumePosition)
     buildMovieStreamUrl(m.selectedMovie)
 end sub
 
@@ -971,10 +979,13 @@ sub onMoviePlayerBack()
     PRINT "return list valid="; m.lastMovieList <> invalid
     PRINT "return index="; m.lastMovieIndex
 
-    ' Temporarily do not persist movie history while isolating the BACK crash.
-    ' position = 0
-    ' if m.moviePlayerScreen <> invalid then position = m.moviePlayerScreen.callFunc("getPlaybackPosition")
-    ' UpsertMovieHistory(m.selectedMovie, position)
+    position = 0
+    duration = 0
+    if m.moviePlayerScreen <> invalid then
+        position = m.moviePlayerScreen.callFunc("getPlaybackPosition")
+        duration = m.moviePlayerScreen.callFunc("getPlaybackDuration")
+    end if
+    UpsertMovieHistory(m.selectedMovie, position, duration)
 
     if m.moviePlayerScreen <> invalid then
         m.moviePlayerScreen.callFunc("hide")
@@ -1746,6 +1757,7 @@ sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
     m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
     m.simpleSeriesScreen.callFunc("setPreviewCache", m.seriesCategoryPreviewCache)
+    m.simpleSeriesScreen.callFunc("setRecentSeries", LoadViewingHistory().series)
     m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
@@ -1803,6 +1815,15 @@ end sub
 sub onSeriesSelected()
     series = m.simpleSeriesScreen.seriesSelected
     if series = invalid then return
+    if series.isHistoryEpisode = true and series.episode <> invalid then
+        m.selectedSeries = series.series
+        m.selectedEpisode = series.episode
+        m.simpleSeriesScreen.callFunc("hide")
+        hideAllScreensExcept(m.seriesPlayerScreen)
+        m.seriesPlayerScreen.callFunc("setResumePosition", GetHistoryPosition("episode", series.episode))
+        m.seriesPlayerScreen.callFunc("show", series.episode)
+        return
+    end if
     m.selectedSeries = series
     m.simpleSeriesScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("show", series)
@@ -1826,11 +1847,25 @@ sub onSeriesEpisodeSelected()
         m.seriesDetailsScreen.callFunc("showMessage", "Episódio sem link disponível.")
         return
     end if
+    m.selectedEpisode = episode
+    episodeToPlay = episode
+    episodeToPlay.title = title
+    episodeToPlay.streamUrl = streamUrl
+    resumePosition = GetHistoryPosition("episode", episodeToPlay)
+    UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, resumePosition, 0)
     m.seriesDetailsScreen.callFunc("hide")
-    m.seriesPlayerScreen.callFunc("show", { title: title, streamUrl: streamUrl })
+    m.seriesPlayerScreen.callFunc("setResumePosition", resumePosition)
+    m.seriesPlayerScreen.callFunc("show", episodeToPlay)
 end sub
 
 sub onSeriesPlayerBack()
+    position = 0
+    duration = 0
+    if m.seriesPlayerScreen <> invalid then
+        position = m.seriesPlayerScreen.callFunc("getPlaybackPosition")
+        duration = m.seriesPlayerScreen.callFunc("getPlaybackDuration")
+    end if
+    UpsertSeriesHistory(m.selectedSeries, invalid, m.selectedEpisode, position, duration)
     m.seriesPlayerScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("show", m.selectedSeries)
     m.seriesDetailsScreen.callFunc("setDetails", m.selectedSeries)

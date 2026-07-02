@@ -38,8 +38,7 @@ sub setHistory(history as Object)
     m.selectedIndex = 0
     if history = invalid then return
     y = 0
-    y = addSection("Continuar assistindo", history.continueWatching, y)
-    y = addSection("Últimos filmes assistidos", history.movies, y + 18)
+    y = addSection("Últimos filmes assistidos", history.movies, y)
     y = addSection("Últimas séries assistidas", history.series, y + 18)
     if m.items.Count() = 0 then
         m.statusLabel.color = "#B8C3D6"
