@@ -30,9 +30,10 @@ sub Init()
     m.bottomDivider = m.top.FindNode("bottomDivider")
     m.helpLabel = m.top.FindNode("helpLabel")
 
-    m.titleLabel.font = "font:LargeBoldSystemFont"
+    m.titleLabel.visible = false
+    m.topDivider.visible = false
     m.categoriesTitleLabel.font = "font:MediumBoldSystemFont"
-    m.seriesTitleLabel.font = "font:MediumBoldSystemFont"
+    m.seriesTitleLabel.font = "font:SmallSystemFont"
     m.emptyMessageLabel.font = "font:MediumSystemFont"
     m.helpLabel.font = "font:SmallSystemFont"
     m.statusLabel.font = "font:SmallSystemFont"
@@ -52,39 +53,25 @@ sub configureLayout()
 
     m.screenWidth = width
     m.screenHeight = height
-    m.safeMarginX = Int(width * 0.055)
-    if m.safeMarginX < 48 then m.safeMarginX = 48
-    m.safeMarginY = Int(height * 0.055)
-    if m.safeMarginY < 36 then m.safeMarginY = 36
-
-    m.titleHeight = 96
-    m.footerHeight = 84
+    m.margin = 48
+    if height <= 720 then m.margin = 32
+    m.searchHeight = 76
+    m.footerHeight = 46
+    m.panelY = m.searchHeight
+    m.panelHeight = height - m.searchHeight - m.footerHeight
+    m.leftPanelWidth = 310
+    if width <= 1280 then m.leftPanelWidth = 250
+    m.rightPanelX = m.margin + m.leftPanelWidth
+    m.rightPanelWidth = width - m.rightPanelX - m.margin
+    m.categoryX = m.margin + 18
+    m.categoryY = m.panelY + 72
+    m.categoryWidth = m.leftPanelWidth - 36
+    m.itemHeight = 52
+    m.focusHeight = 44
     if height <= 720 then
-        m.titleHeight = 76
-        m.footerHeight = 64
+        m.itemHeight = 44
+        m.focusHeight = 36
     end if
-
-    m.panelX = m.safeMarginX
-    m.panelY = m.safeMarginY
-    m.panelWidth = width - (m.safeMarginX * 2)
-    m.panelHeight = height - (m.safeMarginY * 2)
-    if m.panelWidth < 320 then
-        m.panelX = 0
-        m.panelWidth = width
-    end if
-    if m.panelHeight < 240 then
-        m.panelY = 0
-        m.panelHeight = height
-    end if
-
-    m.headerBottomY = m.panelY + m.titleHeight
-    m.footerTopY = m.panelY + m.panelHeight - m.footerHeight
-    contentHeight = m.footerTopY - m.headerBottomY
-    m.leftPanelWidth = Int(m.panelWidth * 0.28)
-    if m.leftPanelWidth < 260 then m.leftPanelWidth = 260
-    if m.leftPanelWidth > Int(m.panelWidth * 0.36) then m.leftPanelWidth = Int(m.panelWidth * 0.36)
-    m.rightPanelX = m.panelX + m.leftPanelWidth
-    m.rightPanelWidth = m.panelWidth - m.leftPanelWidth
 
     m.background.translation = [0, 0]
     m.background.width = width
@@ -92,61 +79,59 @@ sub configureLayout()
     m.overlay.translation = [0, 0]
     m.overlay.width = width
     m.overlay.height = height
+    m.overlay.opacity = 0.58
 
-    m.panel.translation = [m.panelX, m.panelY]
-    m.panel.width = m.panelWidth
+    m.panel.translation = [m.margin, m.panelY]
+    m.panel.width = m.leftPanelWidth
     m.panel.height = m.panelHeight
+    m.panel.color = "#0B111B"
+    m.panel.opacity = 0.82
 
-    m.titleLabel.translation = [m.panelX, m.panelY]
-    m.titleLabel.width = m.panelWidth
-    m.titleLabel.height = m.titleHeight
+    m.titleLabel.visible = false
+    m.topDivider.visible = false
 
-    m.topDivider.translation = [m.panelX, m.headerBottomY]
-    m.topDivider.width = m.panelWidth
+    m.categoriesTitleLabel.text = "Categorias"
+    m.categoriesTitleLabel.translation = [m.margin + 18, m.panelY + 24]
+    m.categoriesTitleLabel.width = m.leftPanelWidth - 36
+    m.categoriesTitleLabel.height = 42
 
-    titleY = m.headerBottomY + 32
-    if height <= 720 then titleY = m.headerBottomY + 20
-    m.categoriesTitleLabel.translation = [m.panelX + 42, titleY]
-    m.categoriesTitleLabel.width = m.leftPanelWidth - 72
-    m.seriesTitleLabel.translation = [m.rightPanelX + 42, titleY]
-    m.seriesTitleLabel.width = m.rightPanelWidth - 84
+    m.seriesTitleLabel.text = "SÉRIES"
+    m.seriesTitleLabel.translation = [m.rightPanelX + 28, m.panelY + 22]
+    m.seriesTitleLabel.width = m.rightPanelWidth
+    m.seriesTitleLabel.height = 42
+    m.seriesTitleLabel.horizAlign = "right"
+    m.seriesTitleLabel.color = "#9FAEC4"
 
-    m.verticalDivider.translation = [m.rightPanelX, m.headerBottomY]
-    m.verticalDivider.height = contentHeight
+    m.verticalDivider.translation = [m.margin + m.leftPanelWidth, m.panelY]
+    m.verticalDivider.width = 2
+    m.verticalDivider.height = m.panelHeight
+    m.verticalDivider.color = "#1D2A3A"
+    m.verticalDivider.opacity = 1.0
 
-    m.itemHeight = 66
-    m.focusHeight = 54
-    if height <= 720 then
-        m.itemHeight = 54
-        m.focusHeight = 46
-    end if
-    m.firstItemY = titleY + 86
-    if m.firstItemY + (m.fixedItems.Count() * m.itemHeight) > m.footerTopY - 20 then
-        m.firstItemY = titleY + 58
-    end if
-
-    m.categoryFocus.width = m.leftPanelWidth - 76
+    m.firstItemY = m.categoryY
+    m.categoryFocus.width = m.categoryWidth
     m.categoryFocus.height = m.focusHeight
-    m.categoryFocus.translation = [m.panelX + 32, m.firstItemY]
+    m.categoryFocus.translation = [m.categoryX, m.firstItemY]
 
     labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
     for i = 0 to labels.Count() - 1
-        labels[i].translation = [m.panelX + 56, m.firstItemY + (i * m.itemHeight) + 6]
-        labels[i].width = m.leftPanelWidth - 100
+        labels[i].translation = [m.categoryX + 14, m.firstItemY + (i * m.itemHeight)]
+        labels[i].width = m.categoryWidth - 24
         labels[i].height = m.focusHeight
+        labels[i].vertAlign = "center"
     end for
 
-    m.gridX = m.rightPanelX + 42
-    m.gridY = titleY + 76
-    m.gridWidth = m.rightPanelWidth - 84
-    m.gridBottom = m.footerTopY - 34
+    m.gridX = m.rightPanelX + 28
+    m.gridY = m.panelY + 34
+    m.gridWidth = m.rightPanelWidth
+    m.gridBottom = height - m.footerHeight - 34
     configureSeriesGridMetrics()
     m.seriesGridGroup.translation = [m.gridX, m.gridY]
 
-    messageWidth = m.rightPanelWidth - 96
+    messageWidth = m.gridWidth
     messageHeight = 164
-    messageX = m.rightPanelX + 48
-    messageY = m.headerBottomY + Int((contentHeight - messageHeight) / 2) - 20
+    messageX = m.gridX
+    messageY = m.gridY + Int((m.panelHeight - messageHeight) / 2)
     m.emptyMessageLabel.translation = [messageX, messageY]
     m.emptyMessageLabel.width = messageWidth
     m.emptyMessageLabel.height = messageHeight
@@ -154,11 +139,13 @@ sub configureLayout()
     m.statusLabel.width = messageWidth
     m.statusLabel.height = 56
 
-    m.bottomDivider.translation = [m.panelX, m.footerTopY]
-    m.bottomDivider.width = m.panelWidth
-    m.helpLabel.translation = [m.panelX + 42, m.footerTopY + 20]
-    m.helpLabel.width = m.panelWidth - 84
-    m.helpLabel.height = m.footerHeight - 20
+    m.bottomDivider.visible = false
+    m.helpLabel.text = "←/→ alternar painel • OK selecionar • VOLTAR Home"
+    m.helpLabel.translation = [0, height - 34]
+    m.helpLabel.width = width
+    m.helpLabel.height = 34
+    m.helpLabel.horizAlign = "center"
+    m.helpLabel.color = "#7D8CA3"
 end sub
 
 function getSeriesDisplayResolution() as Object

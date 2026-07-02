@@ -675,7 +675,20 @@ sub onLoginSubmit()
     m.isDemoMode = false
     account = m.loginScreen.submit
     if not hasAccount(account) then
-        m.loginScreen.callFunc("showError", "Informe DNS, usuário e senha.")
+        stopLoginTimeout()
+        cancelXtreamRequest()
+        m.pendingAccount = invalid
+        m.loginFormAccount = invalid
+        m.loginConnecting = false
+        m.isConnecting = false
+        m.connectionMode = ""
+        m.isDemoMode = false
+        m.loginErrorActive = false
+        m.account = invalid
+        DeleteSavedPlaylist()
+        resetAccountLoadedData()
+        updateConnectionStatus(false, "Nenhuma playlist conectada")
+        showHome()
         return
     end if
 
@@ -1313,7 +1326,7 @@ sub handleLoginConnectionResult(result as Object)
             if result <> invalid and result.message = "Tempo esgotado ao conectar." then
                 m.loginScreen.callFunc("showError", "Tempo esgotado ao conectar.")
             else
-                m.loginScreen.callFunc("showError", "Não foi possível conectar. Verifique os dados.")
+                m.loginScreen.callFunc("showError", "Login inválido. Verifique DNS, usuário e senha.")
             end if
         end if
     end if
