@@ -110,6 +110,8 @@ sub Init()
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesRequested")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
     m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
+    m.searchScreen.ObserveField("movieSelected", "onSearchMovieSelected")
+    m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
     m.movieSearchScreen.ObserveField("backRequested", "onMovieSearchBack")
     m.movieSearchScreen.ObserveField("movieSelected", "onMovieSearchMovieSelected")
     m.recentScreen.ObserveField("backRequested", "onRecentBack")
@@ -143,6 +145,7 @@ sub Init()
     m.simpleSeriesScreen.ObserveField("backRequested", "onSimpleSeriesBack")
     m.simpleSeriesScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.simpleSeriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
+    m.simpleSeriesScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
     m.seriesDetailsScreen.ObserveField("backRequested", "onSeriesDetailsBack")
     m.seriesDetailsScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
     m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
@@ -448,6 +451,9 @@ sub onSearchBack()
         m.movieListScreen.callFunc("show", m.selectedMovieCategory)
         m.movieListScreen.callFunc("focusCategories")
         m.searchScreen.callFunc("hide")
+    else if m.searchBackTarget = "series" then
+        m.simpleSeriesScreen.callFunc("show")
+        m.searchScreen.callFunc("hide")
     else
         showHome()
     end if
@@ -465,6 +471,10 @@ sub onMovieSearchRequested()
     m.movieSearchScreen.callFunc("show")
     movieSearchData = getMoviesForSearch()
     m.movieSearchScreen.callFunc("setMovies", movieSearchData)
+end sub
+
+sub onSeriesSearchRequested()
+    openSearch("series", "series")
 end sub
 
 sub onMovieSearchBack()
@@ -532,6 +542,16 @@ sub onSearchMovieSelected()
     m.moviePlayerScreen.callFunc("show", movie)
     m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
     buildMovieStreamUrl(movie)
+end sub
+
+sub onSearchSeriesSelected()
+    series = m.searchScreen.seriesSelected
+    if series = invalid then return
+    m.selectedSeries = series
+    m.openedFromSearch = true
+    m.searchScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("show", series)
+    m.seriesDetailsScreen.callFunc("setDetails", series)
 end sub
 
 
