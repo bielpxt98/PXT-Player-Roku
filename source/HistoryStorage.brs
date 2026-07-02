@@ -2,11 +2,12 @@
 function LoadViewingHistory() as Object
     section = CreateObject("roRegistrySection", "PXTPlayerHistory")
     json = section.Read("items")
-    if json <> invalid and json.Trim() <> "" then
-        data = ParseJson(json)
-        if data <> invalid and Type(data) = "roAssociativeArray" then return normalizeViewingHistory(data)
-    end if
-    return createEmptyViewingHistory()
+    if json = invalid or Type(json) <> "String" or json.Trim() = "" then return createEmptyViewingHistory()
+
+    data = ParseJson(json)
+    if data = invalid or Type(data) <> "roAssociativeArray" then return createEmptyViewingHistory()
+
+    return normalizeViewingHistory(data)
 end function
 
 sub SaveViewingHistory(history as Object)
@@ -18,6 +19,8 @@ end sub
 sub UpsertMovieHistory(movie as Dynamic, position as Integer)
     if movie = invalid then return
     history = LoadViewingHistory()
+    if history = invalid then history = createEmptyViewingHistory()
+    history = normalizeViewingHistory(history)
     item = { type: "movie", key: "movie:" + historyContentId(movie, "stream_id"), title: historyTitle(movie, "Filme"), position: position, content: movie }
     upsertHistoryItem(history.continueWatching, item)
     upsertHistoryItem(history.movies, item)
@@ -27,6 +30,8 @@ end sub
 sub UpsertSeriesHistory(series as Dynamic, season as Dynamic, episode as Dynamic, position as Integer)
     if episode = invalid then return
     history = LoadViewingHistory()
+    if history = invalid then history = createEmptyViewingHistory()
+    history = normalizeViewingHistory(history)
     item = {
         type: "series",
         key: "episode:" + historyContentId(episode, "id"),
@@ -62,20 +67,38 @@ function createEmptyViewingHistory() as Object
 end function
 
 function normalizeViewingHistory(data as Dynamic) as Object
-    normalized = createEmptyViewingHistory()
-    if data = invalid or Type(data) <> "roAssociativeArray" then return normalized
-    if data.continueWatching <> invalid and Type(data.continueWatching) = "roArray" then normalized.continueWatching = limitHistory(data.continueWatching)
-    if data.movies <> invalid and Type(data.movies) = "roArray" then normalized.movies = limitHistory(data.movies)
-    if data.series <> invalid and Type(data.series) = "roArray" then normalized.series = limitHistory(data.series)
-    return normalized
+    history = createEmptyViewingHistory()
+
+    if data = invalid or Type(data) <> "roAssociativeArray" then return history
+
+    if data.continueWatching <> invalid and Type(data.continueWatching) = "roArray" then
+        history.continueWatching = limitHistory(data.continueWatching)
+    end if
+
+    if data.movies <> invalid and Type(data.movies) = "roArray" then
+        history.movies = limitHistory(data.movies)
+    end if
+
+    if data.series <> invalid and Type(data.series) = "roArray" then
+        history.series = limitHistory(data.series)
+    end if
+
+    return history
 end function
 
 sub upsertHistoryItem(bucket as Object, item as Object)
+    if bucket = invalid or Type(bucket) <> "roArray" then return
+    if item = invalid then return
     if item.key = invalid or item.key.ToStr() = "" then return
+
     for i = bucket.Count() - 1 to 0 step -1
-        if bucket[i].key <> invalid and bucket[i].key.ToStr() = item.key.ToStr() then bucket.Delete(i)
+        if bucket[i] <> invalid and bucket[i].key <> invalid and bucket[i].key.ToStr() = item.key.ToStr() then
+            bucket.Delete(i)
+        end if
     end for
+
     bucket.Insert(0, item)
+
     while bucket.Count() > 20
         bucket.Delete(bucket.Count() - 1)
     end while
