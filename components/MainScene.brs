@@ -81,6 +81,11 @@ sub Init()
     m.currentMovieList = []
     m.movieListSelectedIndex = 0
     m.movieListFirstVisibleIndex = 0
+    m.lastMovieCategory = invalid
+    m.lastMovieList = invalid
+    m.lastMovieIndex = 0
+    m.lastMovieFirstVisibleIndex = 0
+    m.returnFromMoviePlayer = false
     m.entryPoint = ""
     m.isReturningFromPlayer = false
     if m.cachedMovies = invalid then m.cachedMovies = []
@@ -844,8 +849,18 @@ end sub
 sub onMovieDetailPlay()
     if m.selectedMovie = invalid then return
     cancelSearchIndexRefresh()
+    m.lastMovieCategory = m.selectedMovieCategory
+    m.lastMovieList = m.currentMovieList
+    if m.lastMovieList = invalid then
+        m.lastMovieList = m.movies
+    else if m.lastMovieList.Count() = 0 then
+        m.lastMovieList = m.movies
+    end if
+    m.lastMovieIndex = m.movieListScreen.callFunc("getSelectedIndex")
+    m.lastMovieFirstVisibleIndex = m.movieListScreen.callFunc("getFirstVisibleIndex")
+    m.returnFromMoviePlayer = true
     m.movieListRestoreState = m.movieListScreen.callFunc("getState")
-    m.currentMovieList = m.movies
+    m.currentMovieList = m.lastMovieList
     m.entryPoint = "movies"
     if m.movieListRestoreState <> invalid then
         m.movieListSelectedIndex = m.movieListRestoreState.selectedIndex
@@ -869,6 +884,11 @@ sub onMoviePlayerBack()
     if m.isReturningFromPlayer = true then return
     m.isReturningFromPlayer = true
 
+    PRINT "MOVIE_PLAYER_BACK"
+    PRINT "return category valid="; m.lastMovieCategory <> invalid
+    PRINT "return list valid="; m.lastMovieList <> invalid
+    PRINT "return index="; m.lastMovieIndex
+
     ' Temporarily do not persist movie history while isolating the BACK crash.
     ' position = 0
     ' if m.moviePlayerScreen <> invalid then position = m.moviePlayerScreen.callFunc("getPlaybackPosition")
@@ -879,9 +899,31 @@ sub onMoviePlayerBack()
         m.moviePlayerScreen.SetFocus(false)
     end if
 
-    showHome()
+    if m.lastMovieCategory <> invalid and m.lastMovieList <> invalid then
+        hideAllScreensExcept(m.movieListScreen)
+        m.selectedMovieCategory = m.lastMovieCategory
+        m.selectedMovieCategoryId = getCategoryId(m.lastMovieCategory)
+        m.movies = m.lastMovieList
+        m.currentMovieList = m.lastMovieList
+        m.movieListScreen.callFunc("show", m.lastMovieCategory)
+        m.movieListScreen.callFunc("setMovies", m.lastMovieList)
+        m.movieListScreen.callFunc("restoreMovieSelection", m.lastMovieIndex, m.lastMovieFirstVisibleIndex)
+        m.activePanel = "movies"
+        m.movieListScreen.SetFocus(true)
+    else if m.movieCategoriesScreen <> invalid then
+        hideAllScreensExcept(m.movieCategoriesScreen)
+        m.movieCategoriesScreen.callFunc("show")
+        m.movieCategoriesScreen.SetFocus(true)
+    else if m.movieListScreen <> invalid then
+        hideAllScreensExcept(m.movieListScreen)
+        if m.selectedMovieCategory <> invalid then m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+        m.movieListScreen.SetFocus(true)
+    else
+        showHome()
+    end if
 
     m.movieListRestoreState = invalid
+    m.returnFromMoviePlayer = false
     m.openedFromFavorites = false
     m.openedFromRecent = false
     m.openedFromSearch = false
