@@ -10,9 +10,10 @@ sub Init()
     m.seriesNodeRefs = []
     m.seriesItems = []
     m.activePanel = "categories"
-    m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS", "ASSISTIDOS"]
+    m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS ASSISTIDOS"]
 
     m.background = m.top.FindNode("background")
+    m.overlay = m.top.FindNode("overlay")
     m.panel = m.top.FindNode("panel")
     m.titleLabel = m.top.FindNode("titleLabel")
     m.topDivider = m.top.FindNode("topDivider")
@@ -24,7 +25,6 @@ sub Init()
     m.searchLabel = m.top.FindNode("searchLabel")
     m.favoritesLabel = m.top.FindNode("favoritesLabel")
     m.recentLabel = m.top.FindNode("recentLabel")
-    m.watchedLabel = m.top.FindNode("watchedLabel")
     m.emptyMessageLabel = m.top.FindNode("emptyMessageLabel")
     m.statusLabel = m.top.FindNode("statusLabel")
     m.bottomDivider = m.top.FindNode("bottomDivider")
@@ -40,7 +40,6 @@ sub Init()
     m.searchLabel.font = "font:MediumBoldSystemFont"
     m.favoritesLabel.font = "font:MediumSystemFont"
     m.recentLabel.font = "font:MediumSystemFont"
-    m.watchedLabel.font = "font:MediumSystemFont"
 
     configureLayout()
     updateNavigationState()
@@ -90,6 +89,9 @@ sub configureLayout()
     m.background.translation = [0, 0]
     m.background.width = width
     m.background.height = height
+    m.overlay.translation = [0, 0]
+    m.overlay.width = width
+    m.overlay.height = height
 
     m.panel.translation = [m.panelX, m.panelY]
     m.panel.width = m.panelWidth
@@ -127,7 +129,7 @@ sub configureLayout()
     m.categoryFocus.height = m.focusHeight
     m.categoryFocus.translation = [m.panelX + 32, m.firstItemY]
 
-    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.watchedLabel]
+    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
     for i = 0 to labels.Count() - 1
         labels[i].translation = [m.panelX + 56, m.firstItemY + (i * m.itemHeight) + 6]
         labels[i].width = m.leftPanelWidth - 100
@@ -202,7 +204,7 @@ sub setSeries(series as Object)
 end sub
 
 sub updateNavigationState()
-    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.watchedLabel]
+    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
 
     m.categoryFocus.translation = [m.panelX + 32, m.firstItemY + (m.selectedIndex * m.itemHeight)]
 

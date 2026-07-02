@@ -119,13 +119,19 @@ sub showError(message as String)
     updateFocus()
 end sub
 
+sub showMessage(message as String)
+    m.messageLabel.color = "#B8C3D6"
+    m.messageLabel.text = message
+    m.messageLabel.visible = true
+end sub
+
 sub clearMessage()
     m.messageLabel.text = ""
     m.messageLabel.visible = false
 end sub
 
 sub onEnterSelected()
-    clearMessage()
+    showMessage("Tentando conectar...")
 
     account = {
         dns: safeTrim(m.dnsInput.text),
@@ -134,13 +140,13 @@ sub onEnterSelected()
     }
 
     if account.dns = "" or account.username = "" or account.password = "" then
-        showError("Informe DNS, usuário e senha para conectar.")
+        showError("Informe DNS, usuário e senha.")
         return
     end if
 
     ' LoginScreen only validates and submits data. MainScene owns navigation
     ' and all Xtream network work so focus never stays trapped on ENTRAR.
-    setLoading(false)
+    setLoading(true)
     print "LOGIN_SUBMIT"
     m.top.submit = account
 end sub
@@ -184,9 +190,18 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "back" then
         onBackSelected()
         return true
-    else if isConfirmKey(key) then
+    else if isOkKey(key) then
         if m.focusIndex <= 2 then
             openTextKeyboard(m.focusIndex)
+            return true
+        else if m.focusIndex = 3 then
+            onEnterSelected()
+            return true
+        else if m.focusIndex = 4 then
+            onBackSelected()
+            return true
+        else if m.focusIndex = 5 then
+            onDemoSelected()
             return true
         end if
     end if
@@ -330,8 +345,13 @@ sub updateKeyboardText()
     end if
 end sub
 
+function isOkKey(key as String) as Boolean
+    k = LCase(key)
+    return k = "ok" or k = "enter" or k = "return" or k = "select" or k = "numpadenter"
+end function
+
 function isConfirmKey(key as String) as Boolean
-    return key = "OK" or key = "enter"
+    return isOkKey(key)
 end function
 
 sub moveFocus(direction as Integer)
