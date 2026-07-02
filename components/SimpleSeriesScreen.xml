@@ -9,11 +9,26 @@
     <script type="text/brightscript" uri="pkg:/components/SimpleSeriesScreen.brs" />
 
     <children>
-        <Rectangle id="panel" color="#101820" opacity="0.94" translation="[240, 120]" width="1440" height="840" />
-        <Label id="titleLabel" text="SÉRIES" horizAlign="center" translation="[240, 160]" width="1440" height="70" color="#FFFFFF" />
-        <Rectangle id="topDivider" color="#FFFFFF" opacity="0.35" translation="[240, 250]" width="1440" height="2" />
-        <Label id="messageLabel" text="Tela de Séries recriada do zero&#10;&#10;Conecte uma lista para carregar." horizAlign="center" vertAlign="center" translation="[240, 350]" width="1440" height="260" color="#FFFFFF" />
-        <Rectangle id="bottomDivider" color="#FFFFFF" opacity="0.35" translation="[240, 820]" width="1440" height="2" />
-        <Label id="backLabel" text="VOLTAR = Home" translation="[280, 850]" width="600" height="50" color="#D0D0D0" />
+        <Rectangle id="background" color="#071018" translation="[0, 0]" width="1920" height="1080" />
+        <Rectangle id="panel" color="#101B25" opacity="0.96" translation="[120, 80]" width="1680" height="920" />
+
+        <Label id="titleLabel" text="SÉRIES" horizAlign="center" vertAlign="center" translation="[120, 96]" width="1680" height="88" color="#FFFFFF" />
+        <Rectangle id="topDivider" color="#FFFFFF" opacity="0.28" translation="[120, 202]" width="1680" height="2" />
+
+        <Label id="categoriesTitleLabel" text="CATEGORIAS" translation="[170, 238]" width="390" height="44" color="#F2F6FA" />
+        <Label id="seriesTitleLabel" text="SÉRIES" translation="[620, 238]" width="1120" height="44" color="#F2F6FA" />
+        <Rectangle id="verticalDivider" color="#FFFFFF" opacity="0.22" translation="[580, 204]" width="2" height="682" />
+
+        <Rectangle id="categoryFocus" color="#23384A" opacity="0.95" translation="[150, 326]" width="390" height="58" />
+        <Label id="searchLabel" text="> PESQUISAR" translation="[185, 338]" width="340" height="42" color="#FFFFFF" />
+        <Label id="favoritesLabel" text="  FAVORITOS" translation="[185, 408]" width="340" height="42" color="#B9C4CF" />
+        <Label id="recentLabel" text="  ÚLTIMOS ASSISTIDOS" translation="[185, 478]" width="360" height="42" color="#B9C4CF" />
+
+        <Rectangle id="seriesFocus" color="#1B2A38" opacity="0.0" translation="[620, 300]" width="1120" height="520" />
+        <Label id="emptyMessageLabel" text="Conecte uma lista Xtream&#10;para carregar as séries." horizAlign="center" vertAlign="center" translation="[620, 420]" width="1120" height="180" color="#FFFFFF" />
+        <Label id="statusLabel" text="" horizAlign="center" vertAlign="center" translation="[620, 620]" width="1120" height="60" color="#F3C96B" />
+
+        <Rectangle id="bottomDivider" color="#FFFFFF" opacity="0.28" translation="[120, 886]" width="1680" height="2" />
+        <Label id="helpLabel" text="OK selecionar • ←/→ trocar painel • VOLTAR Home" translation="[170, 916]" width="1500" height="48" color="#D0D7DE" />
     </children>
 </component>
