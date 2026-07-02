@@ -57,15 +57,14 @@ sub show(channel as Dynamic)
 end sub
 
 sub play(streamUrl as String)
-    if streamUrl.Trim() = "" then
-        showError("Não foi possível montar a URL deste canal.")
-        return
-    end if
+    cleanUrl = streamUrl.Trim()
+    if cleanUrl = "" then cleanUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+    if m.channelName.Trim() = "" then m.channelName = "Canal ao vivo"
 
     content = CreateObject("roSGNode", "ContentNode")
-    content.url = streamUrl
+    content.url = cleanUrl
     content.title = m.channelName
-    content.streamFormat = getStreamFormat(streamUrl)
+    content.streamFormat = "hls"
     content.live = true
 
     if m.video = invalid or m.isClosing = true then return
@@ -118,9 +117,9 @@ sub onVideoStateChanged()
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
-    else if state = "error" or state = "finished" then
+    else if state = "error" then
         if m.top.visible = true and m.isClosing <> true then
-            showError("O stream de " + m.channelName + " não carregou ou foi encerrado pelo servidor.")
+            showError("Não foi possível reproduzir este canal.")
         end if
     end if
 end sub

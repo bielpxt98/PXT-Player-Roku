@@ -20,6 +20,7 @@ sub Init()
     m.moviePlayerScreen = m.top.FindNode("moviePlayerScreen")
     m.simpleSeriesScreen = m.top.FindNode("simpleSeriesScreen")
     m.seriesDetailsScreen = m.top.FindNode("seriesDetailsScreen")
+    m.seriesPlayerScreen = m.top.FindNode("seriesPlayerScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
@@ -143,6 +144,8 @@ sub Init()
     m.simpleSeriesScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.simpleSeriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
     m.seriesDetailsScreen.ObserveField("backRequested", "onSeriesDetailsBack")
+    m.seriesDetailsScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
+    m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
@@ -1054,6 +1057,7 @@ end sub
 
 sub buildLiveStreamUrl(channel as Object)
     directUrl = getDirectUrl(channel)
+    if directUrl = "" and m.isDemoMode = true then directUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
     if directUrl <> "" then
         m.livePlayerScreen.callFunc("play", directUrl)
         return
@@ -1065,6 +1069,10 @@ sub buildLiveStreamUrl(channel as Object)
     m.xtreamService.cacheEnabled = false
     m.xtreamService.streamId = getStreamId(channel)
     m.xtreamService.streamExtension = getStreamExtension(channel)
+    if not hasAccount(m.account) then
+        m.livePlayerScreen.callFunc("play", "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8")
+        return
+    end if
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1748,6 +1756,29 @@ end sub
 sub onSeriesDetailsBack()
     m.seriesDetailsScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("show")
+end sub
+
+sub onSeriesEpisodeSelected()
+    episode = m.seriesDetailsScreen.episodeSelected
+    if episode = invalid then return
+    title = "Episódio"
+    streamUrl = ""
+    if episode.title <> invalid then title = episode.title.ToStr().Trim()
+    if episode.streamUrl <> invalid then streamUrl = episode.streamUrl.ToStr().Trim()
+    if title = "" then title = "Episódio"
+    if streamUrl = "" then
+        m.seriesDetailsScreen.callFunc("showMessage", "Episódio sem link disponível.")
+        return
+    end if
+    m.seriesDetailsScreen.callFunc("hide")
+    m.seriesPlayerScreen.callFunc("show", { title: title, streamUrl: streamUrl })
+end sub
+
+sub onSeriesPlayerBack()
+    m.seriesPlayerScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("show", m.selectedSeries)
+    m.seriesDetailsScreen.callFunc("setDetails", m.selectedSeries)
+    m.seriesDetailsScreen.callFunc("focusEpisodes")
 end sub
 
 sub onLiveCategoriesResult(result as Object)

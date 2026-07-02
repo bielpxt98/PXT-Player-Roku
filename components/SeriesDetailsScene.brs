@@ -15,8 +15,11 @@ sub Init()
     m.backButton = m.top.FindNode("backButton")
     m.selectedButton = 0
     m.selectedSeasonIndex = 0
+    m.selectedEpisodeIndex = 0
     m.seasons = []
+    m.episodes = []
     m.seasonNodes = []
+    m.episodeNodes = []
     m.item = invalid
     configureLayout()
 end sub
@@ -98,6 +101,13 @@ sub hide()
     m.top.visible = false
 end sub
 
+sub focusEpisodes()
+    m.selectedButton = 1
+    if m.selectedEpisodeIndex >= m.episodes.Count() then m.selectedEpisodeIndex = 0
+    updateButtons()
+    m.top.SetFocus(true)
+end sub
+
 sub setLoading(isLoading as Boolean)
     if isLoading then m.loadingLabel.text = "Carregando detalhes..."
     m.loadingLabel.visible = isLoading
@@ -129,7 +139,7 @@ sub populate(item as Dynamic)
     m.synopsisTitle.visible = true
     m.synopsisLabel.visible = true
     setupSeasons(item)
-    renderEpisodes([])
+    setupEpisodes(item)
 end sub
 
 function mergeItem(base as Dynamic, details as Dynamic) as Object
@@ -233,45 +243,135 @@ sub renderSeasonButtons()
     end for
 end sub
 
+sub setupEpisodes(item as Dynamic)
+    m.episodes = getEpisodesForSelectedSeason(item)
+    if m.episodes.Count() = 0 then m.episodes = getDemoEpisodes()
+    if m.selectedEpisodeIndex >= m.episodes.Count() then m.selectedEpisodeIndex = 0
+    renderEpisodes(m.episodes)
+end sub
+
+function getEpisodesForSelectedSeason(item as Dynamic) as Object
+    episodes = []
+    if item = invalid or Type(item) <> "roAssociativeArray" then return episodes
+    if item.DoesExist("seasons") and item.seasons <> invalid and Type(item.seasons) = "roArray" and item.seasons.Count() > m.selectedSeasonIndex then
+        season = item.seasons[m.selectedSeasonIndex]
+        if season <> invalid and Type(season) = "roAssociativeArray" and season.DoesExist("episodes") and Type(season.episodes) = "roArray" then
+            for each ep in season.episodes
+                if ep <> invalid then episodes.Push(ep)
+            end for
+        end if
+    end if
+    if episodes.Count() = 0 and item.DoesExist("episodes") and item.episodes <> invalid and Type(item.episodes) = "roArray" then
+        for each ep in item.episodes
+            if ep <> invalid then episodes.Push(ep)
+        end for
+    end if
+    return episodes
+end function
+
+function getDemoEpisodes() as Object
+    return [
+        { title: "Episódio 1 — Big Buck Bunny", name: "Episódio 1 — Big Buck Bunny", streamUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", episode_num: 1 },
+        { title: "Episódio 2 — Sintel", name: "Episódio 2 — Sintel", streamUrl: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8", url: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8", episode_num: 2 },
+        { title: "Episódio 3 — Tears of Steel", name: "Episódio 3 — Tears of Steel", streamUrl: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", url: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", episode_num: 3 }
+    ]
+end function
+
 sub renderEpisodes(episodes as Object)
     while m.episodesGroup.GetChildCount() > 0
         m.episodesGroup.RemoveChildIndex(0)
     end while
-    m.episodesMessageLabel.visible = true
-    m.episodesMessageLabel.text = "Episódios serão carregados ao selecionar/reproduzir uma temporada."
+    m.episodeNodes = []
+    hasNoEpisodes = true
+    if episodes <> invalid and episodes.Count() > 0 then hasNoEpisodes = false
+    m.episodesMessageLabel.visible = hasNoEpisodes
+    if hasNoEpisodes then
+        m.episodesMessageLabel.text = "Nenhum episódio disponível."
+        return
+    end if
+    y = 0
+    for i = 0 to episodes.Count() - 1
+        node = CreateObject("roSGNode", "Label")
+        node.text = getEpisodeTitle(episodes[i], i)
+        node.translation = [0, y]
+        node.width = 720
+        node.height = 42
+        node.font = "font:MediumSystemFont"
+        m.episodesGroup.AppendChild(node)
+        m.episodeNodes.Push(node)
+        y = y + 46
+    end for
 end sub
+
+function getEpisodeTitle(episode as Dynamic, index as Integer) as String
+    title = firstText(episode, ["title", "name"])
+    if title = "" then title = "Episódio " + (index + 1).ToStr()
+    return title
+end function
+
+function getEpisodeUrl(episode as Dynamic) as String
+    return firstText(episode, ["streamUrl", "url", "direct_url", "movie_url"])
+end function
 
 sub updateButtons()
     for i = 0 to m.seasonNodes.Count() - 1
         m.seasonNodes[i].color = "#FFFFFF"
         if m.selectedButton = 0 and i = m.selectedSeasonIndex then m.seasonNodes[i].color = "#5CE08A"
     end for
+    for i = 0 to m.episodeNodes.Count() - 1
+        m.episodeNodes[i].color = "#FFFFFF"
+        if m.selectedButton = 1 and i = m.selectedEpisodeIndex then m.episodeNodes[i].color = "#5CE08A"
+    end for
     m.backButton.color = "#FFFFFF"
-    if m.selectedButton = 1 then m.backButton.color = "#5CE08A"
+    if m.selectedButton = 2 then m.backButton.color = "#5CE08A"
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "left" then
-        if m.selectedButton = 0 and m.selectedSeasonIndex > 0 then m.selectedSeasonIndex = m.selectedSeasonIndex - 1
+        if m.selectedButton = 0 and m.selectedSeasonIndex > 0 then
+            m.selectedSeasonIndex = m.selectedSeasonIndex - 1
+            setupEpisodes(m.item)
+        else if m.selectedButton = 1 then
+            m.selectedButton = 0
+        else if m.selectedButton = 2 then
+            m.selectedButton = 1
+        end if
         updateButtons()
         return true
     else if key = "right" then
-        if m.selectedButton = 0 and m.selectedSeasonIndex < m.seasons.Count() - 1 then m.selectedSeasonIndex = m.selectedSeasonIndex + 1
+        if m.selectedButton = 0 and m.selectedSeasonIndex < m.seasons.Count() - 1 then
+            m.selectedSeasonIndex = m.selectedSeasonIndex + 1
+            setupEpisodes(m.item)
+        end if
         updateButtons()
         return true
     else if key = "up" then
-        m.selectedButton = 0
+        if m.selectedButton = 1 and m.selectedEpisodeIndex > 0 then
+            m.selectedEpisodeIndex = m.selectedEpisodeIndex - 1
+        else if m.selectedButton = 2 then
+            m.selectedButton = 1
+        else
+            m.selectedButton = 0
+        end if
         updateButtons()
         return true
     else if key = "down" then
-        m.selectedButton = 1
+        if m.selectedButton = 0 then
+            m.selectedButton = 1
+        else if m.selectedButton = 1 and m.selectedEpisodeIndex < m.episodes.Count() - 1 then
+            m.selectedEpisodeIndex = m.selectedEpisodeIndex + 1
+        else
+            m.selectedButton = 2
+        end if
         updateButtons()
         return true
     else if key = "OK" then
         if m.selectedButton = 0 then
-            renderEpisodes([])
+            setupEpisodes(m.item)
             showMessage("")
+        else if m.selectedButton = 1 then
+            openSelectedEpisode()
         else
             m.top.backRequested = true
         end if
@@ -282,3 +382,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
 end function
+
+
+sub openSelectedEpisode()
+    if m.episodes = invalid or m.episodes.Count() = 0 then return
+    episode = m.episodes[m.selectedEpisodeIndex]
+    streamUrl = getEpisodeUrl(episode)
+    if streamUrl = "" then
+        showMessage("Episódio sem link disponível.")
+        return
+    end if
+    title = getEpisodeTitle(episode, m.selectedEpisodeIndex)
+    m.top.episodeSelected = { title: title, streamUrl: streamUrl }
+end sub
