@@ -25,7 +25,7 @@ sub Init()
         m.top.FindNode("userFocus"),
         m.top.FindNode("passwordFocus")
     ]
-    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.backButton, m.demoButton]
+    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.demoButton, m.backButton]
     m.textFieldMaxLengths = [200, 100, 100]
     m.textFieldTitles = ["DNS", "USUÁRIO", "SENHA"]
     m.textFieldLogNames = ["dns", "username", "password"]
@@ -174,14 +174,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         moveFocus(1)
         return true
     else if key = "left" then
-        if m.focusIndex = 4 then
-            m.focusIndex = 3
+        if m.focusIndex > 3 and m.focusIndex <= 5 then
+            m.focusIndex = m.focusIndex - 1
             updateFocus()
             return true
         end if
     else if key = "right" then
-        if m.focusIndex = 3 then
-            m.focusIndex = 4
+        if m.focusIndex >= 3 and m.focusIndex < 5 then
+            m.focusIndex = m.focusIndex + 1
             updateFocus()
             return true
         end if
@@ -196,10 +196,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             onEnterSelected()
             return true
         else if m.focusIndex = 4 then
-            onBackSelected()
+            onDemoSelected()
             return true
         else if m.focusIndex = 5 then
-            onDemoSelected()
+            onBackSelected()
             return true
         end if
     end if

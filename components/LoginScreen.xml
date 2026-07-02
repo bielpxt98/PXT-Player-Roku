@@ -29,12 +29,12 @@
             <Rectangle id="passwordFocus" color="#147DFF" width="600" height="72" translation="[0, 268]" />
             <TextEditBox id="passwordInput" hintText="Sua senha" width="580" height="54" translation="[10, 277]" secureMode="true" maxTextLength="100" clearOnDownKey="false" leadingEllipsis="true" />
 
-            <Button id="enterButton" text="ENTRAR" minWidth="280" translation="[0, 390]" />
-            <Button id="backButton" text="VOLTAR" minWidth="280" translation="[320, 390]" />
-            <Button id="demoButton" text="MODO DEMO" minWidth="600" translation="[0, 470]" />
-            <BusySpinner id="loadingSpinner" translation="[240, 560]" visible="false" />
-            <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 622]" visible="false" />
-            <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 562]" visible="false" />
+            <Button id="enterButton" text="ENTRAR" minWidth="180" translation="[0, 390]" />
+            <Button id="demoButton" text="MODO DEMO" minWidth="220" translation="[190, 390]" />
+            <Button id="backButton" text="VOLTAR" minWidth="180" translation="[420, 390]" />
+            <BusySpinner id="loadingSpinner" translation="[240, 500]" visible="false" />
+            <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 562]" visible="false" />
+            <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 492]" visible="false" />
         </Group>
 
         <Group id="customKeyboard" visible="false">
