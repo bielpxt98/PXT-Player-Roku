@@ -4,6 +4,11 @@ sub Init()
     m.top.SetFocus(false)
 
     m.selectedIndex = 0
+    m.selectedSeriesIndex = 0
+    m.firstVisibleSeriesIndex = 0
+    m.seriesNodes = []
+    m.seriesNodeRefs = []
+    m.seriesItems = []
     m.activePanel = "categories"
     m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS", "ASSISTIDOS"]
 
@@ -15,7 +20,7 @@ sub Init()
     m.seriesTitleLabel = m.top.FindNode("seriesTitleLabel")
     m.verticalDivider = m.top.FindNode("verticalDivider")
     m.categoryFocus = m.top.FindNode("categoryFocus")
-    m.seriesFocus = m.top.FindNode("seriesFocus")
+    m.seriesGridGroup = m.top.FindNode("seriesGridGroup")
     m.searchLabel = m.top.FindNode("searchLabel")
     m.favoritesLabel = m.top.FindNode("favoritesLabel")
     m.recentLabel = m.top.FindNode("recentLabel")
@@ -129,9 +134,12 @@ sub configureLayout()
         labels[i].height = m.focusHeight
     end for
 
-    m.seriesFocus.translation = [m.rightPanelX + 28, m.headerBottomY + 28]
-    m.seriesFocus.width = m.rightPanelWidth - 56
-    m.seriesFocus.height = contentHeight - 56
+    m.gridX = m.rightPanelX + 42
+    m.gridY = titleY + 76
+    m.gridWidth = m.rightPanelWidth - 84
+    m.gridBottom = m.footerTopY - 34
+    configureSeriesGridMetrics()
+    m.seriesGridGroup.translation = [m.gridX, m.gridY]
 
     messageWidth = m.rightPanelWidth - 96
     messageHeight = 164
@@ -156,14 +164,32 @@ sub show()
     m.top.visible = true
     m.top.SetFocus(true)
     m.selectedIndex = 0
+    m.selectedSeriesIndex = 0
+    m.firstVisibleSeriesIndex = 0
+    m.seriesNodes = []
+    m.seriesNodeRefs = []
     m.activePanel = "categories"
     m.statusLabel.text = ""
+    renderSeriesGrid()
     updateNavigationState()
 end sub
 
 sub hide()
     m.top.visible = false
     m.top.SetFocus(false)
+end sub
+
+sub setSeries(series as Object)
+    if series = invalid or Type(series) <> "roArray" then
+        m.seriesItems = []
+    else
+        m.seriesItems = series
+    end if
+    m.selectedSeriesIndex = 0
+    m.firstVisibleSeriesIndex = 0
+    updateSeriesWindow()
+    renderSeriesGrid()
+    updateNavigationState()
 end sub
 
 sub updateNavigationState()
@@ -185,15 +211,156 @@ sub updateNavigationState()
 
     if m.activePanel = "series" then
         m.categoryFocus.opacity = 0.35
-        m.seriesFocus.opacity = 0.9
     else
         m.categoryFocus.opacity = 0.95
-        m.seriesFocus.opacity = 0.0
     end if
+    updateSeriesFocus()
 end sub
 
 sub showPendingMessage()
     m.statusLabel.text = "Função será ativada na próxima etapa."
+end sub
+
+sub configureSeriesGridMetrics()
+    m.seriesColumns = 5
+    m.seriesRows = 2
+    m.posterWidth = Int((m.gridWidth - (m.seriesColumns - 1) * 28) / m.seriesColumns)
+    if m.posterWidth > 184 then m.posterWidth = 184
+    if m.posterWidth < 116 then m.posterWidth = 116
+    m.posterHeight = Int(m.posterWidth * 1.45)
+    m.seriesGapX = 28
+    m.seriesGapY = 34
+    m.seriesCardWidth = m.posterWidth + 16
+    m.seriesCardHeight = m.posterHeight + 62
+    if m.gridY + (m.seriesRows * m.seriesCardHeight) + m.seriesGapY > m.gridBottom then
+        m.seriesCardHeight = Int((m.gridBottom - m.gridY - m.seriesGapY) / 2)
+        m.posterHeight = m.seriesCardHeight - 62
+        m.posterWidth = Int(m.posterHeight / 1.45)
+        m.seriesCardWidth = m.posterWidth + 16
+    end if
+end sub
+
+sub renderSeriesGrid()
+    clearSeriesNodes()
+    if m.seriesItems.Count() = 0 then
+        m.emptyMessageLabel.visible = true
+        return
+    end if
+    m.emptyMessageLabel.visible = false
+    visibleCount = m.seriesColumns * m.seriesRows
+    lastIndex = m.firstVisibleSeriesIndex + visibleCount - 1
+    if lastIndex >= m.seriesItems.Count() then lastIndex = m.seriesItems.Count() - 1
+    for visualIndex = 0 to lastIndex - m.firstVisibleSeriesIndex
+        itemIndex = m.firstVisibleSeriesIndex + visualIndex
+        node = createSeriesItem(m.seriesItems[itemIndex], visualIndex, itemIndex)
+        m.seriesGridGroup.AppendChild(node)
+        m.seriesNodes.Push(node)
+        m.seriesNodeRefs.Push(m.lastSeriesRefs)
+    end for
+end sub
+
+function createSeriesItem(series as Object, visualIndex as Integer, itemIndex as Integer) as Object
+    row = Int(visualIndex / m.seriesColumns)
+    col = visualIndex - (row * m.seriesColumns)
+    item = CreateObject("roSGNode", "Group")
+    item.id = "seriesItem" + itemIndex.ToStr()
+    item.translation = [col * (m.seriesCardWidth + m.seriesGapX), row * (m.seriesCardHeight + m.seriesGapY)]
+
+    background = CreateObject("roSGNode", "Rectangle")
+    background.id = "seriesBackground"
+    background.width = m.seriesCardWidth
+    background.height = m.seriesCardHeight
+    background.color = "#111827"
+    background.opacity = 0.88
+
+    poster = CreateObject("roSGNode", "Poster")
+    poster.id = "seriesPoster"
+    poster.translation = [8, 8]
+    poster.width = m.posterWidth
+    poster.height = m.posterHeight
+    poster.uri = getSeriesPoster(series)
+
+    title = CreateObject("roSGNode", "Label")
+    title.id = "seriesName"
+    title.translation = [8, m.posterHeight + 12]
+    title.width = m.posterWidth
+    title.height = 42
+    title.color = "#DDE7F0"
+    title.font = "font:SmallSystemFont"
+    title.wrap = true
+    title.maxLines = 2
+    title.text = getSeriesName(series)
+
+    item.AppendChild(background)
+    item.AppendChild(poster)
+    item.AppendChild(title)
+    m.lastSeriesRefs = { background: background, poster: poster, title: title }
+    return item
+end function
+
+function getSeriesName(series as Dynamic) as String
+    if series <> invalid then
+        if series.name <> invalid then return series.name.ToStr()
+        if series.title <> invalid then return series.title.ToStr()
+    end if
+    return "Série"
+end function
+
+function getSeriesPoster(series as Dynamic) as String
+    if series <> invalid then
+        if series.cover <> invalid then return series.cover.ToStr()
+        if series.series_image <> invalid then return series.series_image.ToStr()
+        if series.stream_icon <> invalid then return series.stream_icon.ToStr()
+    end if
+    return ""
+end function
+
+sub moveSeriesFocus(delta as Integer)
+    if m.seriesItems.Count() = 0 then return
+    nextIndex = m.selectedSeriesIndex + delta
+    if nextIndex < 0 then nextIndex = 0
+    if nextIndex >= m.seriesItems.Count() then nextIndex = m.seriesItems.Count() - 1
+    oldFirst = m.firstVisibleSeriesIndex
+    m.selectedSeriesIndex = nextIndex
+    updateSeriesWindow()
+    if oldFirst <> m.firstVisibleSeriesIndex then renderSeriesGrid()
+end sub
+
+sub updateSeriesWindow()
+    if m.seriesItems.Count() = 0 then
+        m.selectedSeriesIndex = 0
+        m.firstVisibleSeriesIndex = 0
+        return
+    end if
+    visibleCount = m.seriesColumns * m.seriesRows
+    if m.selectedSeriesIndex < m.firstVisibleSeriesIndex then m.firstVisibleSeriesIndex = m.selectedSeriesIndex
+    if m.selectedSeriesIndex >= m.firstVisibleSeriesIndex + visibleCount then m.firstVisibleSeriesIndex = m.selectedSeriesIndex - visibleCount + 1
+    maxFirst = m.seriesItems.Count() - visibleCount
+    if maxFirst < 0 then maxFirst = 0
+    if m.firstVisibleSeriesIndex > maxFirst then m.firstVisibleSeriesIndex = maxFirst
+end sub
+
+sub updateSeriesFocus()
+    for i = 0 to m.seriesNodeRefs.Count() - 1
+        realIndex = m.firstVisibleSeriesIndex + i
+        refs = m.seriesNodeRefs[i]
+        refs.background.color = "#111827"
+        refs.background.opacity = 0.88
+        refs.title.color = "#DDE7F0"
+        if m.activePanel = "series" and realIndex = m.selectedSeriesIndex then
+            refs.background.color = "#0078D7"
+            refs.background.opacity = 1.0
+            refs.title.color = "#FFFFFF"
+        end if
+    end for
+end sub
+
+sub clearSeriesNodes()
+    while m.seriesGridGroup.GetChildCount() > 0
+        m.seriesGridGroup.RemoveChildIndex(0)
+    end while
+    m.seriesNodes = []
+    m.seriesNodeRefs = []
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -206,25 +373,37 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if m.activePanel = "categories" then
             m.selectedIndex = m.selectedIndex - 1
             if m.selectedIndex < 0 then m.selectedIndex = m.fixedItems.Count() - 1
-            m.statusLabel.text = ""
-            updateNavigationState()
+        else
+            moveSeriesFocus(-m.seriesColumns)
         end if
+        m.statusLabel.text = ""
+        updateNavigationState()
         return true
     else if key = "down" then
         if m.activePanel = "categories" then
             m.selectedIndex = m.selectedIndex + 1
             if m.selectedIndex >= m.fixedItems.Count() then m.selectedIndex = 0
-            m.statusLabel.text = ""
-            updateNavigationState()
+        else
+            moveSeriesFocus(m.seriesColumns)
         end if
+        m.statusLabel.text = ""
+        updateNavigationState()
         return true
     else if key = "right" then
-        m.activePanel = "series"
+        if m.activePanel = "categories" then
+            m.activePanel = "series"
+        else
+            moveSeriesFocus(1)
+        end if
         m.statusLabel.text = ""
         updateNavigationState()
         return true
     else if key = "left" then
-        m.activePanel = "categories"
+        if m.activePanel = "series" and (m.selectedSeriesIndex mod m.seriesColumns) > 0 then
+            moveSeriesFocus(-1)
+        else
+            m.activePanel = "categories"
+        end if
         m.statusLabel.text = ""
         updateNavigationState()
         return true

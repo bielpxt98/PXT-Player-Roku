@@ -4,6 +4,7 @@
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <function name="show" />
         <function name="hide" />
+        <function name="setSeries" />
     </interface>
 
     <script type="text/brightscript" uri="pkg:/components/SimpleSeriesScreen.brs" />
@@ -25,7 +26,7 @@
         <Label id="recentLabel" text="  ÚLTIMOS" translation="[185, 478]" width="360" height="42" color="#B9C4CF" />
         <Label id="watchedLabel" text="  ASSISTIDOS" translation="[185, 548]" width="360" height="42" color="#B9C4CF" />
 
-        <Rectangle id="seriesFocus" color="#1B2A38" opacity="0.0" translation="[620, 300]" width="1120" height="520" />
+        <Group id="seriesGridGroup" translation="[620, 300]" />
         <Label id="emptyMessageLabel" text="Conecte uma lista Xtream&#10;para carregar as séries." horizAlign="center" vertAlign="center" translation="[620, 420]" width="1120" height="180" color="#FFFFFF" />
         <Label id="statusLabel" text="" horizAlign="center" vertAlign="center" translation="[620, 620]" width="1120" height="60" color="#F3C96B" />
 

@@ -59,6 +59,7 @@ sub Init()
     m.searchIndexCache = LoadSearchIndexCache()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
+    m.cachedSeries = m.searchIndexCache.series
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
     m.searchIndexQueue = []
     m.searchIndexKind = ""
@@ -79,6 +80,7 @@ sub Init()
     m.entryPoint = ""
     m.isReturningFromPlayer = false
     if m.cachedMovies = invalid then m.cachedMovies = []
+    if m.cachedSeries = invalid then m.cachedSeries = []
     if m.cachedLiveChannels = invalid then m.cachedLiveChannels = []
 
     configureScene()
@@ -1334,6 +1336,7 @@ sub loadLocalSearchIndexCache()
     m.searchIndexCache = LoadSearchIndexCache()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
+    m.cachedSeries = m.searchIndexCache.series
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
     if m.searchIndexCache.liveCategories.Count() > 0 then m.liveCategories = m.searchIndexCache.liveCategories
     if m.searchIndexCache.liveChannels.Count() > 0 then m.cachedLiveChannels = m.searchIndexCache.liveChannels
@@ -1443,6 +1446,7 @@ end sub
 
 sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
+    m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
 end sub
