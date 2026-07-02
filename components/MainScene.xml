@@ -23,15 +23,12 @@
         <MovieListScreen id="movieListScreen" visible="false" />
         <MovieDetailScreen id="movieDetailScreen" visible="false" />
         <MoviePlayerScreen id="moviePlayerScreen" visible="false" />
-        <SeriesScreen id="seriesScreen" visible="false" />
-        <SeriesDetailScreen id="seriesDetailScreen" visible="false" />
-        <SeriesPlayerScreen id="seriesPlayerScreen" visible="false" />
+        <SimpleSeriesScreen id="simpleSeriesScreen" visible="false" />
         <XtreamService id="xtreamService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
         <Timer id="autoConnectTimer" duration="0.3" repeat="false" />
         <Timer id="searchIndexTimer" duration="0.2" repeat="false" />
-        <Timer id="seriesOpenTimeoutTimer" duration="8" repeat="false" />
         <Timer id="splashMinimumTimer" duration="4" repeat="false" />
         <Timer id="splashMaximumTimer" duration="6" repeat="false" />
     </children>

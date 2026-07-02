@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SimpleSeriesScreen" extends="Group">
+    <interface>
+        <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <function name="show" />
+        <function name="hide" />
+    </interface>
+
+    <script type="text/brightscript" uri="pkg:/components/SimpleSeriesScreen.brs" />
+
+    <children>
+        <Rectangle id="panel" color="#101820" opacity="0.94" translation="[240, 120]" width="1440" height="840" />
+        <Label id="titleLabel" text="SÉRIES" horizAlign="center" translation="[240, 160]" width="1440" height="70" color="#FFFFFF" />
+        <Rectangle id="topDivider" color="#FFFFFF" opacity="0.35" translation="[240, 250]" width="1440" height="2" />
+        <Label id="messageLabel" text="Tela de Séries recriada do zero&#10;&#10;Conecte uma lista para carregar." horizAlign="center" vertAlign="center" translation="[240, 350]" width="1440" height="260" color="#FFFFFF" />
+        <Rectangle id="bottomDivider" color="#FFFFFF" opacity="0.35" translation="[240, 820]" width="1440" height="2" />
+        <Label id="backLabel" text="VOLTAR = Home" translation="[280, 850]" width="600" height="50" color="#D0D0D0" />
+    </children>
+</component>
