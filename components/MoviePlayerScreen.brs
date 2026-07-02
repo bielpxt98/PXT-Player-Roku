@@ -27,8 +27,9 @@ sub Init()
     m.isReturningFromPlayer = false
     m.resumePosition = 0
     m.lastPosition = 0
-    m.seekStep = 10
+    m.seekStep = 20
     m.seekDirection = ""
+    m.pendingSeekPosition = invalid
     m.isHoldingSeek = false
     m.pendingStreamUrl = ""
     m.resumeDialog = invalid
@@ -245,8 +246,18 @@ sub onVideoStateChanged()
     end if
 end sub
 
+function isSeekKey(key as String) as Boolean
+    return normalizeSeekDirection(key) <> ""
+end function
+
+function normalizeSeekDirection(key as String) as String
+    if key = "right" or key = "fastforward" then return "right"
+    if key = "left" or key = "rewind" then return "left"
+    return ""
+end function
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    if key = "right" or key = "left" then
+    if isSeekKey(key) then
         if press then
             beginSeekHold(key)
         else
@@ -293,15 +304,19 @@ sub closeMoviePlayer()
 end sub
 
 sub beginSeekHold(key as String)
-    if m.isHoldingSeek = true then return
+    direction = normalizeSeekDirection(key)
+    if direction = "" then return
+
+    if m.isHoldingSeek = true and m.seekDirection = direction then return
+    stopSeekHold()
 
     m.isHoldingSeek = true
-    m.seekDirection = key
+    m.seekDirection = direction
 
-    if key = "right" then
-        seekBy(m.seekStep)
-    else if key = "left" then
-        seekBy(-m.seekStep)
+    if direction = "right" then
+        seekForward()
+    else if direction = "left" then
+        seekBackward()
     end if
 
     if m.seekHoldTimer <> invalid then
@@ -312,7 +327,8 @@ sub beginSeekHold(key as String)
 end sub
 
 sub finishSeekHold(key as String)
-    if m.seekDirection <> key then return
+    direction = normalizeSeekDirection(key)
+    if m.seekDirection <> direction then return
     stopSeekHold()
 end sub
 
@@ -320,6 +336,7 @@ sub stopSeekHold()
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "stop"
     m.isHoldingSeek = false
     m.seekDirection = ""
+    m.pendingSeekPosition = invalid
 end sub
 
 sub onProgressUpdateTimerFire()
@@ -330,9 +347,9 @@ sub onSeekHoldTick()
     if m.isHoldingSeek = false then return
 
     if m.seekDirection = "right" then
-        seekBy(20)
+        seekForward()
     else if m.seekDirection = "left" then
-        seekBy(-20)
+        seekBackward()
     end if
 end sub
 
@@ -351,19 +368,41 @@ sub togglePause()
     updatePlayPauseIcon()
 end sub
 
+sub seekForward()
+    seekBy(m.seekStep)
+end sub
+
+sub seekBackward()
+    seekBy(-m.seekStep)
+end sub
+
 sub seekBy(delta as Integer)
-    seekTo(getPlaybackPosition() + delta)
+    current = getSeekBasePosition()
+    seekTo(current + delta)
 end sub
 
 sub seekTo(position as Integer)
     if m.video = invalid then return
-    if position < 0 then position = 0
-    duration = getPlaybackDuration()
-    if duration > 0 and position >= duration then position = duration - 1
-    if position < 0 then position = 0
-    m.video.seek = position
+    target = clampSeekPosition(position)
+    m.pendingSeekPosition = target
+    m.video.seek = target
+    updateProgress()
     showControls()
 end sub
+
+function getSeekBasePosition() as Integer
+    if m.pendingSeekPosition <> invalid then return Int(m.pendingSeekPosition)
+    return getPlaybackPosition()
+end function
+
+function clampSeekPosition(position as Integer) as Integer
+    target = position
+    if target < 0 then target = 0
+    duration = getPlaybackDuration()
+    if duration > 0 and target > duration then target = duration
+    if target < 0 then target = 0
+    return target
+end function
 
 function getPlaybackDuration() as Integer
     if m.video <> invalid and m.video.duration <> invalid then return Int(m.video.duration)
@@ -411,7 +450,7 @@ sub updateControls()
 end sub
 
 sub updateProgress()
-    position = getPlaybackPosition()
+    position = getSeekBasePosition()
     duration = getPlaybackDuration()
     if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = formatTime(position)
     if m.durationLabel <> invalid then m.durationLabel.text = formatTime(duration)
