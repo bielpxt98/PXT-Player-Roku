@@ -167,7 +167,7 @@ sub show(category as Dynamic)
     end if
 
     m.searchQuery = ""
-    m.focusColumn = "categories"
+    if m.focusColumn = "" then m.focusColumn = "categories"
     selectCategory(category)
     updateVisibleWindow()
     renderList()
@@ -205,6 +205,48 @@ end sub
 sub setAccount(account as Object)
     m.account = account
 end sub
+function getState() as Object
+    selectedChannel = invalid
+    if m.channels.Count() > 0 and m.selectedIndex >= 0 and m.selectedIndex < m.channels.Count() then
+        selectedChannel = m.channels[m.selectedIndex]
+    end if
+
+    selectedCategory = invalid
+    if m.categories.Count() > 0 and m.categorySelectedIndex >= 0 and m.categorySelectedIndex < m.categories.Count() then
+        selectedCategory = m.categories[m.categorySelectedIndex]
+    end if
+
+    return {
+        selectedCategory: selectedCategory,
+        selectedCategoryIndex: m.categorySelectedIndex,
+        firstVisibleCategoryIndex: m.categoryFirstVisibleIndex,
+        selectedChannel: selectedChannel,
+        selectedIndex: m.selectedIndex,
+        firstVisibleIndex: m.firstVisibleIndex,
+        focusColumn: m.focusColumn
+    }
+end function
+
+sub restoreState(state as Dynamic)
+    if state = invalid then return
+
+    if state.selectedCategoryIndex <> invalid then m.categorySelectedIndex = state.selectedCategoryIndex
+    if state.firstVisibleCategoryIndex <> invalid then m.categoryFirstVisibleIndex = state.firstVisibleCategoryIndex
+    if state.selectedIndex <> invalid then m.selectedIndex = state.selectedIndex
+    if state.firstVisibleIndex <> invalid then m.firstVisibleIndex = state.firstVisibleIndex
+    if state.focusColumn <> invalid then
+        m.focusColumn = state.focusColumn
+    else
+        m.focusColumn = "channels"
+    end if
+
+    updateCategoryVisibleWindow()
+    updateVisibleWindow()
+    renderCategories()
+    renderList()
+    updateFocus()
+end sub
+
 
 sub resetSelection()
     m.selectedIndex = 0

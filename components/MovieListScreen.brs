@@ -108,7 +108,11 @@ end sub
 sub setMovies(items as Object)
     m.allMovie = normalizeArray(items) : m.movies = m.allMovie
     if m.movies.Count() = 0 then showMessage("Nenhum item foi encontrado nesta categoria.") : return
-    m.statusLabel.text = "" : resetGridSelection() : renderGrid() : updateFocus()
+    m.statusLabel.text = ""
+    resetGridSelection()
+    m.activePane = "grid"
+    renderGrid()
+    updateFocus()
 end sub
 
 sub showMessage(message as String)
@@ -184,7 +188,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     if key = "left" then
         if m.activePane = "grid" then
-            m.activePane = "categories" : updateFocus()
+            if (m.selectedMovieIndex mod m.columns) > 0 then
+                moveGrid(-1, 0)
+            else
+                m.activePane = "categories" : updateFocus()
+            end if
         else if m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         end if
@@ -292,6 +300,8 @@ sub updateGridWindow()
 end sub
 
 sub updateMovieFocus()
+    ensureSelectedMovieVisible()
+
     for i = 0 to m.movieNodes.Count() - 1
         realIndex = m.firstVisibleMovieIndex + i
         refs = m.movieRefs[i]
@@ -309,6 +319,8 @@ sub updateMovieFocus()
 end sub
 
 sub updateFocus()
+    if m.movies.Count() > 0 then ensureSelectedMovieVisible()
+
     if m.activePane = "search" then
         m.searchBar.color = "#061F36" : m.searchLabel.color = "#FFFFFF"
     else
@@ -335,6 +347,18 @@ end sub
 sub resetGridFocusToFirstItem()
     m.selectedMovieIndex = 0
     m.firstVisibleMovieIndex = 0
+end sub
+
+sub ensureSelectedMovieVisible()
+    if m.movies.Count() = 0 then return
+
+    updateGridWindow()
+    visibleIndex = m.selectedMovieIndex - m.firstVisibleMovieIndex
+    if visibleIndex < 0 or visibleIndex >= m.movieNodes.Count() then
+        m.firstVisibleMovieIndex = m.selectedMovieIndex
+        updateGridWindow()
+        renderGrid()
+    end if
 end sub
 
 function getState() as Object

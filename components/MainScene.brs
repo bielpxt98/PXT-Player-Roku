@@ -44,6 +44,7 @@ sub Init()
     m.selectedLiveCategory = invalid
     m.selectedLiveCategoryId = ""
     m.selectedLiveChannel = invalid
+    m.liveChannelsRestoreState = invalid
     m.movieCategories = []
     m.movieCategoriesLoading = false
     m.movies = []
@@ -929,6 +930,7 @@ sub onLiveChannelSelected()
     end if
 
     m.selectedLiveChannel = channel
+    m.liveChannelsRestoreState = m.liveChannelsScreen.callFunc("getState")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("show", channel)
     buildLiveStreamUrl(channel)
@@ -948,7 +950,12 @@ sub onLivePlayerBack()
     else
         m.liveChannelsScreen.callFunc("setAccount", m.account)
         m.liveChannelsScreen.callFunc("show", m.selectedLiveCategory)
+        if m.liveChannels <> invalid and m.liveChannels.Count() > 0 then m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+        if m.liveChannelsRestoreState <> invalid then m.liveChannelsScreen.callFunc("restoreState", m.liveChannelsRestoreState)
+        m.liveChannelsScreen.SetFocus(true)
     end if
+
+    m.liveChannelsRestoreState = invalid
 end sub
 
 sub buildLiveStreamUrl(channel as Object)
