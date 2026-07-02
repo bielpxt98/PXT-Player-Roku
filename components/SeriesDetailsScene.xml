@@ -12,20 +12,30 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesDetailsScene.brs" />
     <children>
-        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0,0]" />
+        <Rectangle id="background" color="#05070D" translation="[0,0]" />
+        <Rectangle id="heroOverlay" color="#0B1220" opacity="0.92" />
         <Poster id="poster" loadDisplayMode="scaleToFit" />
-        <Label id="titleLabel" color="#FFFFFF" />
-        <Label id="metaLabel" color="#B8C3D6" />
+        <Rectangle id="posterBorder" color="#FFFFFF" opacity="0.12" />
+        <Label id="titleLabel" color="#FFFFFF" wrap="true" />
         <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
-        <Label id="synopsisLabel" color="#D1D5DB" wrap="true" />
-        <Label id="seasonsTitle" text="TEMPORADAS" color="#FFFFFF" />
-        <Group id="seasonsGroup" />
-        <Label id="episodesTitle" text="EPISÓDIOS" color="#FFFFFF" />
-        <Group id="episodesGroup" />
-        <Label id="episodesMessageLabel" text="Episódios serão carregados ao selecionar/reproduzir uma temporada." color="#B8C3D6" wrap="true" />
-        <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" />
-        <Group id="buttonsGroup">
-            <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+        <Label id="synopsisLabel" color="#D8DEE9" wrap="true" />
+        <Label id="genreLabel" color="#B8C3D6" wrap="true" />
+        <Group id="actionsGroup">
+            <Group id="playButtonGroup">
+                <Rectangle id="playButtonBg" color="#1F2937" />
+                <Rectangle id="playButtonFocus" color="#5CE08A" opacity="0" />
+                <Label id="playButtonLabel" text="JOGAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            </Group>
+            <Group id="continueButtonGroup">
+                <Rectangle id="continueButtonBg" color="#1F2937" />
+                <Rectangle id="continueButtonFocus" color="#5CE08A" opacity="0" />
+                <Label id="continueButtonLabel" text="CONTINUAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            </Group>
         </Group>
+        <Label id="seasonTitle" text="TEMPORADA 1" color="#FFFFFF" horizAlign="center" />
+        <Group id="seasonsGroup" />
+        <Group id="episodesGroup" />
+        <Label id="episodesMessageLabel" text="Nenhum episódio disponível." color="#B8C3D6" wrap="true" horizAlign="center" />
+        <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" horizAlign="center" />
     </children>
 </component>
