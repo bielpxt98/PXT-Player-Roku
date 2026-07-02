@@ -294,3 +294,13 @@ function getMovieImage(movie as Dynamic) as String
     if movie.poster <> invalid and movie.poster.ToStr().Trim() <> "" then return movie.poster.ToStr()
     return ""
 end function
+
+function limitMovieBatch(items as Object, maxItems as Integer) as Object
+    limited = []
+    if items = invalid then return limited
+    for each item in items
+        if limited.Count() >= maxItems then exit for
+        limited.Push(item)
+    end for
+    return limited
+end function
