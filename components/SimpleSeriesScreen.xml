@@ -27,6 +27,7 @@
         <Label id="searchLabel" text="> PESQUISAR" translation="[185, 338]" width="340" height="42" color="#FFFFFF" />
         <Label id="favoritesLabel" text="  FAVORITOS" translation="[185, 408]" width="340" height="42" color="#B9C4CF" />
         <Label id="recentLabel" text="  ÚLTIMOS ASSISTIDOS" translation="[185, 478]" width="360" height="42" color="#B9C4CF" />
+        <Label id="categoryLabel4" text="  SÉRIES DEMO" translation="[185, 548]" width="360" height="42" color="#B9C4CF" />
 
         <Group id="seriesGridGroup" translation="[620, 300]" />
         <Label id="emptyMessageLabel" text="Conecte uma lista Xtream&#10;para carregar as séries." horizAlign="center" vertAlign="center" translation="[620, 420]" width="1120" height="180" color="#FFFFFF" />

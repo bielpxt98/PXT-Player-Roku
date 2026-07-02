@@ -29,6 +29,7 @@ sub Init()
     m.searchLabel = m.top.FindNode("searchLabel")
     m.favoritesLabel = m.top.FindNode("favoritesLabel")
     m.recentLabel = m.top.FindNode("recentLabel")
+    m.categoryLabel4 = m.top.FindNode("categoryLabel4")
     m.emptyMessageLabel = m.top.FindNode("emptyMessageLabel")
     m.statusLabel = m.top.FindNode("statusLabel")
     m.bottomDivider = m.top.FindNode("bottomDivider")
@@ -45,6 +46,7 @@ sub Init()
     m.searchLabel.font = "font:MediumBoldSystemFont"
     m.favoritesLabel.font = "font:MediumSystemFont"
     m.recentLabel.font = "font:MediumSystemFont"
+    m.categoryLabel4.font = "font:MediumSystemFont"
 
     configureLayout()
     ensureNavigationLayoutDefaults()
@@ -125,7 +127,7 @@ sub configureLayout()
     m.categoryFocus.translation = [m.categoryX, m.firstItemY]
 
     updateCategoryItems()
-    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
+    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.categoryLabel4]
     for i = 0 to labels.Count() - 1
         labels[i].translation = [m.categoryX + 14, m.firstItemY + (i * m.itemHeight)]
         labels[i].width = m.categoryWidth - 24
@@ -174,7 +176,12 @@ sub show()
     ensureNavigationLayoutDefaults()
     m.top.visible = true
     m.top.SetFocus(true)
-    m.selectedIndex = 0
+    if m.categories <> invalid and m.categories.Count() > 0 then
+        m.selectedIndex = m.fixedItems.Count()
+    else
+        m.selectedIndex = 0
+    end if
+    m.firstVisibleCategoryIndex = 0
     m.selectedSeriesIndex = 0
     m.firstVisibleSeriesIndex = 0
     m.seriesNodes = []
@@ -219,13 +226,12 @@ end sub
 
 sub updateCategoryItems()
     m.categoryItems = []
+    for each item in m.fixedItems
+        m.categoryItems.Push({ label: item, fixed: true })
+    end for
     if m.categories <> invalid and m.categories.Count() > 0 then
         for each category in m.categories
             m.categoryItems.Push({ label: getCategoryName(category), fixed: false, category: category })
-        end for
-    else
-        for each item in m.fixedItems
-            m.categoryItems.Push({ label: item, fixed: true })
         end for
     end if
     if m.categoryItems.Count() = 0 then
@@ -289,7 +295,7 @@ sub updateNavigationState()
     end if
 
     updateCategoryItems()
-    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
+    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.categoryLabel4]
     visibleCategoryCount = labels.Count()
     if m.selectedIndex < m.firstVisibleCategoryIndex then m.firstVisibleCategoryIndex = m.selectedIndex
     if m.selectedIndex >= m.firstVisibleCategoryIndex + visibleCategoryCount then m.firstVisibleCategoryIndex = m.selectedIndex - visibleCategoryCount + 1
