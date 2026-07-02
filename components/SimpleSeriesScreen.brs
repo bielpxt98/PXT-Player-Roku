@@ -289,7 +289,46 @@ sub filterSeriesByCategory(category as Dynamic)
     m.firstVisibleSeriesIndex = 0
     updateSeriesWindow()
     renderSeriesGrid()
-    m.activePanel = "series"
+    m.activePanel = "grid"
+end sub
+
+
+sub handleCategoryOk()
+    if m.categoryItems = invalid or m.selectedIndex < 0 or m.selectedIndex >= m.categoryItems.Count() then return
+
+    selected = m.categoryItems[m.selectedIndex]
+    label = ""
+    if selected.label <> invalid then label = selected.label.ToStr()
+
+    if selected.fixed = true then
+        if label = "PESQUISAR" then
+            m.activePanel = "search"
+            m.statusLabel.text = ""
+            updateNavigationState()
+            m.top.searchRequested = true
+            return
+        end if
+
+        m.currentCategoryId = ""
+        m.seriesItems = []
+        m.selectedSeriesIndex = 0
+        m.firstVisibleSeriesIndex = 0
+        renderSeriesGrid()
+        if label = "FAVORITOS" then
+            m.statusLabel.text = "Nenhuma série favorita encontrada."
+        else if label = "ÚLTIMOS ASSISTIDOS" then
+            m.statusLabel.text = "Nenhuma série assistida recentemente."
+        else
+            m.statusLabel.text = ""
+        end if
+        updateNavigationState()
+        return
+    end if
+
+    filterSeriesByCategory(selected.category)
+    m.top.categorySelected = selected.category
+    m.statusLabel.text = ""
+    updateNavigationState()
 end sub
 
 sub openSelectedSeries()
@@ -338,7 +377,7 @@ sub updateNavigationState()
         end if
     end for
 
-    if m.activePanel = "series" then
+    if m.activePanel = "grid" then
         m.categoryFocus.opacity = 0.35
     else
         m.categoryFocus.opacity = 0.95
@@ -472,7 +511,7 @@ sub updateSeriesFocus()
         refs.background.color = "#111827"
         refs.background.opacity = 0.88
         refs.title.color = "#DDE7F0"
-        if m.activePanel = "series" and realIndex = m.selectedSeriesIndex then
+        if m.activePanel = "grid" and realIndex = m.selectedSeriesIndex then
             refs.background.color = "#0078D7"
             refs.background.opacity = 1.0
             refs.title.color = "#FFFFFF"
@@ -524,7 +563,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "right" then
         if m.activePanel = "categories" then
-            m.activePanel = "series"
+            m.activePanel = "grid"
         else
             moveSeriesFocus(1)
         end if
@@ -532,7 +571,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateNavigationState()
         return true
     else if key = "left" then
-        if m.activePanel = "series" and (m.selectedSeriesIndex mod m.seriesColumns) > 0 then
+        if m.activePanel = "grid" and (m.selectedSeriesIndex mod m.seriesColumns) > 0 then
             moveSeriesFocus(-1)
         else
             m.activePanel = "categories"
@@ -542,25 +581,17 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "OK" then
         if m.activePanel = "categories" then
-            if m.categoryItems <> invalid and m.selectedIndex < m.categoryItems.Count() then
-                selected = m.categoryItems[m.selectedIndex]
-                if selected.fixed = true then
-                    m.currentCategoryId = ""
-                    m.seriesItems = m.allSeriesItems
-                    m.selectedSeriesIndex = 0
-                    m.firstVisibleSeriesIndex = 0
-                    renderSeriesGrid()
-                    m.activePanel = "series"
-                else
-                    filterSeriesByCategory(selected.category)
-                    m.top.categorySelected = selected.category
-                end if
-            end if
-        else
-            openSelectedSeries()
+            handleCategoryOk()
+            return true
         end if
-        m.statusLabel.text = ""
-        updateNavigationState()
+
+        if m.activePanel = "grid" then
+            openSelectedSeries()
+            m.statusLabel.text = ""
+            updateNavigationState()
+            return true
+        end if
+
         return true
     end if
 
