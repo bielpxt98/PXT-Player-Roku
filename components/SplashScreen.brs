@@ -30,6 +30,7 @@ sub show()
     m.top.visible = true
     m.top.SetFocus(true)
     applyPhase()
+    m.statusLabel.text = "Carregando lista..."
     m.animationTimer.control = "start"
 end sub
 
@@ -56,7 +57,7 @@ sub applyPhase()
         m.phaseLabel.text = ""
         m.phaseLabel.opacity = 0
         m.brandLabel.opacity = 1
-        m.statusLabel.text = "Carregamento concluído"
+        m.statusLabel.text = "Carregando lista..."
         m.iconLabel.rotation = m.iconLabel.rotation + 0.35
         if m.phaseIndex > m.phases.Count() + 1 then m.phaseIndex = 0
     end if

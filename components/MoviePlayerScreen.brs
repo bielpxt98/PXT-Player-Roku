@@ -102,7 +102,7 @@ end sub
 
 sub play(streamUrl as String)
     if streamUrl.Trim() = "" then
-        showError("Não foi possível montar a URL deste filme.")
+        showError("Stream sem URL válida")
         return
     end if
 

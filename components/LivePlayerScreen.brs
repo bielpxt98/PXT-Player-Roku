@@ -58,7 +58,10 @@ end sub
 
 sub play(streamUrl as String)
     cleanUrl = streamUrl.Trim()
-    if cleanUrl = "" then cleanUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+    if cleanUrl = "" then
+        showError("Stream sem URL válida")
+        return
+    end if
     if m.channelName.Trim() = "" then m.channelName = "Canal ao vivo"
 
     content = CreateObject("roSGNode", "ContentNode")
@@ -135,7 +138,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 function handleBackKeySafely() as Boolean
-    if m.isClosing = true then return true
     m.isClosing = true
 
     stopPlayback()

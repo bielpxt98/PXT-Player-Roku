@@ -90,14 +90,17 @@ sub show(episode as Dynamic)
     m.isClosing = false
     title = getText(episode, "title", "Episódio")
     streamUrl = getText(episode, "streamUrl", "")
+    if streamUrl = "" then streamUrl = getText(episode, "stream_url", "")
     if streamUrl = "" then streamUrl = getText(episode, "url", "")
+    if streamUrl = "" then streamUrl = getText(episode, "direct_source", "")
+    if streamUrl = "" then streamUrl = getText(episode, "playbackUrl", "")
     if title = "" then title = "Episódio"
     m.title = title
     m.top.visible = true
     m.top.SetFocus(true)
     hideControls()
     if streamUrl = "" then
-        showError("Episódio sem link disponível.")
+        showError("Stream sem URL válida")
         return
     end if
 
