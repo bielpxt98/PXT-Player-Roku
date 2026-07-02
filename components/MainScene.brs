@@ -2016,6 +2016,7 @@ sub onSeriesEpisodeSelected()
         m.seriesDetailsScreen.callFunc("showMessage", "Stream sem URL válida")
         return
     end if
+    print "MAIN_SCENE openSeriesPlayer chamado selectedEpisode="; title; " episode.url/streamUrl="; streamUrl
     m.selectedEpisode = episode
     episodeToPlay = episode
     episodeToPlay.title = title

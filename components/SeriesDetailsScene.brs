@@ -26,6 +26,8 @@ sub Init()
     m.focusArea = "posterButton"
     m.selectedSeasonIndex = 0
     m.selectedEpisodeIndex = 0
+    m.selectedSeason = invalid
+    m.selectedEpisode = invalid
     m.episodeWindowStart = 0
     m.maxEpisodeCards = 5
     m.seasons = []
@@ -149,6 +151,8 @@ sub show(item as Dynamic)
     m.selectedArea = 0
     m.selectedSeasonIndex = 0
     m.selectedEpisodeIndex = 0
+    m.selectedSeason = invalid
+    m.selectedEpisode = invalid
     m.episodeWindowStart = 0
     configureLayout()
     populate(item)
@@ -375,9 +379,11 @@ sub renderSeasonButtons()
 end sub
 
 sub setupEpisodes(item as Dynamic)
+    updateSelectedSeason()
     m.episodes = getEpisodesForSelectedSeason(item)
     clampFocusState()
     ensureEpisodeVisible()
+    updateSelectedEpisodeFromIndex()
     renderEpisodes(m.episodes)
 end sub
 
@@ -465,8 +471,36 @@ function getEpisodeTitle(episode as Dynamic, index as Integer) as String
 end function
 
 function getEpisodeUrl(episode as Dynamic) as String
-    return firstText(episode, ["streamUrl", "url", "direct_url", "movie_url"])
+    return firstText(episode, ["streamUrl", "stream_url", "url", "direct_url", "direct_source", "playbackUrl", "movie_url"])
 end function
+
+function getSelectedSeason() as Dynamic
+    if m.item = invalid or Type(m.item) <> "roAssociativeArray" then return invalid
+    if not m.item.DoesExist("seasons") or m.item.seasons = invalid or Type(m.item.seasons) <> "roArray" then return invalid
+    if m.selectedSeasonIndex < 0 or m.selectedSeasonIndex >= m.item.seasons.Count() then return invalid
+    return m.item.seasons[m.selectedSeasonIndex]
+end function
+
+function isPlayableEpisode(episode as Dynamic) as Boolean
+    if episode = invalid or Type(episode) <> "roAssociativeArray" then return false
+    if episode.DoesExist("episodes") and episode.episodes <> invalid then return false
+    return getEpisodeUrl(episode) <> ""
+end function
+
+sub updateSelectedSeason()
+    m.selectedSeason = getSelectedSeason()
+    print "SERIES_DETAILS selectedSeason="; firstText(m.selectedSeason, ["name", "title", "season", "season_number", "number"])
+end sub
+
+sub updateSelectedEpisodeFromIndex()
+    m.selectedEpisode = invalid
+    if m.episodes <> invalid and m.selectedEpisodeIndex >= 0 and m.selectedEpisodeIndex < m.episodes.Count() then
+        episode = m.episodes[m.selectedEpisodeIndex]
+        if episode <> invalid and Type(episode) = "roAssociativeArray" and (not episode.DoesExist("episodes") or episode.episodes = invalid) then m.selectedEpisode = episode
+    end if
+    print "SERIES_DETAILS selectedEpisode="; getEpisodeTitle(m.selectedEpisode, m.selectedEpisodeIndex)
+    print "SERIES_DETAILS episode.url/streamUrl="; getEpisodeUrl(m.selectedEpisode)
+end sub
 
 function getEpisodeImage(episode as Dynamic) as String
     image = firstText(episode, ["cover", "image", "info", "movie_image", "stream_icon"])
@@ -542,6 +576,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.focusArea = "episodes" and m.selectedEpisodeIndex > 0 then
             m.selectedEpisodeIndex = m.selectedEpisodeIndex - 1
             ensureEpisodeVisible()
+            updateSelectedEpisodeFromIndex()
             renderEpisodes(m.episodes)
         end if
         updateFocus()
@@ -557,6 +592,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.focusArea = "episodes" and m.selectedEpisodeIndex < m.episodes.Count() - 1 then
             m.selectedEpisodeIndex = m.selectedEpisodeIndex + 1
             ensureEpisodeVisible()
+            updateSelectedEpisodeFromIndex()
             renderEpisodes(m.episodes)
         end if
         updateFocus()
@@ -583,8 +619,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         else if m.selectedArea = 1 then
             openContinueEpisode()
         else if m.selectedArea = 2 then
+            m.selectedEpisodeIndex = 0
+            m.episodeWindowStart = 0
             setupEpisodes(m.item)
-            if hasEpisodes() then m.selectedArea = 3
             updateFocus()
         else if m.selectedArea = 3 then
             openSelectedEpisode()
@@ -603,15 +640,19 @@ sub moveFocusToFirstSeason()
         return
     end if
     m.selectedArea = 2
-    m.selectedSeasonIndex = 0
+    clampFocusState()
     m.selectedEpisodeIndex = 0
     m.episodeWindowStart = 0
     setupEpisodes(m.item)
 end sub
 
 sub moveFocusToEpisodes()
+    if m.episodes = invalid or m.episodes.Count() = 0 then setupEpisodes(m.item)
     if not hasEpisodes() then return
     m.selectedArea = 3
+    m.selectedEpisodeIndex = 0
+    m.episodeWindowStart = 0
+    updateSelectedEpisodeFromIndex()
     clampFocusState()
 end sub
 
@@ -684,14 +725,15 @@ sub openSelectedEpisode()
     if m.episodes = invalid or m.episodes.Count() = 0 then return
     clampFocusState()
     if m.selectedEpisodeIndex >= m.episodes.Count() then return
-    episode = m.episodes[m.selectedEpisodeIndex]
-    emitEpisodeSelected(episode, m.selectedEpisodeIndex)
+    updateSelectedEpisodeFromIndex()
+    emitEpisodeSelected(m.selectedEpisode, m.selectedEpisodeIndex)
 end sub
 
 
 sub emitEpisodeSelected(episode as Dynamic, index as Integer)
     streamUrl = getEpisodeUrl(episode)
-    if streamUrl = "" then
+    print "SERIES_DETAILS openSeriesPlayer chamado selectedEpisode="; getEpisodeTitle(episode, index); " episode.url/streamUrl="; streamUrl
+    if not isPlayableEpisode(episode) then
         showMessage("Episódio sem link disponível.")
         return
     end if
