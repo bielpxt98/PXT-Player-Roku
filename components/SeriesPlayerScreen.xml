@@ -4,9 +4,7 @@
         <function name="show" />
         <function name="hide" />
         <function name="showError" />
-        <function name="setNextEpisode" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
-        <field id="nextEpisodeRequested" type="boolean" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesPlayerScreen.brs" />
     <children>
@@ -15,10 +13,6 @@
         <Group id="loadingGroup" visible="false">
             <BusySpinner id="loadingSpinner" width="60" height="60" />
             <Label id="loadingLabel" text="Carregando episódio..." color="#FFFFFF" horizAlign="center" />
-        </Group>
-        <Group id="skipEpisodeButton" visible="false">
-            <Rectangle id="skipEpisodeButtonBackground" color="#FFFFFF" opacity="0.92" />
-            <Label id="skipEpisodeButtonLabel" text="PULAR EPISÓDIO" color="#000000" horizAlign="center" vertAlign="center" />
         </Group>
         <Group id="controlsGroup" visible="false">
             <Rectangle id="controlsBackground" color="#000000" opacity="0.62" />

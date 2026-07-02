@@ -155,7 +155,6 @@ sub Init()
     m.seriesDetailsScreen.ObserveField("backRequested", "onSeriesDetailsBack")
     m.seriesDetailsScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
     m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
-    m.seriesPlayerScreen.ObserveField("nextEpisodeRequested", "onSeriesNextEpisodeRequested")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
@@ -642,7 +641,6 @@ sub onHistorySelected()
         m.selectedEpisode = item.content
         hideAllScreensExcept(m.seriesPlayerScreen)
         m.seriesPlayerScreen.callFunc("setResumePosition", item.position)
-        m.seriesPlayerScreen.callFunc("setNextEpisode", getNextSeriesEpisode(m.selectedSeries, item.content))
         m.seriesPlayerScreen.callFunc("show", item.content)
     end if
 end sub
@@ -1813,7 +1811,6 @@ sub onSeriesSelected()
         m.simpleSeriesScreen.callFunc("hide")
         hideAllScreensExcept(m.seriesPlayerScreen)
         m.seriesPlayerScreen.callFunc("setResumePosition", GetHistoryPosition("episode", series.episode))
-        m.seriesPlayerScreen.callFunc("setNextEpisode", getNextSeriesEpisode(m.selectedSeries, series.episode))
         m.seriesPlayerScreen.callFunc("show", series.episode)
         return
     end if
@@ -1848,34 +1845,8 @@ sub onSeriesEpisodeSelected()
     resumePosition = GetHistoryPosition("episode", episodeToPlay)
     m.seriesDetailsScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("setResumePosition", 0)
-    m.seriesPlayerScreen.callFunc("setNextEpisode", getNextSeriesEpisode(m.selectedSeries, episodeToPlay))
     m.seriesPlayerScreen.callFunc("show", episodeToPlay)
     UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, 0, 0)
-end sub
-
-sub onSeriesNextEpisodeRequested()
-    nextEpisode = getNextSeriesEpisode(m.selectedSeries, m.selectedEpisode)
-    if nextEpisode = invalid then
-        if m.seriesPlayerScreen <> invalid then m.seriesPlayerScreen.callFunc("setNextEpisode", invalid)
-        return
-    end if
-
-    title = "Episódio"
-    streamUrl = ""
-    if nextEpisode.title <> invalid then title = nextEpisode.title.ToStr().Trim()
-    if nextEpisode.streamUrl <> invalid then streamUrl = nextEpisode.streamUrl.ToStr().Trim()
-    if streamUrl = "" and nextEpisode.url <> invalid then streamUrl = nextEpisode.url.ToStr().Trim()
-    if title = "" then title = "Episódio"
-    if streamUrl = "" then
-        if m.seriesPlayerScreen <> invalid then m.seriesPlayerScreen.callFunc("setNextEpisode", invalid)
-        return
-    end if
-
-    episodeToPlay = cloneEpisodeForPlayback(nextEpisode, title, streamUrl)
-    m.selectedEpisode = episodeToPlay
-    m.seriesPlayerScreen.callFunc("setResumePosition", 0)
-    m.seriesPlayerScreen.callFunc("setNextEpisode", getNextSeriesEpisode(m.selectedSeries, episodeToPlay))
-    m.seriesPlayerScreen.callFunc("show", episodeToPlay)
 end sub
 
 sub onSeriesPlayerBack()
@@ -2116,88 +2087,6 @@ sub updateConnectionStatus(connected as Boolean, message as String)
         message: message
     })
 end sub
-
-function cloneEpisodeForPlayback(episode as Dynamic, title as String, streamUrl as String) as Object
-    selected = {}
-    if episode <> invalid and Type(episode) = "roAssociativeArray" then
-        for each k in episode
-            selected[k] = episode[k]
-        end for
-    end if
-    selected.title = title
-    selected.streamUrl = streamUrl
-    return selected
-end function
-
-function getNextSeriesEpisode(series as Dynamic, currentEpisode as Dynamic) as Dynamic
-    if series = invalid or currentEpisode = invalid or Type(series) <> "roAssociativeArray" then return invalid
-    seasons = []
-    if series.DoesExist("seasons") and series.seasons <> invalid and Type(series.seasons) = "roArray" then seasons = sortSeasons(series.seasons)
-    if seasons.Count() = 0 then return getNextEpisodeFromList(series, currentEpisode)
-
-    currentSeasonIndex = -1
-    currentEpisodeIndex = -1
-    for seasonIndex = 0 to seasons.Count() - 1
-        season = seasons[seasonIndex]
-        episodes = []
-        if season <> invalid and Type(season) = "roAssociativeArray" and season.DoesExist("episodes") and season.episodes <> invalid and Type(season.episodes) = "roArray" then episodes = sortEpisodes(season.episodes)
-        for episodeIndex = 0 to episodes.Count() - 1
-            if isSameSeriesEpisode(episodes[episodeIndex], currentEpisode) then
-                currentSeasonIndex = seasonIndex
-                currentEpisodeIndex = episodeIndex
-                exit for
-            end if
-        end for
-        if currentSeasonIndex >= 0 then exit for
-    end for
-
-    if currentSeasonIndex < 0 then return invalid
-    currentEpisodes = sortEpisodes(seasons[currentSeasonIndex].episodes)
-    if currentEpisodeIndex + 1 < currentEpisodes.Count() then return currentEpisodes[currentEpisodeIndex + 1]
-
-    if currentSeasonIndex + 1 < seasons.Count() then
-        nextSeason = seasons[currentSeasonIndex + 1]
-        if nextSeason <> invalid and Type(nextSeason) = "roAssociativeArray" and nextSeason.DoesExist("episodes") and nextSeason.episodes <> invalid and Type(nextSeason.episodes) = "roArray" then
-            nextEpisodes = sortEpisodes(nextSeason.episodes)
-            if nextEpisodes.Count() > 0 then return nextEpisodes[0]
-        end if
-    end if
-    return invalid
-end function
-
-function getNextEpisodeFromList(series as Dynamic, currentEpisode as Dynamic) as Dynamic
-    if series.DoesExist("episodes") = false or series.episodes = invalid or Type(series.episodes) <> "roArray" then return invalid
-    episodes = sortEpisodes(series.episodes)
-    for i = 0 to episodes.Count() - 1
-        if isSameSeriesEpisode(episodes[i], currentEpisode) and i + 1 < episodes.Count() then return episodes[i + 1]
-    end for
-    return invalid
-end function
-
-function isSameSeriesEpisode(left as Dynamic, right as Dynamic) as Boolean
-    leftId = episodeIdentity(left)
-    rightId = episodeIdentity(right)
-    if leftId <> "" and rightId <> "" then return leftId = rightId
-    leftUrl = episodeUrl(left)
-    rightUrl = episodeUrl(right)
-    return leftUrl <> "" and leftUrl = rightUrl
-end function
-
-function episodeIdentity(episode as Dynamic) as String
-    if episode = invalid or Type(episode) <> "roAssociativeArray" then return ""
-    for each field in ["episode_id", "stream_id", "id"]
-        if episode.DoesExist(field) and episode[field] <> invalid and episode[field].ToStr().Trim() <> "" then return episode[field].ToStr().Trim()
-    end for
-    return ""
-end function
-
-function episodeUrl(episode as Dynamic) as String
-    if episode = invalid or Type(episode) <> "roAssociativeArray" then return ""
-    for each field in ["streamUrl", "url", "direct_url", "movie_url"]
-        if episode.DoesExist(field) and episode[field] <> invalid and episode[field].ToStr().Trim() <> "" then return episode[field].ToStr().Trim()
-    end for
-    return ""
-end function
 
 function safeText(value as Dynamic) as String
     if value = invalid then return ""
