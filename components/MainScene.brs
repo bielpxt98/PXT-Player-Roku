@@ -19,6 +19,7 @@ sub Init()
     m.movieDetailScreen = m.top.FindNode("movieDetailScreen")
     m.moviePlayerScreen = m.top.FindNode("moviePlayerScreen")
     m.simpleSeriesScreen = m.top.FindNode("simpleSeriesScreen")
+    m.seriesDetailsScreen = m.top.FindNode("seriesDetailsScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
@@ -62,6 +63,7 @@ sub Init()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
     m.cachedSeries = m.searchIndexCache.series
+    m.seriesCategories = m.searchIndexCache.seriesCategories
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
     m.searchIndexQueue = []
     m.searchIndexKind = ""
@@ -83,6 +85,7 @@ sub Init()
     m.isReturningFromPlayer = false
     if m.cachedMovies = invalid then m.cachedMovies = []
     if m.cachedSeries = invalid then m.cachedSeries = []
+    if m.seriesCategories = invalid then m.seriesCategories = []
     if m.cachedLiveChannels = invalid then m.cachedLiveChannels = []
 
     configureScene()
@@ -124,6 +127,8 @@ sub Init()
     m.movieDetailScreen.ObserveField("favoriteToggled", "onMovieDetailFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
     m.simpleSeriesScreen.ObserveField("backRequested", "onSimpleSeriesBack")
+    m.simpleSeriesScreen.ObserveField("seriesSelected", "onSeriesSelected")
+    m.seriesDetailsScreen.ObserveField("backRequested", "onSeriesDetailsBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
@@ -297,7 +302,7 @@ function closeActivePlayerScreen() as Boolean
 end function
 
 sub focusActiveScreen()
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.simpleSeriesScreen]
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
     for each screen in screens
         if screen <> invalid and screen.visible = true then
             screen.SetFocus(true)
@@ -335,7 +340,7 @@ end function
 sub hideAllScreensExcept(visibleScreen as Object)
     visibleId = ""
     if visibleScreen <> invalid then visibleId = visibleScreen.id
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.simpleSeriesScreen]
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
     for each screen in screens
         if screen <> invalid and screen.id <> visibleId then screen.callFunc("hide")
     end for
@@ -363,6 +368,7 @@ sub showHome()
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("hide")
     m.homeScreen.callFunc("show")
 end sub
 
@@ -380,6 +386,7 @@ sub showLogin()
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("hide")
     account = m.account
     if m.loginFormAccount <> invalid then account = m.loginFormAccount
     m.loginScreen.callFunc("show", account)
@@ -400,6 +407,7 @@ sub openSearch(mode as String, backTarget as String)
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("hide")
     m.searchMode = mode
     m.searchBackTarget = backTarget
     m.searchScreen.callFunc("show", mode)
@@ -610,6 +618,7 @@ sub onOpenLiveCategoriesRequested()
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("resetSelection")
     m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", invalid)
@@ -649,6 +658,7 @@ sub onOpenMovieCategoriesRequested()
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("hide")
     m.movieListScreen.callFunc("resetSelection")
     m.movieListScreen.callFunc("show", invalid)
     m.movieListScreen.callFunc("focusCategories")
@@ -726,12 +736,14 @@ sub onDemoRequested()
     m.cachedMovies = demo.movies
     m.movies = []
     m.cachedSeries = demo.series
+    m.seriesCategories = demo.seriesCategories
     m.searchIndexCache = createEmptySearchIndexCache()
     m.searchIndexCache.liveCategories = m.liveCategories
     m.searchIndexCache.liveChannels = m.cachedLiveChannels
     m.searchIndexCache.movieCategories = m.movieCategories
     m.searchIndexCache.movies = m.cachedMovies
     m.searchIndexCache.series = m.cachedSeries
+    m.searchIndexCache.seriesCategories = m.seriesCategories
     m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
     m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
     updateConnectionStatus(true, "Modo Demo")
@@ -883,6 +895,7 @@ sub returnToSafeMovieDestination()
     m.movieSearchScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
 
@@ -1458,11 +1471,14 @@ sub loadLocalSearchIndexCache()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
     m.cachedSeries = m.searchIndexCache.series
+    m.seriesCategories = m.searchIndexCache.seriesCategories
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
     if m.searchIndexCache.liveCategories.Count() > 0 then m.liveCategories = m.searchIndexCache.liveCategories
     if m.searchIndexCache.liveChannels.Count() > 0 then m.cachedLiveChannels = m.searchIndexCache.liveChannels
     if m.searchIndexCache.movieCategories.Count() > 0 then m.movieCategories = m.searchIndexCache.movieCategories
     if m.searchIndexCache.movies.Count() > 0 then m.cachedMovies = m.searchIndexCache.movies
+    if m.searchIndexCache.seriesCategories.Count() > 0 then m.seriesCategories = m.searchIndexCache.seriesCategories
+    if m.searchIndexCache.series.Count() > 0 then m.cachedSeries = m.searchIndexCache.series
     m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
 end sub
 
@@ -1568,6 +1584,7 @@ end sub
 
 sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
+    m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
     m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
@@ -1575,7 +1592,22 @@ end sub
 
 sub onSimpleSeriesBack()
     m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("hide")
     showHome()
+end sub
+
+sub onSeriesSelected()
+    series = m.simpleSeriesScreen.seriesSelected
+    if series = invalid then return
+    m.selectedSeries = series
+    m.simpleSeriesScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("show", series)
+    m.seriesDetailsScreen.callFunc("setDetails", series)
+end sub
+
+sub onSeriesDetailsBack()
+    m.seriesDetailsScreen.callFunc("hide")
+    m.simpleSeriesScreen.callFunc("show")
 end sub
 
 sub onLiveCategoriesResult(result as Object)
