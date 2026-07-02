@@ -865,9 +865,29 @@ sub onMoviePlayerBack()
         m.moviePlayerScreen.callFunc("hide")
         m.moviePlayerScreen.SetFocus(false)
     end if
+
+    returnToSafeMovieDestination()
+
+    m.movieListRestoreState = invalid
+    m.openedFromFavorites = false
+    m.openedFromRecent = false
+    m.openedFromSearch = false
+    m.isReturningFromPlayer = false
+end sub
+
+sub returnToSafeMovieDestination()
+    ' Leaving the movie player must only land on the movie catalog/list or Home.
+    ' Hide detail/search/series/live surfaces first so a stale focused screen
+    ' cannot consume the same BACK event and navigate somewhere unexpected.
     m.movieDetailScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
+    m.searchScreen.callFunc("hide")
+    m.simpleSeriesScreen.callFunc("hide")
+    m.liveChannelsScreen.callFunc("hide")
+    m.livePlayerScreen.callFunc("hide")
 
     if m.selectedMovieCategory <> invalid and m.currentMovieList <> invalid then
+        m.movieCategoriesScreen.callFunc("hide")
         m.movieListScreen.callFunc("show", m.selectedMovieCategory)
         if m.currentMovieList.Count() > 0 then m.movieListScreen.callFunc("setMovies", m.currentMovieList)
         if m.movieListRestoreState <> invalid then m.movieListScreen.callFunc("restoreState", m.movieListRestoreState)
@@ -875,12 +895,6 @@ sub onMoviePlayerBack()
     else
         showHome()
     end if
-
-    m.movieListRestoreState = invalid
-    m.openedFromFavorites = false
-    m.openedFromRecent = false
-    m.openedFromSearch = false
-    m.isReturningFromPlayer = false
 end sub
 
 sub onLiveCategorySelected()

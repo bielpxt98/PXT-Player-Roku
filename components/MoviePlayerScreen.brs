@@ -241,7 +241,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "back" then
-        return handleBackKeySafely()
+        closeMoviePlayer()
+        return true
     else if key = "OK" then
         togglePause()
         return true
@@ -259,22 +260,20 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return false
 end function
 
-function handleBackKeySafely() as Boolean
-    if m.isReturningFromPlayer = true then return true
+sub closeMoviePlayer()
+    if m.isReturningFromPlayer = true then return
     m.isReturningFromPlayer = true
-    if m.isClosing = true then return true
-    m.isClosing = true
 
     stopPlayback()
     if m.video <> invalid then m.video.SetFocus(false)
     m.top.SetFocus(false)
     m.top.visible = false
 
-    parentNode = m.top.GetParent()
-    if parentNode <> invalid then parentNode.SetFocus(true)
+    ' Notify MainScene after the player is already stopped and hidden. Do not
+    ' move focus to the parent scene here, because that can let the BACK key
+    ' continue into a stale screen and open an unexpected destination.
     m.top.backRequested = true
-    return true
-end function
+end sub
 
 sub beginSeekHold(key as String)
     if m.heldSeekKey = key then return
