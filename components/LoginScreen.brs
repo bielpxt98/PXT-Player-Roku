@@ -10,6 +10,7 @@ sub Init()
     m.userInput = m.top.FindNode("userInput")
     m.passwordInput = m.top.FindNode("passwordInput")
     m.enterButton = m.top.FindNode("enterButton")
+    m.demoButton = m.top.FindNode("demoButton")
     m.backButton = m.top.FindNode("backButton")
     m.loadingSpinner = m.top.FindNode("loadingSpinner")
     m.loadingLabel = m.top.FindNode("loadingLabel")
@@ -24,7 +25,7 @@ sub Init()
         m.top.FindNode("userFocus"),
         m.top.FindNode("passwordFocus")
     ]
-    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.backButton]
+    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.demoButton, m.backButton]
     m.textFieldMaxLengths = [200, 100, 100]
     m.textFieldTitles = ["DNS", "USUÁRIO", "SENHA"]
     m.textFieldLogNames = ["dns", "username", "password"]
@@ -43,6 +44,7 @@ sub Init()
     m.isLoading = false
 
     m.enterButton.ObserveField("buttonSelected", "onEnterSelected")
+    m.demoButton.ObserveField("buttonSelected", "onDemoSelected")
     m.backButton.ObserveField("buttonSelected", "onBackSelected")
 
     configureLayout()
@@ -105,6 +107,7 @@ sub setLoading(isLoading as Boolean)
     end if
     m.loadingLabel.visible = isLoading
     m.enterButton.enabled = not isLoading
+    m.demoButton.enabled = not isLoading
     m.backButton.enabled = not isLoading
 end sub
 
@@ -142,6 +145,12 @@ sub onEnterSelected()
     m.top.submit = account
 end sub
 
+sub onDemoSelected()
+    clearMessage()
+    setLoading(false)
+    m.top.demoRequested = true
+end sub
+
 sub onBackSelected()
     setLoading(false)
     m.top.backRequested = true
@@ -160,18 +169,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         moveFocus(1)
         return true
-    else if key = "left" then
-        if m.focusIndex = 4 then
-            m.focusIndex = 3
-            updateFocus()
-            return true
-        end if
-    else if key = "right" then
-        if m.focusIndex = 3 then
-            m.focusIndex = 4
-            updateFocus()
-            return true
-        end if
     else if key = "back" then
         onBackSelected()
         return true

@@ -7,6 +7,7 @@
         <function name="showError" />
         <field id="submit" type="assocarray" alwaysNotify="true" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="demoRequested" type="boolean" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/LoginScreen.brs" />
     <children>
@@ -27,11 +28,12 @@
             <Rectangle id="passwordFocus" color="#147DFF" width="600" height="72" translation="[0, 268]" />
             <TextEditBox id="passwordInput" hintText="Sua senha" width="580" height="54" translation="[10, 277]" secureMode="true" maxTextLength="100" clearOnDownKey="false" leadingEllipsis="true" />
 
-            <Button id="enterButton" text="ENTRAR" minWidth="280" translation="[0, 390]" />
-            <Button id="backButton" text="VOLTAR" minWidth="280" translation="[320, 390]" />
-            <BusySpinner id="loadingSpinner" translation="[240, 486]" visible="false" />
-            <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 548]" visible="false" />
-            <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 488]" visible="false" />
+            <Button id="enterButton" text="ENTRAR" minWidth="600" translation="[0, 390]" />
+            <Button id="demoButton" text="MODO DEMO" minWidth="600" translation="[0, 462]" />
+            <Button id="backButton" text="VOLTAR" minWidth="600" translation="[0, 534]" />
+            <BusySpinner id="loadingSpinner" translation="[240, 620]" visible="false" />
+            <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 682]" visible="false" />
+            <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 620]" visible="false" />
         </Group>
 
         <Group id="customKeyboard" visible="false">

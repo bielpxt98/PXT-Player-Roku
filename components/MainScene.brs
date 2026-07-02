@@ -27,6 +27,7 @@ sub Init()
     m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
     m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
+    m.isDemoMode = false
     m.pendingRequest = ""
     m.isLoadingRequest = false
     m.account = LoadSavedPlaylist()
@@ -97,6 +98,7 @@ sub Init()
     m.favoritesScreen.ObserveField("favoriteSelected", "onFavoriteSelected")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
+    m.loginScreen.ObserveField("demoRequested", "onDemoRequested")
     m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
     m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
     m.liveCategoriesScreen.ObserveField("searchRequested", "onLiveSearchRequested")
@@ -458,6 +460,7 @@ sub onMovieSearchMovieSelected()
 end sub
 
 function getMoviesForSearch() as Object
+    if m.isDemoMode = true then return GetDemoSearchMovies()
     if m.movies <> invalid and m.movies.Count() > 0 then return m.movies
     if m.selectedMovieCategoryId <> "" then
         cachedForCategory = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
@@ -468,6 +471,7 @@ function getMoviesForSearch() as Object
 end function
 
 function getSearchDataForMode(mode as String) as Object
+    if m.isDemoMode = true then return { channels: GetDemoLiveChannels(""), movies: GetDemoSearchMovies(), series: GetDemoSearchSeries() }
     channels = m.cachedLiveChannels
     movies = m.movieSearchIndex
     series = []
@@ -580,6 +584,11 @@ sub onMovieFavoriteToggled()
 end sub
 
 sub onOpenPlaylistRequested()
+    if m.isDemoMode = true then
+        m.isDemoMode = false
+        m.account = invalid
+        updateConnectionStatus(false, "Nenhuma playlist conectada")
+    end if
     showLogin()
 end sub
 
@@ -603,7 +612,13 @@ sub onOpenLiveCategoriesRequested()
     m.liveChannelsScreen.callFunc("show", invalid)
     m.liveChannelsScreen.callFunc("focusCategories")
 
-    if not hasAccount(m.account) then
+    if m.isDemoMode = true then
+        m.liveCategories = GetDemoLiveCategories()
+        m.cachedLiveChannels = GetDemoLiveChannels("")
+        m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
+        m.liveChannelsScreen.callFunc("showMessage", "Escolha TV DEMO para carregar os canais.")
+        m.liveChannelsScreen.callFunc("focusCategories")
+    else if not hasAccount(m.account) then
         m.liveChannelsScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de TV ao vivo.")
         m.liveChannelsScreen.callFunc("focusCategories")
     else if m.liveCategoriesLoading then
@@ -637,7 +652,14 @@ sub onOpenMovieCategoriesRequested()
     m.movieListScreen.callFunc("show", invalid)
     m.movieListScreen.callFunc("focusCategories")
 
-    if not hasAccount(m.account) then
+    if m.isDemoMode = true then
+        m.movieCategories = GetDemoMovieCategories()
+        m.cachedMovies = GetDemoSearchMovies()
+        m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+        m.movieListScreen.callFunc("setCategories", m.movieCategories)
+        m.movieListScreen.callFunc("showMessage", "Escolha uma categoria para carregar os filmes demo.")
+        m.movieListScreen.callFunc("focusCategories")
+    else if not hasAccount(m.account) then
         m.movieListScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de filmes.")
         m.movieListScreen.callFunc("focusCategories")
     else if m.movieCategoriesLoading then
@@ -652,7 +674,26 @@ sub onOpenMovieCategoriesRequested()
     end if
 end sub
 
+sub onDemoRequested()
+    stopLoginTimeout()
+    cancelXtreamRequest()
+    m.isDemoMode = true
+    m.account = { dns: "demo", username: "demo", password: "demo" }
+    m.pendingAccount = invalid
+    m.loginFormAccount = invalid
+    resetAccountLoadedData()
+    m.liveCategories = GetDemoLiveCategories()
+    m.cachedLiveChannels = GetDemoLiveChannels("")
+    m.movieCategories = GetDemoMovieCategories()
+    m.cachedMovies = GetDemoSearchMovies()
+    m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+    updateConnectionStatus(true, "Modo Demo")
+    hideAllScreensExcept(m.homeScreen)
+    showHome()
+end sub
+
 sub onLoginSubmit()
+    m.isDemoMode = false
     account = m.loginScreen.submit
     if not hasAccount(account) then
         m.loginScreen.callFunc("showError", "Informe DNS, usuário e senha para conectar.")
@@ -672,6 +713,8 @@ sub onLoginSubmit()
 end sub
 
 sub onLoginBack()
+    if m.isDemoMode = true then m.account = invalid
+    m.isDemoMode = false
     stopLoginTimeout()
     m.loginConnecting = false
     m.isConnecting = false
@@ -701,6 +744,10 @@ end sub
 sub onMovieCategorySelected()
     category = m.movieCategoriesScreen.categorySelected
     if category = invalid then return
+    if category.isSearch = true then
+        onMovieSearchRequested()
+        return
+    end if
 
     m.selectedMovieCategory = category
     m.selectedMovieCategoryId = getCategoryId(category)
@@ -718,7 +765,10 @@ end sub
 sub onMovieListCategorySelected()
     category = m.movieListScreen.categorySelected
     if category = invalid then return
-    if isFavoritesCategory(category) then
+    if category.isSearch = true then
+        onMovieSearchRequested()
+        return
+    else if isFavoritesCategory(category) then
         showFavoriteMoviesInMovieList()
         return
     else if isRecentCategory(category) then
@@ -885,6 +935,10 @@ sub onLivePlayerBack()
 end sub
 
 sub buildLiveStreamUrl(channel as Object)
+    if channel <> invalid and channel.direct_url <> invalid and channel.direct_url.ToStr() <> "" then
+        m.livePlayerScreen.callFunc("play", channel.direct_url.ToStr())
+        return
+    end if
     cancelBlockingRequestForPlayback()
     if not beginXtreamRequest("buildLiveStreamUrl") then return
     m.xtreamService.control = "STOP"
@@ -912,6 +966,10 @@ sub loadMovieInfo(movie as Object)
 end sub
 
 sub buildMovieStreamUrl(movie as Object)
+    if movie <> invalid and movie.direct_url <> invalid and movie.direct_url.ToStr() <> "" then
+        m.moviePlayerScreen.callFunc("play", movie.direct_url.ToStr())
+        return
+    end if
     cancelBlockingRequestForPlayback()
     if not beginXtreamRequest("buildMovieStreamUrl") then return
     m.xtreamService.control = "STOP"
@@ -947,6 +1005,13 @@ end sub
 
 
 sub loadMovies(category as Object)
+    if m.isDemoMode = true then
+        m.movies = GetDemoMovies(getCategoryId(category))
+        m.moviesLoading = false
+        m.movieListScreen.callFunc("setLoading", false)
+        m.movieListScreen.callFunc("setMovies", m.movies)
+        return
+    end if
     if not beginXtreamRequest("getMovies") then return
     if not hasAccount(m.account) then
         m.moviesLoading = false
@@ -984,6 +1049,13 @@ sub loadMovieCategories(account as Object)
 end sub
 
 sub loadLiveChannels(category as Object)
+    if m.isDemoMode = true then
+        m.liveChannels = GetDemoLiveChannels(getCategoryId(category))
+        m.liveChannelsLoading = false
+        m.liveChannelsScreen.callFunc("setLoading", false)
+        m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+        return
+    end if
     if not beginXtreamRequest("getLiveStreams") then return
     if not hasAccount(m.account) then
         m.liveChannelsLoading = false
@@ -1095,6 +1167,13 @@ function isContinueCategory(category as Dynamic) as Boolean
 end function
 
 sub showMoviesFromCacheOrLoad(category as Object)
+    if m.isDemoMode = true then
+        m.movies = GetDemoMovies(getCategoryId(category))
+        m.moviesLoading = false
+        m.movieListScreen.callFunc("setLoading", false)
+        m.movieListScreen.callFunc("setMovies", m.movies)
+        return
+    end if
     cached = filterItemsByCategory(m.cachedMovies, getCategoryId(category))
     if cached.Count() > 0 then
         m.movies = cached
@@ -1110,6 +1189,13 @@ end sub
 
 
 sub showLiveChannelsFromCacheOrLoad(category as Object)
+    if m.isDemoMode = true then
+        m.liveChannels = GetDemoLiveChannels(getCategoryId(category))
+        m.liveChannelsLoading = false
+        m.liveChannelsScreen.callFunc("setLoading", false)
+        m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+        return
+    end if
     cached = filterItemsByCategory(m.cachedLiveChannels, getCategoryId(category))
     if cached.Count() > 0 or (m.cachedLiveChannels <> invalid and m.cachedLiveChannels.Count() > 0) then
         m.liveChannels = cached
@@ -1356,6 +1442,7 @@ sub cancelSearchIndexRefresh()
 end sub
 
 sub startSearchIndexRefresh()
+    if m.isDemoMode = true then return
     if not hasAccount(m.account) then return
     if m.searchIndexUpdating = true then return
     m.searchIndexQueue = []
@@ -1443,6 +1530,7 @@ end sub
 
 sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
+    if m.isDemoMode = true then m.simpleSeriesScreen.callFunc("setDemoData", { categories: GetDemoSeriesCategories(), series: GetDemoSearchSeries() })
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
 end sub

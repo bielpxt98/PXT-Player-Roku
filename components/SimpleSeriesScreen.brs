@@ -5,7 +5,9 @@ sub Init()
 
     m.selectedIndex = 0
     m.activePanel = "categories"
-    m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS", "ASSISTIDOS"]
+    m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS ASSISTIDOS", "SÉRIES DEMO", "AVENTURA DEMO", "TECNOLOGIA DEMO"]
+    m.demoSeries = []
+    m.demoCategories = []
 
     m.background = m.top.FindNode("background")
     m.panel = m.top.FindNode("panel")
@@ -20,6 +22,8 @@ sub Init()
     m.favoritesLabel = m.top.FindNode("favoritesLabel")
     m.recentLabel = m.top.FindNode("recentLabel")
     m.watchedLabel = m.top.FindNode("watchedLabel")
+    m.dynamicCategoryLabels = []
+    m.dynamicSeriesLabels = []
     m.emptyMessageLabel = m.top.FindNode("emptyMessageLabel")
     m.statusLabel = m.top.FindNode("statusLabel")
     m.bottomDivider = m.top.FindNode("bottomDivider")
@@ -166,8 +170,70 @@ sub hide()
     m.top.SetFocus(false)
 end sub
 
+sub setDemoData(data as Object)
+    if data = invalid then return
+    if data.categories <> invalid then m.demoCategories = data.categories
+    if data.series <> invalid then m.demoSeries = data.series
+    m.fixedItems = []
+    for each category in m.demoCategories
+        if category.name <> invalid then m.fixedItems.Push(category.name.ToStr())
+    end for
+    if m.fixedItems.Count() = 0 then m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS ASSISTIDOS", "SÉRIES DEMO"]
+    renderDynamicCategories()
+    renderSeriesList(m.demoSeries)
+end sub
+
+sub renderDynamicCategories()
+    for each label in m.dynamicCategoryLabels
+        m.top.RemoveChild(label)
+    end for
+    m.dynamicCategoryLabels = []
+    baseLabels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.watchedLabel]
+    for i = 0 to m.fixedItems.Count() - 1
+        if i < baseLabels.Count() then
+            label = baseLabels[i]
+        else
+            label = CreateObject("roSGNode", "Label")
+            label.font = "font:MediumSystemFont"
+            label.color = "#B9C4CF"
+            m.top.AppendChild(label)
+            m.dynamicCategoryLabels.Push(label)
+        end if
+        label.translation = [m.panelX + 56, m.firstItemY + (i * m.itemHeight) + 6]
+        label.width = m.leftPanelWidth - 100
+        label.height = m.focusHeight
+    end for
+end sub
+
+sub renderSeriesList(items as Object)
+    for each label in m.dynamicSeriesLabels
+        m.top.RemoveChild(label)
+    end for
+    m.dynamicSeriesLabels = []
+    y = m.headerBottomY + 96
+    for each item in items
+        label = CreateObject("roSGNode", "Label")
+        label.text = item.name + "  •  " + item.genre + "  •  " + item.releaseDate
+        label.color = "#FFFFFF"
+        label.font = "font:MediumSystemFont"
+        label.translation = [m.rightPanelX + 58, y]
+        label.width = m.rightPanelWidth - 116
+        label.height = 48
+        m.top.AppendChild(label)
+        m.dynamicSeriesLabels.Push(label)
+        y = y + 60
+    end for
+    if items <> invalid and items.Count() > 0 then
+        m.emptyMessageLabel.text = "Selecione uma série demo na lista. Episódios usam HLS público."
+    end if
+end sub
+
+
 sub updateNavigationState()
     labels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.watchedLabel]
+    for each dynLabel in m.dynamicCategoryLabels
+        labels.Push(dynLabel)
+    end for
 
     m.categoryFocus.translation = [m.panelX + 32, m.firstItemY + (m.selectedIndex * m.itemHeight)]
 
@@ -194,6 +260,15 @@ end sub
 
 sub showPendingMessage()
     m.statusLabel.text = "Função será ativada na próxima etapa."
+end sub
+
+sub showDemoSeriesInfo()
+    if m.selectedIndex = 0 then
+        renderSeriesList(m.demoSeries)
+        m.statusLabel.text = "Pesquisa demo local: Breaking Code, Space Mission e Demo Adventures."
+    else
+        m.statusLabel.text = "Série demo pronta: abra a lista para validar capas, detalhes e episódios HLS."
+    end if
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -229,7 +304,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateNavigationState()
         return true
     else if key = "OK" then
-        showPendingMessage()
+        if m.demoSeries <> invalid and m.demoSeries.Count() > 0 then
+            showDemoSeriesInfo()
+        else
+            showPendingMessage()
+        end if
         return true
     end if
 
