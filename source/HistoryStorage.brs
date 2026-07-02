@@ -79,6 +79,26 @@ sub SaveViewingHistory(history as Object)
     SaveSeriesHistory(history.series)
 end sub
 
+
+function GetLastSeriesEpisode(series as Dynamic) as Dynamic
+    if isHistoryObject(series) = false then return invalid
+    seriesId = historyContentId(series, "series_id")
+    if seriesId = "" then seriesId = historyContentId(series, "id")
+    history = GetSeriesHistory()
+    if Type(history) <> "roArray" then return invalid
+    for each entry in history
+        if isHistoryObject(entry) then
+            entrySeriesId = ""
+            if entry.series <> invalid then
+                entrySeriesId = historyContentId(entry.series, "series_id")
+                if entrySeriesId = "" then entrySeriesId = historyContentId(entry.series, "id")
+            end if
+            if seriesId <> "" and entrySeriesId = seriesId then return entry.content
+        end if
+    end for
+    return invalid
+end function
+
 function GetHistoryPosition(historyType as String, item as Dynamic) as Integer
     if isHistoryObject(item) = false then return 0
     keyPrefix = "movie:"

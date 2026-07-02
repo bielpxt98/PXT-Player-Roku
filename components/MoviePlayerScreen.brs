@@ -150,8 +150,8 @@ sub setResumePosition(position as Dynamic)
 end sub
 
 function getPlaybackPosition() as Integer
-    if m.lastPosition <> invalid and m.lastPosition > 0 and (m.video = invalid or m.video.position = invalid or Int(m.video.position) = 0) then return Int(m.lastPosition)
     if m.video <> invalid and m.video.position <> invalid then return Int(m.video.position)
+    if m.lastPosition <> invalid and m.lastPosition > 0 then return Int(m.lastPosition)
     return 0
 end function
 
@@ -365,7 +365,6 @@ sub onVideoDurationChanged()
 end sub
 
 sub onProgressUpdateTimerFire()
-    m.pendingSeekPosition = invalid
     updateControls()
 end sub
 
@@ -417,7 +416,7 @@ sub seekTo(position as Integer)
 end sub
 
 function getSeekBasePosition() as Integer
-    if m.pendingSeekPosition <> invalid then return Int(m.pendingSeekPosition)
+    if m.video <> invalid and m.video.position <> invalid then return Int(m.video.position)
     return getPlaybackPosition()
 end function
 

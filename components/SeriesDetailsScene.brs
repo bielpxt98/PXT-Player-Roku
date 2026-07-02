@@ -31,6 +31,7 @@ sub Init()
     m.seasonNodes = []
     m.episodeNodes = []
     m.item = invalid
+    m.continueEpisode = invalid
     configureLayout()
 end sub
 
@@ -145,6 +146,7 @@ sub show(item as Dynamic)
     configureLayout()
     populate(item)
     setLoading(false)
+    updateContinueButton()
     updateFocus()
     m.top.visible = true
     m.top.SetFocus(true)
@@ -194,6 +196,7 @@ sub populate(item as Dynamic)
     m.genreLabel.text = "Gêneros: " + genres
     setupSeasons(item)
     setupEpisodes(item)
+    updateContinueButton()
     updateFocus()
 end sub
 
@@ -383,7 +386,26 @@ function getEpisodeImage(episode as Dynamic) as String
     return image
 end function
 
+sub updateContinueButton()
+    if m.continueEpisode <> invalid then
+        epNum = firstText(m.continueEpisode, ["episode_num", "episode", "episode_number"])
+        if epNum = "" then epNum = "?"
+        m.continueButtonLabel.text = "CONTINUAR EP " + epNum
+        m.continueButtonGroup.visible = true
+    else
+        m.continueButtonGroup.visible = false
+        if m.selectedArea = 1 then m.selectedArea = 0
+    end if
+end sub
+
+sub setContinueEpisode(episode as Dynamic)
+    m.continueEpisode = episode
+    updateContinueButton()
+    updateFocus()
+end sub
+
 sub updateFocus()
+    updateContinueButton()
     m.playButtonFocus.opacity = 0
     m.continueButtonFocus.opacity = 0
     m.playButtonBg.color = "#1F2937"
@@ -434,7 +456,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateFocus()
         return true
     else if key = "right" then
-        if m.selectedArea = 0 then
+        if m.selectedArea = 0 and m.continueEpisode <> invalid then
             m.selectedArea = 1
         else if m.selectedArea = 2 and m.selectedSeasonIndex < m.seasons.Count() - 1 then
             m.selectedSeasonIndex = m.selectedSeasonIndex + 1
@@ -469,8 +491,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateFocus()
         return true
     else if key = "OK" then
-        if m.selectedArea = 0 or m.selectedArea = 1 then
+        if m.selectedArea = 0 then
             openFirstEpisode()
+        else if m.selectedArea = 1 then
+            openContinueEpisode()
         else if m.selectedArea = 2 then
             setupEpisodes(m.item)
             m.selectedArea = 3
@@ -498,14 +522,32 @@ sub openFirstEpisode()
     openSelectedEpisode()
 end sub
 
+sub openContinueEpisode()
+    if m.continueEpisode = invalid then return
+    emitEpisodeSelected(m.continueEpisode, 0)
+end sub
+
 sub openSelectedEpisode()
     if m.episodes = invalid or m.episodes.Count() = 0 then return
     episode = m.episodes[m.selectedEpisodeIndex]
+    emitEpisodeSelected(episode, m.selectedEpisodeIndex)
+end sub
+
+
+sub emitEpisodeSelected(episode as Dynamic, index as Integer)
     streamUrl = getEpisodeUrl(episode)
     if streamUrl = "" then
         showMessage("Episódio sem link disponível.")
         return
     end if
-    title = getEpisodeTitle(episode, m.selectedEpisodeIndex)
-    m.top.episodeSelected = { title: title, streamUrl: streamUrl }
+    title = getEpisodeTitle(episode, index)
+    selected = {}
+    if episode <> invalid and Type(episode) = "roAssociativeArray" then
+        for each k in episode
+            selected[k] = episode[k]
+        end for
+    end if
+    selected.title = title
+    selected.streamUrl = streamUrl
+    m.top.episodeSelected = selected
 end sub

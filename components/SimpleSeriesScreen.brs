@@ -14,9 +14,8 @@ sub Init()
     m.categoryItems = []
     m.firstVisibleCategoryIndex = 0
     m.activePanel = "categories"
-    m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS ASSISTIDOS"]
+    m.fixedItems = ["PESQUISAR", "FAVORITOS"]
     m.previewCache = []
-    m.recentSeriesItems = []
     m.currentCategoryId = ""
 
     m.background = m.top.FindNode("background")
@@ -31,7 +30,6 @@ sub Init()
     m.seriesGridGroup = m.top.FindNode("seriesGridGroup")
     m.searchLabel = m.top.FindNode("searchLabel")
     m.favoritesLabel = m.top.FindNode("favoritesLabel")
-    m.recentLabel = m.top.FindNode("recentLabel")
     m.categoryLabel4 = m.top.FindNode("categoryLabel4")
     m.emptyMessageLabel = m.top.FindNode("emptyMessageLabel")
     m.statusLabel = m.top.FindNode("statusLabel")
@@ -48,7 +46,6 @@ sub Init()
 
     m.searchLabel.font = "font:MediumBoldSystemFont"
     m.favoritesLabel.font = "font:MediumSystemFont"
-    m.recentLabel.font = "font:MediumSystemFont"
     m.categoryLabel4.font = "font:MediumSystemFont"
 
     configureLayout()
@@ -130,7 +127,7 @@ sub configureLayout()
     m.categoryFocus.translation = [m.categoryX, m.firstItemY]
 
     updateCategoryItems()
-    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.categoryLabel4]
+    labels = [m.searchLabel, m.favoritesLabel, m.categoryLabel4]
     for i = 0 to labels.Count() - 1
         labels[i].translation = [m.categoryX + 14, m.firstItemY + (i * m.itemHeight)]
         labels[i].width = m.categoryWidth - 24
@@ -226,9 +223,6 @@ sub setPreviewCache(cache as Object)
     if cache = invalid or Type(cache) <> "roArray" then m.previewCache = [] else m.previewCache = cache
 end sub
 
-sub setRecentSeries(items as Object)
-    m.recentSeriesItems = normalizeRecentSeriesItems(items)
-end sub
 
 sub setCategories(categories as Object)
     if categories = invalid or Type(categories) <> "roArray" then
@@ -321,11 +315,6 @@ sub handleCategoryOk()
         renderSeriesGrid()
         if label = "FAVORITOS" then
             m.statusLabel.text = "Nenhuma série favorita encontrada."
-        else if label = "ÚLTIMOS ASSISTIDOS" then
-            m.seriesItems = m.recentSeriesItems
-            if m.seriesItems.Count() = 0 then m.statusLabel.text = "Nenhuma série assistida recentemente." else m.statusLabel.text = ""
-            m.activePanel = "grid"
-            renderSeriesGrid()
         else
             m.statusLabel.text = ""
         end if
@@ -358,7 +347,7 @@ sub updateNavigationState()
     end if
 
     updateCategoryItems()
-    labels = [m.searchLabel, m.favoritesLabel, m.recentLabel, m.categoryLabel4]
+    labels = [m.searchLabel, m.favoritesLabel, m.categoryLabel4]
     visibleCategoryCount = labels.Count()
     if m.selectedIndex < m.firstVisibleCategoryIndex then m.firstVisibleCategoryIndex = m.selectedIndex
     if m.selectedIndex >= m.firstVisibleCategoryIndex + visibleCategoryCount then m.firstVisibleCategoryIndex = m.selectedIndex - visibleCategoryCount + 1

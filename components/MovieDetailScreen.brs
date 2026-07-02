@@ -11,10 +11,12 @@ sub Init()
     m.loadingLabel = m.top.FindNode("loadingLabel")
     m.buttonsGroup = m.top.FindNode("buttonsGroup")
     m.watchButton = m.top.FindNode("watchButton")
+    m.continueButton = m.top.FindNode("continueButton")
     m.favoriteButton = m.top.FindNode("favoriteButton")
     m.backButton = m.top.FindNode("backButton")
     m.selectedButton = 0
     m.item = invalid
+    m.resumePosition = 0
     configureLayout()
 end sub
 
@@ -68,8 +70,9 @@ sub configureLayout()
     m.loadingLabel.font = "font:MediumSystemFont"
     m.buttonsGroup.translation = [marginX, h - 105]
     setupButton(m.watchButton, 0, 190)
-    setupButton(m.favoriteButton, 220, 220)
-    setupButton(m.backButton, 470, 170)
+    setupButton(m.continueButton, 220, 220)
+    setupButton(m.favoriteButton, 470, 220)
+    setupButton(m.backButton, 720, 170)
 end sub
 
 sub setupButton(button as Object, x as Integer, width as Integer)
@@ -193,11 +196,27 @@ function ratingText(value as String) as String
 end function
 
 sub updateButtons()
-    buttons = [m.watchButton, m.favoriteButton, m.backButton]
-    for i = 0 to 2
+    m.continueButton.visible = hasResumePosition()
+    buttons = getVisibleButtons()
+    for i = 0 to buttons.Count() - 1
         buttons[i].color = "#FFFFFF"
         if i = m.selectedButton then buttons[i].color = "#5CE08A"
     end for
+end sub
+
+function hasResumePosition() as Boolean
+    return m.resumePosition <> invalid and m.resumePosition > 0
+end function
+
+function getVisibleButtons() as Object
+    if hasResumePosition() then return [m.watchButton, m.continueButton, m.favoriteButton, m.backButton]
+    return [m.watchButton, m.favoriteButton, m.backButton]
+end function
+
+sub setResumePosition(position as Dynamic)
+    if position = invalid then m.resumePosition = 0 else m.resumePosition = Int(position)
+    if m.selectedButton >= getVisibleButtons().Count() then m.selectedButton = getVisibleButtons().Count() - 1
+    updateButtons()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -209,18 +228,30 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     else if key = "right" then
-        if m.selectedButton < 2 then
+        if m.selectedButton < getVisibleButtons().Count() - 1 then
             m.selectedButton = m.selectedButton + 1
             updateButtons()
         end if
         return true
     else if key = "OK" then
-        if m.selectedButton = 0 then
-            m.top.playRequested = true
-        else if m.selectedButton = 1 then
-            m.top.favoriteToggled = m.item
+        if hasResumePosition() then
+            if m.selectedButton = 0 then
+                m.top.playRequested = true
+            else if m.selectedButton = 1 then
+                m.top.continueRequested = true
+            else if m.selectedButton = 2 then
+                m.top.favoriteToggled = m.item
+            else
+                m.top.backRequested = true
+            end if
         else
-            m.top.backRequested = true
+            if m.selectedButton = 0 then
+                m.top.playRequested = true
+            else if m.selectedButton = 1 then
+                m.top.favoriteToggled = m.item
+            else
+                m.top.backRequested = true
+            end if
         end if
         return true
     else if key = "back" then
