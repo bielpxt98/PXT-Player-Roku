@@ -10,6 +10,7 @@ sub Init()
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
     m.recentScreen = m.top.FindNode("recentScreen")
     m.searchScreen = m.top.FindNode("searchScreen")
+    m.movieSearchScreen = m.top.FindNode("movieSearchScreen")
     m.liveCategoriesScreen = m.top.FindNode("liveCategoriesScreen")
     m.liveChannelsScreen = m.top.FindNode("liveChannelsScreen")
     m.livePlayerScreen = m.top.FindNode("livePlayerScreen")
@@ -109,8 +110,9 @@ sub Init()
     m.homeScreen.ObserveField("openRecent", "onOpenRecentRequested")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
     m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
-    m.searchScreen.ObserveField("movieSelected", "onSearchMovieSelected")
     m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
+    m.movieSearchScreen.ObserveField("backRequested", "onMovieSearchBack")
+    m.movieSearchScreen.ObserveField("movieSelected", "onMovieSearchMovieSelected")
     m.recentScreen.ObserveField("backRequested", "onRecentBack")
     m.recentScreen.ObserveField("historySelected", "onHistorySelected")
     m.favoritesScreen.ObserveField("backRequested", "onFavoritesBack")
@@ -365,6 +367,7 @@ sub showHome()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -381,6 +384,7 @@ sub showLogin()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -448,8 +452,43 @@ end sub
 
 sub onMovieSearchRequested()
     m.movieCategoriesScreen.callFunc("hide")
-    openSearch("movies", "movies")
+    m.movieListScreen.callFunc("hide")
+    m.searchBackTarget = "movies"
+    m.movieSearchScreen.callFunc("show")
+    movieSearchData = getMoviesForSearch()
+    m.movieSearchScreen.callFunc("setMovies", movieSearchData)
 end sub
+
+sub onMovieSearchBack()
+    m.movieSearchScreen.callFunc("hide")
+    if m.selectedMovieCategory <> invalid then
+        m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+        if m.movies <> invalid and m.movies.Count() > 0 then m.movieListScreen.callFunc("setMovies", m.movies)
+        m.movieListScreen.callFunc("focusCategories")
+    else
+        m.movieCategoriesScreen.callFunc("show")
+    end if
+end sub
+
+sub onMovieSearchMovieSelected()
+    movie = m.movieSearchScreen.movieSelected
+    if movie = invalid then return
+    m.selectedMovie = movie
+    m.openedFromSearch = true
+    m.movieSearchScreen.callFunc("hide")
+    m.movieDetailScreen.callFunc("show", movie)
+    m.movieDetailScreen.callFunc("setDetails", movie)
+end sub
+
+function getMoviesForSearch() as Object
+    if m.movies <> invalid and m.movies.Count() > 0 then return m.movies
+    if m.selectedMovieCategoryId <> "" then
+        cachedForCategory = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
+        if cachedForCategory.Count() > 0 then return cachedForCategory
+    end if
+    if m.cachedMovies <> invalid then return m.cachedMovies
+    return []
+end function
 
 function getSearchDataForMode(mode as String) as Object
     channels = m.cachedLiveChannels
@@ -541,6 +580,7 @@ sub onOpenRecentRequested()
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -561,6 +601,7 @@ sub onOpenFavoritesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -645,6 +686,7 @@ sub onOpenLiveCategoriesRequested()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
@@ -679,6 +721,7 @@ sub onOpenMovieCategoriesRequested()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -1005,7 +1048,7 @@ sub loadMovies(category as Object)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = ""
+    m.xtreamService.categoryId = getCategoryId(category)
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1069,7 +1112,7 @@ end sub
 
 sub showMoviesFromCacheOrLoad(category as Object)
     cached = filterItemsByCategory(m.cachedMovies, getCategoryId(category))
-    if cached.Count() > 0 or (m.cachedMovies <> invalid and m.cachedMovies.Count() > 0) then
+    if cached.Count() > 0 then
         m.movies = cached
         m.moviesLoading = false
         m.movieListScreen.callFunc("setLoading", false)
@@ -1083,7 +1126,7 @@ end sub
 
 sub showSeriesFromCacheOrLoad(category as Object)
     cached = filterItemsByCategory(m.cachedSeries, getCategoryId(category))
-    if cached.Count() > 0 or (m.cachedSeries <> invalid and m.cachedSeries.Count() > 0) then
+    if cached.Count() > 0 then
         m.series = cached
         m.seriesLoading = false
         m.seriesHomeScreen.callFunc("setLoading", false)
@@ -1116,6 +1159,22 @@ function filterItemsByCategory(items as Dynamic, categoryId as String) as Object
         if getItemCategoryId(item) = categoryId then filtered.Push(item)
     end for
     return filtered
+end function
+
+function replaceCachedCategoryItems(cache as Dynamic, freshItems as Object, categoryId as String) as Object
+    if categoryId = "" then return freshItems
+    merged = []
+    if cache <> invalid and Type(cache) = "roArray" then
+        for each item in cache
+            if getItemCategoryId(item) <> categoryId then merged.Push(item)
+        end for
+    end if
+    if freshItems <> invalid and Type(freshItems) = "roArray" then
+        for each item in freshItems
+            merged.Push(item)
+        end for
+    end if
+    return merged
 end function
 
 function getItemCategoryId(item as Dynamic) as String
@@ -1477,6 +1536,7 @@ sub onOpenSeriesCategoriesRequested()
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
+    m.movieSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -1749,7 +1809,7 @@ sub onMoviesResult(result as Object)
     if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setLoading", false)
 
     if result.success = true then
-        m.cachedMovies = normalizeMovies(result.data)
+        m.cachedMovies = replaceCachedCategoryItems(m.cachedMovies, normalizeMovies(result.data), resultCategoryId)
         m.searchIndexCache.movies = m.cachedMovies
         m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
         m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
@@ -1790,7 +1850,7 @@ sub onSeriesResult(result as Object)
     m.seriesLoading = false
     if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", false)
     if result.success = true then
-        m.cachedSeries = normalizeSeries(result.data)
+        m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, normalizeSeries(result.data), resultCategoryId)
         m.searchIndexCache.series = m.cachedSeries
         m.seriesSearchIndex = BuildSeriesSearchIndexItems(m.cachedSeries, "")
         m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
