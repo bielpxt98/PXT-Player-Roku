@@ -19,6 +19,7 @@ sub Init()
     m.movieName = "Filme"
     m.isPlaying = false
     m.isClosing = false
+    m.isReturningFromPlayer = false
     m.resumePosition = 0
     m.lastPosition = 0
     m.seekStep = 10
@@ -84,6 +85,7 @@ sub show(movie as Dynamic)
     m.movieName = getMovieName(movie)
     m.top.movieName = m.movieName
     m.isClosing = false
+    m.isReturningFromPlayer = false
     m.top.visible = true
     showLoading("Preparando " + m.movieName + "...")
     hideControls()
@@ -204,6 +206,7 @@ sub showError(message as String)
 end sub
 
 sub onVideoStateChanged()
+    if m.isReturningFromPlayer = true then return
     if m.isClosing = true or m.video = invalid then return
     state = LCase(m.video.state)
     if state = "playing" then
@@ -257,6 +260,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 function handleBackKeySafely() as Boolean
+    if m.isReturningFromPlayer = true then return true
+    m.isReturningFromPlayer = true
     if m.isClosing = true then return true
     m.isClosing = true
 

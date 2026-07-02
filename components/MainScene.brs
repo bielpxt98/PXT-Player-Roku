@@ -25,6 +25,7 @@ sub Init()
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
     m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
     m.searchIndexTimer = m.top.FindNode("searchIndexTimer")
+    m.seriesOpenTimeoutTimer = m.top.FindNode("seriesOpenTimeoutTimer")
     m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
     m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
@@ -87,6 +88,12 @@ sub Init()
     m.localFavoritesCache = []
     m.localHistoryCache = []
     m.movieListRestoreState = invalid
+    m.currentMovieList = []
+    m.movieListSelectedIndex = 0
+    m.movieListFirstVisibleIndex = 0
+    m.entryPoint = ""
+    m.isReturningFromPlayer = false
+    m.isOpeningSeries = false
     if m.cachedMovies = invalid then m.cachedMovies = []
     if m.cachedSeries = invalid then m.cachedSeries = []
     if m.cachedLiveChannels = invalid then m.cachedLiveChannels = []
@@ -143,6 +150,7 @@ sub Init()
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
     m.autoConnectTimer.ObserveField("fire", "onAutoConnectTimerFire")
     m.searchIndexTimer.ObserveField("fire", "onSearchIndexTimerFire")
+    m.seriesOpenTimeoutTimer.ObserveField("fire", "onSeriesOpenTimeout")
     m.splashMinimumTimer.ObserveField("fire", "onSplashMinimumElapsed")
     m.splashMaximumTimer.ObserveField("fire", "onSplashMaximumElapsed")
 
@@ -803,6 +811,12 @@ sub onMovieDetailPlay()
     if m.selectedMovie = invalid then return
     cancelSearchIndexRefresh()
     m.movieListRestoreState = m.movieListScreen.callFunc("getState")
+    m.currentMovieList = m.movies
+    m.entryPoint = "movies"
+    if m.movieListRestoreState <> invalid then
+        m.movieListSelectedIndex = m.movieListRestoreState.selectedIndex
+        m.movieListFirstVisibleIndex = m.movieListRestoreState.firstVisibleRow
+    end if
     if getStreamId(m.selectedMovie) = "" then
         m.movieDetailScreen.callFunc("setLoading", false)
         return
@@ -818,25 +832,33 @@ sub onMovieDetailFavoriteToggled()
 end sub
 
 sub onMoviePlayerBack()
-    UpsertMovieHistory(m.selectedMovie, m.moviePlayerScreen.callFunc("getPlaybackPosition"))
-    m.moviePlayerScreen.callFunc("hide")
-    if m.openedFromFavorites = true then
-        m.openedFromFavorites = false
-        showHome()
-    else if m.openedFromRecent = true then
-        m.openedFromRecent = false
-        showHome()
-    else if m.openedFromSearch = true then
-        m.openedFromSearch = false
-        showHome()
-    else
-        m.movieDetailScreen.callFunc("hide")
-        m.movieListScreen.callFunc("show", m.selectedMovieCategory)
-        if m.movieListRestoreState <> invalid then
-            m.movieListScreen.callFunc("restoreState", m.movieListRestoreState)
-            m.movieListRestoreState = invalid
-        end if
+    if m.isReturningFromPlayer = true then return
+    m.isReturningFromPlayer = true
+
+    position = 0
+    if m.moviePlayerScreen <> invalid then position = m.moviePlayerScreen.callFunc("getPlaybackPosition")
+    UpsertMovieHistory(m.selectedMovie, position)
+
+    if m.moviePlayerScreen <> invalid then
+        m.moviePlayerScreen.callFunc("hide")
+        m.moviePlayerScreen.SetFocus(false)
     end if
+    m.movieDetailScreen.callFunc("hide")
+
+    if m.selectedMovieCategory <> invalid and m.currentMovieList <> invalid then
+        m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+        if m.currentMovieList.Count() > 0 then m.movieListScreen.callFunc("setMovies", m.currentMovieList)
+        if m.movieListRestoreState <> invalid then m.movieListScreen.callFunc("restoreState", m.movieListRestoreState)
+        m.movieListScreen.SetFocus(true)
+    else
+        showHome()
+    end if
+
+    m.movieListRestoreState = invalid
+    m.openedFromFavorites = false
+    m.openedFromRecent = false
+    m.openedFromSearch = false
+    m.isReturningFromPlayer = false
 end sub
 
 sub onLiveCategorySelected()
@@ -1446,7 +1468,10 @@ sub resetSeriesData()
 end sub
 
 sub onOpenSeriesCategoriesRequested()
+    if m.isOpeningSeries = true then return
+    m.isOpeningSeries = true
     cancelSearchIndexRefresh()
+    startSeriesOpenTimeout()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
@@ -1465,10 +1490,13 @@ sub onOpenSeriesCategoriesRequested()
     m.seriesHomeScreen.callFunc("show")
 
     if not hasAccount(m.account) then
+        stopSeriesOpenTimeout()
+        m.seriesHomeScreen.callFunc("setLoading", false)
         m.seriesHomeScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de séries.")
     else if m.seriesCategoriesLoading then
         m.seriesHomeScreen.callFunc("setLoading", true)
     else if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
+        stopSeriesOpenTimeout()
         m.seriesHomeScreen.callFunc("setCategories", m.seriesCategories)
         m.seriesHomeScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
     else
@@ -1477,7 +1505,35 @@ sub onOpenSeriesCategoriesRequested()
     end if
 end sub
 
+sub startSeriesOpenTimeout()
+    if m.seriesOpenTimeoutTimer = invalid then return
+    m.seriesOpenTimeoutTimer.control = "stop"
+    m.seriesOpenTimeoutTimer.duration = 8
+    m.seriesOpenTimeoutTimer.control = "start"
+end sub
+
+sub stopSeriesOpenTimeout()
+    if m.seriesOpenTimeoutTimer <> invalid then m.seriesOpenTimeoutTimer.control = "stop"
+    m.isOpeningSeries = false
+end sub
+
+sub onSeriesOpenTimeout()
+    if m.isOpeningSeries <> true and m.seriesCategoriesLoading <> true and m.seriesLoading <> true then return
+    if m.pendingRequest = "getSeriesCategories" or m.pendingRequest = "getSeries" then cancelXtreamRequest()
+    m.seriesCategoriesLoading = false
+    m.seriesLoading = false
+    m.isOpeningSeries = false
+    if m.seriesHomeScreen.visible = true then
+        m.seriesHomeScreen.callFunc("setLoading", false)
+        m.seriesHomeScreen.callFunc("showMessage", "Não foi possível carregar séries. Pressione Voltar e tente novamente.")
+        m.seriesHomeScreen.SetFocus(true)
+    end if
+end sub
+
 sub onSeriesHomeBack()
+    stopSeriesOpenTimeout()
+    m.seriesCategoriesLoading = false
+    m.seriesLoading = false
     showHome()
 end sub
 
@@ -1561,6 +1617,7 @@ sub loadSeriesCategories(account as Object)
 end sub
 
 sub loadSeries(category as Object)
+    startSeriesOpenTimeout()
     if not hasAccount(m.account) then
         m.seriesLoading = false
         m.seriesHomeScreen.callFunc("setLoading", false)
@@ -1571,7 +1628,7 @@ sub loadSeries(category as Object)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeries"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = ""
+    m.xtreamService.categoryId = getCategoryId(category)
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1706,6 +1763,7 @@ sub onMoviesResult(result as Object)
 end sub
 
 sub onSeriesCategoriesResult(result as Object)
+    stopSeriesOpenTimeout()
     m.seriesCategoriesLoading = false
     if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", false)
     if result.success = true then
@@ -1728,6 +1786,7 @@ sub onSeriesResult(result as Object)
     end if
     resultCategoryId = getSeriesResultCategoryId(result)
     if resultCategoryId <> "" and resultCategoryId <> m.selectedSeriesCategoryId then return
+    stopSeriesOpenTimeout()
     m.seriesLoading = false
     if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", false)
     if result.success = true then

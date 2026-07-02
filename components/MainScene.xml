@@ -30,6 +30,7 @@
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
         <Timer id="autoConnectTimer" duration="0.3" repeat="false" />
         <Timer id="searchIndexTimer" duration="0.2" repeat="false" />
+        <Timer id="seriesOpenTimeoutTimer" duration="8" repeat="false" />
         <Timer id="splashMinimumTimer" duration="4" repeat="false" />
         <Timer id="splashMaximumTimer" duration="6" repeat="false" />
     </children>
