@@ -63,8 +63,9 @@ end sub
 
 sub applyFilter()
     m.results = []
+    m.posterIndex = 0
     if m.allSeries.Count() = 0 then
-        showMessage("Nenhuma série carregada ainda. Abra uma categoria primeiro.")
+        showMessage("Nenhuma série carregada ainda.")
         return
     end if
     needle = normalizeText(m.query)
@@ -72,7 +73,7 @@ sub applyFilter()
         if m.results.Count() >= 5 then exit for
         name = getSeriesName(series)
         hay = normalizeText(name)
-        if needle = "" or Left(hay, Len(needle)) = needle or Instr(1, hay, needle) > 0 then m.results.Push(series)
+        if needle = "" or Instr(1, hay, needle) > 0 then m.results.Push(series)
     end for
     if m.results.Count() = 0 then
         showMessage("Nenhuma série encontrada.")

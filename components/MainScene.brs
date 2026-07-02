@@ -482,6 +482,7 @@ sub onMovieSearchRequested()
     m.movieSearchScreen.callFunc("show")
     movieSearchData = getMoviesForSearch()
     m.movieSearchScreen.callFunc("setMovies", movieSearchData)
+    if movieSearchData.Count() = 0 and hasAccount(m.account) then loadSearchMovies()
 end sub
 
 sub onSeriesSearchRequested()
@@ -490,6 +491,7 @@ sub onSeriesSearchRequested()
     m.seriesSearchScreen.callFunc("show")
     seriesSearchData = getSeriesForSearch()
     m.seriesSearchScreen.callFunc("setSeries", seriesSearchData)
+    if seriesSearchData.Count() = 0 and hasAccount(m.account) then loadSearchSeries()
 end sub
 
 sub onMovieSearchBack()
@@ -533,11 +535,6 @@ end sub
 
 
 function getMoviesForSearch() as Object
-    if m.movies <> invalid and m.movies.Count() > 0 then return m.movies
-    if m.selectedMovieCategoryId <> "" then
-        cachedForCategory = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
-        if cachedForCategory.Count() > 0 then return cachedForCategory
-    end if
     if m.cachedMovies <> invalid then return m.cachedMovies
     return []
 end function
@@ -609,6 +606,18 @@ sub loadSearchMovies()
     if not beginXtreamRequest("getMovies") then return
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
+    m.xtreamService.cacheEnabled = true
+    m.xtreamService.categoryId = ""
+    m.xtreamService.dns = m.account.dns
+    m.xtreamService.username = m.account.username
+    m.xtreamService.password = m.account.password
+    m.xtreamService.control = "RUN"
+end sub
+
+sub loadSearchSeries()
+    if not beginXtreamRequest("getSeries") then return
+    m.xtreamService.control = "STOP"
+    m.xtreamService.action = "getSeries"
     m.xtreamService.cacheEnabled = true
     m.xtreamService.categoryId = ""
     m.xtreamService.dns = m.account.dns
@@ -1801,6 +1810,7 @@ sub onSeriesResult(result as Object)
         fresh = normalizeSeries(result.data)
         m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, fresh, resultCategoryId)
         if m.simpleSeriesScreen.visible = true then m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
+        if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", m.cachedSeries)
     end if
 end sub
 
@@ -2040,6 +2050,7 @@ sub onMoviesResult(result as Object)
         SaveSearchIndexCache(m.searchIndexCache)
         m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
+        if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.cachedMovies)
     else if m.movieListScreen.visible = true then
         m.movieListScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
         m.movieListScreen.callFunc("focusCategories")
