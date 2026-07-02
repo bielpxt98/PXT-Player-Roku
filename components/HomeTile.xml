@@ -2,6 +2,7 @@
 <component name="HomeTile" extends="Group">
     <interface>
         <field id="title" type="string" onChange="onTitleChanged" />
+        <field id="imageUri" type="uri" onChange="onImageUriChanged" />
         <field id="iconUri" type="uri" onChange="onIconUriChanged" />
         <field id="iconText" type="string" onChange="onIconTextChanged" />
         <field id="baseColor" type="string" onChange="onBaseColorChanged" />
@@ -15,12 +16,12 @@
         <Rectangle id="outerGlow" width="318" height="226" color="#FFFFFF" opacity="0" translation="[-12, -12]" />
         <Group id="tileGroup" scaleRotateCenter="[147, 101]">
             <Rectangle id="tileShadow" width="294" height="202" color="#000000" opacity="0.52" translation="[8, 10]" />
-            <Rectangle id="tileBorder" width="294" height="202" color="#FFFFFF" opacity="0.24" />
-            <Rectangle id="tileBackground" width="286" height="194" color="#06101D" opacity="0.90" translation="[4, 4]" />
-            <Rectangle id="tileColorWash" width="286" height="194" color="#8B0000" opacity="0.22" translation="[4, 4]" />
-            <Poster id="tileIcon" width="82" height="82" translation="[106, 36]" loadDisplayMode="scaleToFit" />
+            <Rectangle id="tileBorder" width="294" height="202" color="#FFFFFF" opacity="0.16" />
+            <Poster id="tileImage" width="286" height="194" translation="[4, 4]" loadDisplayMode="scaleToFill" />
+            <Rectangle id="tileFocusOverlay" width="286" height="194" color="#FFFFFF" opacity="0" translation="[4, 4]" />
+            <Poster id="tileIcon" width="82" height="82" translation="[106, 36]" loadDisplayMode="scaleToFit" visible="false" />
             <Label id="tileIconText" width="294" height="92" translation="[0, 30]" horizAlign="center" vertAlign="center" color="#FFFFFF" visible="false" />
-            <Label id="tileTitle" width="264" height="46" translation="[15, 136]" horizAlign="center" vertAlign="center" color="#FFFFFF" />
+            <Label id="tileTitle" width="264" height="46" translation="[15, 136]" horizAlign="center" vertAlign="center" color="#FFFFFF" visible="false" />
         </Group>
 
         <Animation id="focusInAnimation" duration="0.18" easeFunction="outQuad">
