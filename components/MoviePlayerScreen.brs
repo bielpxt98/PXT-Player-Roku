@@ -147,11 +147,8 @@ sub setResumePosition(position as Dynamic)
 end sub
 
 function getPlaybackPosition() as Integer
-    if m.video <> invalid and m.video.position <> invalid then
-        m.lastPosition = Int(m.video.position)
-        return m.lastPosition
-    end if
-    return m.lastPosition
+    if m.video <> invalid and m.video.position <> invalid then return Int(m.video.position)
+    return 0
 end function
 
 sub showResumeDialog()
@@ -232,6 +229,8 @@ sub onVideoStateChanged()
         m.errorGroup.visible = false
         startProgressUpdateTimer()
         showControls()
+    else if state = "buffering" or state = "loading" then
+        showLoading("Carregando " + m.movieName + "...")
     else if state = "paused" then
         m.isPlaying = false
         showControls()
@@ -339,7 +338,8 @@ end sub
 
 sub togglePause()
     if m.video = invalid then return
-    if m.isPlaying = true then
+    state = LCase(m.video.state)
+    if m.isPlaying = true or state = "playing" or state = "buffering" then
         m.video.control = "pause"
         m.isPlaying = false
         showControls()
@@ -359,7 +359,8 @@ sub seekTo(position as Integer)
     if m.video = invalid then return
     if position < 0 then position = 0
     duration = getPlaybackDuration()
-    if duration > 0 and position > duration then position = duration - 1
+    if duration > 0 and position >= duration then position = duration - 1
+    if position < 0 then position = 0
     m.video.seek = position
     showControls()
 end sub
