@@ -17,7 +17,7 @@ sub Init()
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
-    m.channels = [] : m.movies = [] : m.series = [] : m.results = []
+    m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = ""
     m.resultBatchSize = 5 : m.renderedResultLimit = 5
     m.searchMode = "live"
     m.searchLetters = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"] ]
@@ -156,12 +156,16 @@ end sub
 
 sub applyFilter()
     query = normalizeSearchQuery(m.searchInput.text)
-    oldResults = m.results
-    m.results = []
-    if m.searchMode = "live" then addMatches("channel", m.channels, query)
-    if m.searchMode = "movies" then addMatches("movie", m.movies, query)
-    if m.searchMode = "series" then addMatches("series", m.series, query)
-    if query = "" then m.results = pickInitialSearchItems(m.results)
+    if query <> "" and m.lastQuery <> "" and Left(query, Len(m.lastQuery)) = m.lastQuery then
+        m.results = filterExistingResults(m.results, query)
+    else
+        m.results = []
+        if m.searchMode = "live" then addMatches("channel", m.channels, query)
+        if m.searchMode = "movies" then addMatches("movie", m.movies, query)
+        if m.searchMode = "series" then addMatches("series", m.series, query)
+        if query = "" then m.results = pickInitialSearchItems(m.results)
+    end if
+    m.lastQuery = query
     m.searchResultIndex = 0 : m.searchResultOffset = 0 : m.renderedResultLimit = m.resultBatchSize
     if m.results.Count() = 0 then
         clearResultNodes() : m.statusLabel.color = "#FFCC66" : m.statusLabel.text = getEmptySearchMessage()
@@ -171,6 +175,18 @@ sub applyFilter()
         m.statusLabel.text = "" : renderResults() : updateSearchFocus()
     end if
 end sub
+
+function filterExistingResults(entries as Dynamic, query as String) as Object
+    filtered = []
+    if entries = invalid or Type(entries) <> "roArray" then return filtered
+    for each entry in entries
+        if entry <> invalid and entry.sortKey <> invalid then
+            key = entry.sortKey.ToStr()
+            if Left(key, Len(query)) = query or Instr(1, key, query) > 0 then filtered.Push(entry)
+        end if
+    end for
+    return filtered
+end function
 
 sub addMatches(kind as String, items as Dynamic, query as String)
     startsWithEntries = []
