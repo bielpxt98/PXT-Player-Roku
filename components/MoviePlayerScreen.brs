@@ -106,13 +106,7 @@ sub play(streamUrl as String)
         return
     end if
 
-    if m.resumePosition > 30 then
-        m.pendingStreamUrl = streamUrl
-        showResumeDialog()
-        return
-    end if
-
-    startPlayback(streamUrl, m.movieName, 0)
+    startPlayback(streamUrl, m.movieName, m.resumePosition)
 end sub
 
 sub startPlayback(streamUrl as String, title as String, startPosition as Integer)

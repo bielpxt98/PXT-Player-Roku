@@ -1873,7 +1873,7 @@ sub onSeriesEpisodeSelected()
     episodeToPlay.streamUrl = streamUrl
     resumePosition = GetHistoryPosition("episode", episodeToPlay)
     m.seriesDetailsScreen.callFunc("hide")
-    m.seriesPlayerScreen.callFunc("setResumePosition", 0)
+    m.seriesPlayerScreen.callFunc("setResumePosition", resumePosition)
     openPlayer(episodeToPlay, "series")
     UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, 0, 0)
 end sub

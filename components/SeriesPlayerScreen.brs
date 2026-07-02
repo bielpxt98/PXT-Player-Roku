@@ -104,14 +104,7 @@ sub show(episode as Dynamic)
         return
     end if
 
-    if m.resumePosition > 30 then
-        m.pendingStreamUrl = streamUrl
-        m.pendingEpisode = episode
-        showResumeDialog()
-        return
-    end if
-
-    startPlayback(streamUrl, title, 0)
+    startPlayback(streamUrl, title, m.resumePosition)
 end sub
 
 sub startPlayback(streamUrl as String, title as String, startPosition as Integer)
