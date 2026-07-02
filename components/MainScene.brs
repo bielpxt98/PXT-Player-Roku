@@ -70,6 +70,10 @@ sub Init()
     m.searchIndexCache = LoadSearchIndexCache()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
+    m.cachedMovies = m.searchIndexCache.movies
+    m.cachedSeries = m.searchIndexCache.series
+    m.cachedLiveChannels = m.searchIndexCache.liveChannels
+    m.cachedSeriesInfo = m.searchIndexCache.seriesInfo
     m.searchIndexQueue = []
     m.searchIndexKind = ""
     m.searchIndexCategoryId = ""
@@ -83,6 +87,10 @@ sub Init()
     m.localFavoritesCache = []
     m.localHistoryCache = []
     m.movieListRestoreState = invalid
+    if m.cachedMovies = invalid then m.cachedMovies = []
+    if m.cachedSeries = invalid then m.cachedSeries = []
+    if m.cachedLiveChannels = invalid then m.cachedLiveChannels = []
+    if m.cachedSeriesInfo = invalid then m.cachedSeriesInfo = {}
 
     configureScene()
 
@@ -436,7 +444,7 @@ sub onMovieSearchRequested()
 end sub
 
 function getSearchDataForMode(mode as String) as Object
-    channels = m.searchChannels
+    channels = m.cachedLiveChannels
     movies = m.movieSearchIndex
     series = m.seriesSearchIndex
     if mode = "live" and m.liveChannels <> invalid and m.liveChannels.Count() > 0 then channels = m.liveChannels
@@ -742,15 +750,14 @@ sub onMovieCategorySelected()
     m.selectedMovieCategory = category
     m.selectedMovieCategoryId = getCategoryId(category)
     m.movies = []
-    m.moviesLoading = true
+    m.moviesLoading = false
     m.movieCategoriesScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("hide")
     m.moviePlayerScreen.callFunc("hide")
     m.movieListScreen.callFunc("setCategories", m.movieCategories)
     m.movieListScreen.callFunc("resetSelection")
     m.movieListScreen.callFunc("show", category)
-    m.movieListScreen.callFunc("setLoading", true)
-    loadMovies(category)
+    showMoviesFromCacheOrLoad(category)
 end sub
 
 sub onMovieListCategorySelected()
@@ -765,10 +772,9 @@ sub onMovieListCategorySelected()
     end if
     m.selectedMovieCategoryId = newCategoryId
     m.movies = []
-    m.moviesLoading = true
+    m.moviesLoading = false
     m.movieListScreen.callFunc("show", category)
-    m.movieListScreen.callFunc("setLoading", true)
-    loadMovies(category)
+    showMoviesFromCacheOrLoad(category)
 end sub
 
 sub onMovieSelected()
@@ -783,9 +789,7 @@ sub onMovieSelected()
     m.selectedMovie = movie
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("show", movie)
-    m.movieDetailScreen.callFunc("setLoading", true)
-    startDetailTimeout("movie")
-    loadMovieInfo(movie)
+    m.movieDetailScreen.callFunc("setDetails", movie)
 end sub
 
 sub onMovieDetailBack()
@@ -842,14 +846,13 @@ sub onLiveCategorySelected()
     m.selectedLiveCategory = category
     m.selectedLiveCategoryId = getCategoryId(category)
     m.liveChannels = []
-    m.liveChannelsLoading = true
+    m.liveChannelsLoading = false
     m.livePlayerScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("resetSelection")
     m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
     m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", category)
-    m.liveChannelsScreen.callFunc("setLoading", true)
-    loadLiveChannels(category)
+    showLiveChannelsFromCacheOrLoad(category)
 end sub
 
 sub onLiveChannelsCategorySelected()
@@ -867,10 +870,9 @@ sub onLiveChannelsCategorySelected()
     end if
     m.selectedLiveCategoryId = newCategoryId
     m.liveChannels = []
-    m.liveChannelsLoading = true
+    m.liveChannelsLoading = false
     m.liveChannelsScreen.callFunc("show", category)
-    m.liveChannelsScreen.callFunc("setLoading", true)
-    loadLiveChannels(category)
+    showLiveChannelsFromCacheOrLoad(category)
 end sub
 
 
@@ -981,7 +983,7 @@ sub loadMovies(category as Object)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.categoryId = ""
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1018,7 +1020,7 @@ sub loadLiveChannels(category as Object)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveStreams"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.categoryId = ""
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1041,6 +1043,65 @@ sub loadLiveCategories(account as Object)
     m.xtreamService.password = account.password
     m.xtreamService.control = "RUN"
 end sub
+
+
+sub showMoviesFromCacheOrLoad(category as Object)
+    cached = filterItemsByCategory(m.cachedMovies, getCategoryId(category))
+    if cached.Count() > 0 or (m.cachedMovies <> invalid and m.cachedMovies.Count() > 0) then
+        m.movies = cached
+        m.moviesLoading = false
+        m.movieListScreen.callFunc("setLoading", false)
+        m.movieListScreen.callFunc("setMovies", m.movies)
+        return
+    end if
+    m.moviesLoading = true
+    m.movieListScreen.callFunc("setLoading", true)
+    loadMovies(category)
+end sub
+
+sub showSeriesFromCacheOrLoad(category as Object)
+    cached = filterItemsByCategory(m.cachedSeries, getCategoryId(category))
+    if cached.Count() > 0 or (m.cachedSeries <> invalid and m.cachedSeries.Count() > 0) then
+        m.series = cached
+        m.seriesLoading = false
+        m.seriesHomeScreen.callFunc("setLoading", false)
+        m.seriesHomeScreen.callFunc("setSeries", m.series)
+        return
+    end if
+    m.seriesLoading = true
+    m.seriesHomeScreen.callFunc("setLoading", true)
+    loadSeries(category)
+end sub
+
+sub showLiveChannelsFromCacheOrLoad(category as Object)
+    cached = filterItemsByCategory(m.cachedLiveChannels, getCategoryId(category))
+    if cached.Count() > 0 or (m.cachedLiveChannels <> invalid and m.cachedLiveChannels.Count() > 0) then
+        m.liveChannels = cached
+        m.liveChannelsLoading = false
+        m.liveChannelsScreen.callFunc("setLoading", false)
+        m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
+        return
+    end if
+    m.liveChannelsLoading = true
+    m.liveChannelsScreen.callFunc("setLoading", true)
+    loadLiveChannels(category)
+end sub
+
+function filterItemsByCategory(items as Dynamic, categoryId as String) as Object
+    filtered = []
+    if items = invalid or Type(items) <> "roArray" then return filtered
+    for each item in items
+        if getItemCategoryId(item) = categoryId then filtered.Push(item)
+    end for
+    return filtered
+end function
+
+function getItemCategoryId(item as Dynamic) as String
+    if item = invalid or Type(item) <> "roAssociativeArray" then return ""
+    if item.category_id <> invalid then return item.category_id.ToStr()
+    if item.categoryId <> invalid then return item.categoryId.ToStr()
+    return ""
+end function
 
 sub onXtreamConnectionResult()
     result = m.xtreamService.result
@@ -1109,6 +1170,7 @@ sub handleLoginConnectionResult(result as Object)
         resetAccountLoadedData()
         loadLocalSearchIndexCache()
         showHome()
+        startSearchIndexRefresh()
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
@@ -1133,10 +1195,12 @@ sub resetAccountLoadedData()
     m.searchIndexUpdating = false
     m.liveCategories = []
     m.liveChannels = []
+    m.cachedLiveChannels = []
     m.liveCategoriesLoading = false
     m.liveChannelsLoading = false
     m.movieCategories = []
     m.movies = []
+    m.cachedMovies = []
     m.searchChannels = []
     m.searchMovies = []
     m.searchSeries = []
@@ -1233,8 +1297,19 @@ sub loadLocalSearchIndexCache()
     m.searchIndexCache = LoadSearchIndexCache()
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
+    m.cachedMovies = m.searchIndexCache.movies
+    m.cachedSeries = m.searchIndexCache.series
+    m.cachedLiveChannels = m.searchIndexCache.liveChannels
+    m.cachedSeriesInfo = m.searchIndexCache.seriesInfo
+    if m.searchIndexCache.liveCategories.Count() > 0 then m.liveCategories = m.searchIndexCache.liveCategories
+    if m.searchIndexCache.liveChannels.Count() > 0 then m.cachedLiveChannels = m.searchIndexCache.liveChannels
     if m.searchIndexCache.movieCategories.Count() > 0 then m.movieCategories = m.searchIndexCache.movieCategories
+    if m.searchIndexCache.movies.Count() > 0 then m.cachedMovies = m.searchIndexCache.movies
     if m.searchIndexCache.seriesCategories.Count() > 0 then m.seriesCategories = m.searchIndexCache.seriesCategories
+    if m.searchIndexCache.series.Count() > 0 then m.cachedSeries = m.searchIndexCache.series
+    if m.searchIndexCache.seriesInfo <> invalid then m.cachedSeriesInfo = m.searchIndexCache.seriesInfo
+    m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+    m.seriesSearchIndex = BuildSeriesSearchIndexItems(m.cachedSeries, "")
 end sub
 
 
@@ -1254,14 +1329,12 @@ sub startSearchIndexRefresh()
     if not hasAccount(m.account) then return
     if m.searchIndexUpdating = true then return
     m.searchIndexQueue = []
+    if m.liveCategories = invalid or m.liveCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveCategories", kind: "liveCategories", categoryId: "" })
+    if m.cachedLiveChannels = invalid or m.cachedLiveChannels.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveStreams", kind: "live", categoryId: "" })
     if m.movieCategories = invalid or m.movieCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovieCategories", kind: "movieCategories", categoryId: "" })
+    if m.cachedMovies = invalid or m.cachedMovies.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: "" })
     if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getSeriesCategories", kind: "seriesCategories", categoryId: "" })
-    for each category in normalizeMovieCategories(m.movieCategories)
-        m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: getCategoryId(category) })
-    end for
-    for each category in normalizeSeriesCategories(m.seriesCategories)
-        m.searchIndexQueue.Push({ action: "getSeries", kind: "series", categoryId: getCategoryId(category) })
-    end for
+    if m.cachedSeries = invalid or m.cachedSeries.Count() = 0 then m.searchIndexQueue.Push({ action: "getSeries", kind: "series", categoryId: "" })
     m.searchIndexUpdating = true
     m.searchIndexTimer.control = "stop"
     m.searchIndexTimer.control = "start"
@@ -1307,22 +1380,28 @@ function handleSearchIndexResult(result as Object) as Boolean
     kind = m.searchIndexKind
     m.searchIndexKind = ""
     if result.success = true then
-        if kind = "movieCategories" then
+        if kind = "liveCategories" then
+            m.liveCategories = normalizeLiveCategories(result.data)
+            m.searchIndexCache.liveCategories = m.liveCategories
+        else if kind = "live" then
+            m.cachedLiveChannels = normalizeLiveChannels(result.data)
+            m.searchIndexCache.liveChannels = m.cachedLiveChannels
+        else if kind = "movieCategories" then
             m.movieCategories = normalizeMovieCategories(result.data)
             m.searchIndexCache.movieCategories = m.movieCategories
-            for each category in m.movieCategories
-                m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: getCategoryId(category) })
-            end for
         else if kind = "seriesCategories" then
             m.seriesCategories = normalizeSeriesCategories(result.data)
             m.searchIndexCache.seriesCategories = m.seriesCategories
-            for each category in m.seriesCategories
-                m.searchIndexQueue.Push({ action: "getSeries", kind: "series", categoryId: getCategoryId(category) })
-            end for
         else if kind = "movies" then
-            replaceSearchIndexCategory("movies", m.searchIndexCategoryId, BuildMovieSearchIndexItems(result.data, m.searchIndexCategoryId))
+            m.cachedMovies = normalizeMovies(result.data)
+            m.searchIndexCache.movies = m.cachedMovies
+            m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+            m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
         else if kind = "series" then
-            replaceSearchIndexCategory("series", m.searchIndexCategoryId, BuildSeriesSearchIndexItems(result.data, m.searchIndexCategoryId))
+            m.cachedSeries = normalizeSeries(result.data)
+            m.searchIndexCache.series = m.cachedSeries
+            m.seriesSearchIndex = BuildSeriesSearchIndexItems(m.cachedSeries, "")
+            m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
         end if
         SaveSearchIndexCache(m.searchIndexCache)
     end if
@@ -1358,6 +1437,8 @@ end sub
 sub resetSeriesData()
     m.seriesCategories = []
     m.series = []
+    m.cachedSeries = []
+    m.cachedSeriesInfo = {}
     m.seriesCategoriesLoading = false
     m.seriesLoading = false
     m.selectedSeriesCategory = invalid
@@ -1431,9 +1512,8 @@ sub onSeriesHomeCategorySelected()
     m.selectedSeriesCategory = category
     m.selectedSeriesCategoryId = getCategoryId(category)
     m.series = []
-    m.seriesLoading = true
-    m.seriesHomeScreen.callFunc("setLoading", true)
-    loadSeries(category)
+    m.seriesLoading = false
+    showSeriesFromCacheOrLoad(category)
 end sub
 
 sub onSeriesSelected()
@@ -1491,7 +1571,7 @@ sub loadSeries(category as Object)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeries"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.categoryId = ""
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1509,6 +1589,12 @@ sub loadSeriesInfo(series as Object)
     if seriesId = "" then
         showSeriesInfoFailure("Não foi possível carregar temporadas: série sem identificador.")
         completeXtreamRequest()
+        return
+    end if
+    if m.cachedSeriesInfo <> invalid and m.cachedSeriesInfo.DoesExist(seriesId) then
+        stopDetailTimeout("series")
+        completeXtreamRequest()
+        if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setDetails", m.cachedSeriesInfo[seriesId])
         return
     end if
     m.xtreamService.control = "STOP"
@@ -1543,6 +1629,8 @@ sub onLiveCategoriesResult(result as Object)
 
     if result.success = true then
         m.liveCategories = normalizeLiveCategories(result.data)
+        m.searchIndexCache.liveCategories = m.liveCategories
+        SaveSearchIndexCache(m.searchIndexCache)
         if m.liveChannelsScreen.visible = true then
             m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
             m.liveChannelsScreen.callFunc("showMessage", "Escolha uma categoria para carregar os canais.")
@@ -1563,7 +1651,10 @@ sub onLiveChannelsResult(result as Object)
     if m.liveChannelsScreen.visible = true then m.liveChannelsScreen.callFunc("setLoading", false)
 
     if result.success = true then
-        m.liveChannels = normalizeLiveChannels(result.data)
+        m.cachedLiveChannels = normalizeLiveChannels(result.data)
+        m.searchIndexCache.liveChannels = m.cachedLiveChannels
+        SaveSearchIndexCache(m.searchIndexCache)
+        m.liveChannels = filterItemsByCategory(m.cachedLiveChannels, m.selectedLiveCategoryId)
         if m.liveChannelsScreen.visible = true then m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
     else if m.liveChannelsScreen.visible = true then
         m.liveChannelsScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
@@ -1601,7 +1692,12 @@ sub onMoviesResult(result as Object)
     if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setLoading", false)
 
     if result.success = true then
-        m.movies = normalizeMovies(result.data)
+        m.cachedMovies = normalizeMovies(result.data)
+        m.searchIndexCache.movies = m.cachedMovies
+        m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
+        m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
+        SaveSearchIndexCache(m.searchIndexCache)
+        m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
     else if m.movieListScreen.visible = true then
         m.movieListScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
@@ -1635,7 +1731,12 @@ sub onSeriesResult(result as Object)
     m.seriesLoading = false
     if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", false)
     if result.success = true then
-        m.series = normalizeSeries(result.data)
+        m.cachedSeries = normalizeSeries(result.data)
+        m.searchIndexCache.series = m.cachedSeries
+        m.seriesSearchIndex = BuildSeriesSearchIndexItems(m.cachedSeries, "")
+        m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
+        SaveSearchIndexCache(m.searchIndexCache)
+        m.series = filterItemsByCategory(m.cachedSeries, m.selectedSeriesCategoryId)
         if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setSeries", m.series)
     else if m.seriesHomeScreen.visible = true then
         m.seriesHomeScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
@@ -1645,6 +1746,13 @@ end sub
 sub onSeriesInfoResult(result as Object)
     stopDetailTimeout("series")
     if result.success = true then
+        if m.cachedSeriesInfo = invalid then m.cachedSeriesInfo = {}
+        seriesId = getSeriesInfoResultSeriesId(result)
+        if seriesId <> "" then
+            m.cachedSeriesInfo[seriesId] = result.data
+            m.searchIndexCache.seriesInfo = m.cachedSeriesInfo
+            SaveSearchIndexCache(m.searchIndexCache)
+        end if
         if m.seriesDetailScreen.visible = true then m.seriesDetailScreen.callFunc("setDetails", result.data)
     else
         showSeriesInfoFailure("Não foi possível carregar os detalhes desta série. Pressione Voltar.")
@@ -1710,6 +1818,14 @@ function isSeriesInfoResult(result as Dynamic) as Boolean
     request = result.request.ToStr()
     prefix = "getSeriesInfo"
     return Left(request, Len(prefix)) = prefix
+end function
+
+function getSeriesInfoResultSeriesId(result as Dynamic) as String
+    if result = invalid or result.request = invalid then return ""
+    request = result.request.ToStr()
+    prefix = "getSeriesInfo:"
+    if Left(request, Len(prefix)) = prefix then return Mid(request, Len(prefix) + 1)
+    return ""
 end function
 
 function getSeriesResultCategoryId(result as Dynamic) as String

@@ -16,14 +16,19 @@ sub SaveSearchIndexCache(cache as Object)
 end sub
 
 function createEmptySearchIndexCache() as Object
-    return { movieCategories: [], seriesCategories: [], movieSearchIndex: [], seriesSearchIndex: [], updatedAt: "" }
+    return { liveCategories: [], liveChannels: [], movieCategories: [], movies: [], seriesCategories: [], series: [], seriesInfo: {}, movieSearchIndex: [], seriesSearchIndex: [], updatedAt: "" }
 end function
 
 function normalizeSearchIndexCache(data as Dynamic) as Object
     normalized = createEmptySearchIndexCache()
     if data = invalid or Type(data) <> "roAssociativeArray" then return normalized
+    if data.liveCategories <> invalid and Type(data.liveCategories) = "roArray" then normalized.liveCategories = data.liveCategories
+    if data.liveChannels <> invalid and Type(data.liveChannels) = "roArray" then normalized.liveChannels = data.liveChannels
     if data.movieCategories <> invalid and Type(data.movieCategories) = "roArray" then normalized.movieCategories = data.movieCategories
+    if data.movies <> invalid and Type(data.movies) = "roArray" then normalized.movies = data.movies
     if data.seriesCategories <> invalid and Type(data.seriesCategories) = "roArray" then normalized.seriesCategories = data.seriesCategories
+    if data.series <> invalid and Type(data.series) = "roArray" then normalized.series = data.series
+    if data.seriesInfo <> invalid and Type(data.seriesInfo) = "roAssociativeArray" then normalized.seriesInfo = data.seriesInfo
     if data.movieSearchIndex <> invalid and Type(data.movieSearchIndex) = "roArray" then normalized.movieSearchIndex = data.movieSearchIndex
     if data.seriesSearchIndex <> invalid and Type(data.seriesSearchIndex) = "roArray" then normalized.seriesSearchIndex = data.seriesSearchIndex
     if data.updatedAt <> invalid then normalized.updatedAt = data.updatedAt.ToStr()
