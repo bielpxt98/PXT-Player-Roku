@@ -869,16 +869,17 @@ sub onMoviePlayerBack()
     if m.isReturningFromPlayer = true then return
     m.isReturningFromPlayer = true
 
-    position = 0
-    if m.moviePlayerScreen <> invalid then position = m.moviePlayerScreen.callFunc("getPlaybackPosition")
-    UpsertMovieHistory(m.selectedMovie, position)
+    ' Temporarily do not persist movie history while isolating the BACK crash.
+    ' position = 0
+    ' if m.moviePlayerScreen <> invalid then position = m.moviePlayerScreen.callFunc("getPlaybackPosition")
+    ' UpsertMovieHistory(m.selectedMovie, position)
 
     if m.moviePlayerScreen <> invalid then
         m.moviePlayerScreen.callFunc("hide")
         m.moviePlayerScreen.SetFocus(false)
     end if
 
-    returnToSafeMovieDestination()
+    showHome()
 
     m.movieListRestoreState = invalid
     m.openedFromFavorites = false
