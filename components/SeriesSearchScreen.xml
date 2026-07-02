@@ -5,6 +5,7 @@
         <function name="hide" />
         <function name="setSeries" />
         <function name="showMessage" />
+        <function name="setInitialSeries" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="seriesSelected" type="assocarray" alwaysNotify="true" />
     </interface>
@@ -18,5 +19,6 @@
         <Group id="resultsGroup" />
         <Group id="keyboardGroup" />
         <Label id="hintLabel" text="OK seleciona • Cima/Baixo navega linha a linha • Voltar fecha" color="#7D8CA3" horizAlign="center" />
+        <Timer id="filterDebounceTimer" duration="0.35" repeat="false" />
     </children>
 </component>

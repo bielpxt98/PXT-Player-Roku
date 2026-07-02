@@ -509,10 +509,10 @@ sub onSeriesSearchRequested()
     m.simpleSeriesScreen.callFunc("hide")
     m.searchBackTarget = "series"
     m.seriesSearchScreen.callFunc("show")
-    seriesSearchData = getSeriesForSearch()
-    m.seriesSearchScreen.callFunc("setSeries", seriesSearchData)
-    if seriesSearchData.Count() = 0 and hasAccount(m.account) then
-        m.seriesSearchScreen.callFunc("showMessage", "Carregando séries...")
+    m.seriesSearchScreen.callFunc("setInitialSeries", getInitialSeriesForSearch())
+    m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
+    if getSeriesForSearch().Count() = 0 and hasAccount(m.account) then
+        m.seriesSearchScreen.callFunc("showMessage", "Digite para pesquisar séries. Carregando cache em segundo plano...")
         loadSearchSeries()
     end if
 end sub
@@ -574,7 +574,14 @@ function limitMovieSearchItems(items as Dynamic) as Object
 end function
 
 function getSeriesForSearch() as Object
-    if m.allSeriesCache <> invalid then return m.allSeriesCache
+    if m.allSeriesCache <> invalid and m.allSeriesCache.Count() > 0 then return m.allSeriesCache
+    if m.cachedSeries <> invalid then return m.cachedSeries
+    return []
+end function
+
+function getInitialSeriesForSearch() as Object
+    if m.cachedSeries <> invalid and m.cachedSeries.Count() > 0 then return limitArrayForUiBatch(m.cachedSeries, 60)
+    if m.allSeriesCache <> invalid then return limitArrayForUiBatch(m.allSeriesCache, 60)
     return []
 end function
 
@@ -1859,7 +1866,20 @@ sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
     m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
     m.simpleSeriesScreen.callFunc("setPreviewCache", m.seriesCategoryPreviewCache)
-    m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
+    m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
+    if hasAccount(m.account) and (m.seriesCategories = invalid or m.seriesCategories.Count() = 0) and m.isLoadingRequest <> true then
+        m.simpleSeriesScreen.callFunc("setLoading", true)
+        if beginXtreamRequest("getSeriesCategories") then
+            m.xtreamService.control = "STOP"
+            m.xtreamService.action = "getSeriesCategories"
+            m.xtreamService.cacheEnabled = true
+            m.xtreamService.categoryId = ""
+            m.xtreamService.dns = m.account.dns
+            m.xtreamService.username = m.account.username
+            m.xtreamService.password = m.account.password
+            m.xtreamService.control = "RUN"
+        end if
+    end if
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
 end sub
@@ -1870,6 +1890,10 @@ sub onSeriesCategoriesResult(result as Object)
         m.seriesCategories = normalizeSeriesCategories(result.data)
         m.searchIndexCache.seriesCategories = m.seriesCategories
         SaveSearchIndexCache(m.searchIndexCache)
+        if m.simpleSeriesScreen.visible = true then
+            m.simpleSeriesScreen.callFunc("setLoading", false)
+            m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
+        end if
     end if
 end sub
 
@@ -1886,7 +1910,7 @@ sub onSeriesResult(result as Object)
         else
             m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, fresh, resultCategoryId)
         end if
-        if m.simpleSeriesScreen.visible = true then m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
+        if m.simpleSeriesScreen.visible = true then m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
         if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", m.allSeriesCache)
     end if
 end sub

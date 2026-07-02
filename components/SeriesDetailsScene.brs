@@ -313,9 +313,19 @@ end function
 function firstText(item as Dynamic, keys as Object) as String
     if item = invalid or Type(item) <> "roAssociativeArray" then return ""
     for each k in keys
-        if item.DoesExist(k) and item[k] <> invalid and item[k].ToStr().Trim() <> "" then return item[k].ToStr().Trim()
+        if item.DoesExist(k) and isScalarTextValue(item[k]) then
+            text = item[k].ToStr().Trim()
+            if text <> "" then return text
+        end if
     end for
     return ""
+end function
+
+function isScalarTextValue(value as Dynamic) as Boolean
+    if value = invalid then return false
+    valueType = Type(value)
+    if valueType = "roAssociativeArray" or valueType = "roArray" then return false
+    return true
 end function
 
 sub setupSeasons(item as Dynamic)
