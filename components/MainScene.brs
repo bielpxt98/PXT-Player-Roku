@@ -114,6 +114,8 @@ sub Init()
     m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
     m.movieSearchScreen.ObserveField("backRequested", "onMovieSearchBack")
     m.movieSearchScreen.ObserveField("movieSelected", "onMovieSearchMovieSelected")
+    m.seriesSearchScreen.ObserveField("backRequested", "onSeriesSearchBack")
+    m.seriesSearchScreen.ObserveField("seriesSelected", "onSeriesSearchSeriesSelected")
     m.recentScreen.ObserveField("backRequested", "onRecentBack")
     m.recentScreen.ObserveField("historySelected", "onHistorySelected")
     m.favoritesScreen.ObserveField("backRequested", "onFavoritesBack")
@@ -322,7 +324,7 @@ function closeActivePlayerScreen() as Boolean
 end function
 
 sub focusActiveScreen()
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.seriesSearchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
     for each screen in screens
         if screen <> invalid and screen.visible = true then
             screen.SetFocus(true)
@@ -360,7 +362,7 @@ end function
 sub hideAllScreensExcept(visibleScreen as Object)
     visibleId = ""
     if visibleScreen <> invalid then visibleId = visibleScreen.id
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.seriesSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
     for each screen in screens
         if screen <> invalid and screen.id <> visibleId then screen.callFunc("hide")
     end for
@@ -380,6 +382,7 @@ sub showHome()
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.movieSearchScreen.callFunc("hide")
+    m.seriesSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -398,6 +401,7 @@ sub showLogin()
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.movieSearchScreen.callFunc("hide")
+    m.seriesSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -474,7 +478,11 @@ sub onMovieSearchRequested()
 end sub
 
 sub onSeriesSearchRequested()
-    openSearch("series", "series")
+    m.simpleSeriesScreen.callFunc("hide")
+    m.searchBackTarget = "series"
+    m.seriesSearchScreen.callFunc("show")
+    seriesSearchData = getSeriesForSearch()
+    m.seriesSearchScreen.callFunc("setSeries", seriesSearchData)
 end sub
 
 sub onMovieSearchBack()
@@ -498,6 +506,21 @@ sub onMovieSearchMovieSelected()
     m.movieDetailScreen.callFunc("setDetails", movie)
 end sub
 
+sub onSeriesSearchBack()
+    m.seriesSearchScreen.callFunc("hide")
+    m.simpleSeriesScreen.callFunc("show")
+end sub
+
+sub onSeriesSearchSeriesSelected()
+    series = m.seriesSearchScreen.seriesSelected
+    if series = invalid then return
+    m.selectedSeries = series
+    m.openedFromSearch = true
+    m.seriesSearchScreen.callFunc("hide")
+    m.seriesDetailsScreen.callFunc("show", series)
+    m.seriesDetailsScreen.callFunc("setDetails", series)
+end sub
+
 function getMoviesForSearch() as Object
     if m.movies <> invalid and m.movies.Count() > 0 then return m.movies
     if m.selectedMovieCategoryId <> "" then
@@ -505,6 +528,11 @@ function getMoviesForSearch() as Object
         if cachedForCategory.Count() > 0 then return cachedForCategory
     end if
     if m.cachedMovies <> invalid then return m.cachedMovies
+    return []
+end function
+
+function getSeriesForSearch() as Object
+    if m.cachedSeries <> invalid then return m.cachedSeries
     return []
 end function
 
@@ -665,6 +693,7 @@ sub onOpenLiveCategoriesRequested()
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.movieSearchScreen.callFunc("hide")
+    m.seriesSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
     m.movieCategoriesScreen.callFunc("hide")
@@ -705,6 +734,7 @@ sub onOpenMovieCategoriesRequested()
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.movieSearchScreen.callFunc("hide")
+    m.seriesSearchScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
     m.liveChannelsScreen.callFunc("hide")
     m.livePlayerScreen.callFunc("hide")
@@ -985,6 +1015,7 @@ sub returnToSafeMovieDestination()
     ' cannot consume the same BACK event and navigate somewhere unexpected.
     m.movieDetailScreen.callFunc("hide")
     m.movieSearchScreen.callFunc("hide")
+    m.seriesSearchScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("hide")
