@@ -139,10 +139,8 @@ sub onEnterSelected()
         password: safeTrim(m.passwordInput.text)
     }
 
-    if account.dns = "" or account.username = "" or account.password = "" then
-        showError("Informe DNS, usuário e senha.")
-        return
-    end if
+    ' MainScene decides whether empty fields return to Home or filled
+    ' credentials should trigger a network request.
 
     ' LoginScreen only validates and submits data. MainScene owns navigation
     ' and all Xtream network work so focus never stays trapped on ENTRAR.
