@@ -959,11 +959,11 @@ sub onMovieDetailPlay()
         return
     end if
     resumePosition = GetHistoryPosition("movie", m.selectedMovie)
-    UpsertMovieHistory(m.selectedMovie, resumePosition, 0)
     hideAllScreensExcept(m.moviePlayerScreen)
     m.moviePlayerScreen.callFunc("show", m.selectedMovie)
     m.moviePlayerScreen.callFunc("setResumePosition", resumePosition)
     buildMovieStreamUrl(m.selectedMovie)
+    UpsertMovieHistory(m.selectedMovie, resumePosition, 0)
 end sub
 
 sub onMovieDetailFavoriteToggled()
@@ -1852,10 +1852,10 @@ sub onSeriesEpisodeSelected()
     episodeToPlay.title = title
     episodeToPlay.streamUrl = streamUrl
     resumePosition = GetHistoryPosition("episode", episodeToPlay)
-    UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, resumePosition, 0)
     m.seriesDetailsScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("setResumePosition", resumePosition)
     m.seriesPlayerScreen.callFunc("show", episodeToPlay)
+    UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, resumePosition, 0)
 end sub
 
 sub onSeriesPlayerBack()

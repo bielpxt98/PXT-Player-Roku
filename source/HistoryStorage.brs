@@ -1,118 +1,184 @@
-' Lightweight local viewing history storage for PXT Player.
-function LoadViewingHistory() as Object
-    section = CreateObject("roRegistrySection", "PXTPlayerHistory")
-    json = section.Read("items")
-    if json = invalid or Type(json) <> "String" or json.Trim() = "" then return createEmptyViewingHistory()
+' Safe local viewing history storage for PXT Player.
+' All history helpers are defensive: invalid input returns empty/default data and
+' history writes must never block movie or series playback.
 
-    data = ParseJson(json)
-    if data = invalid or Type(data) <> "roAssociativeArray" then return createEmptyViewingHistory()
-
-    return normalizeViewingHistory(data)
+function GetMovieHistory() as Object
+    return loadHistoryBucket("movies")
 end function
 
-sub SaveViewingHistory(history as Object)
-    section = CreateObject("roRegistrySection", "PXTPlayerHistory")
-    section.Write("items", FormatJson(normalizeViewingHistory(history)))
-    section.Flush()
+sub SaveMovieHistory(history as Object)
+    saveHistoryBucket("movies", history)
 end sub
 
-sub UpsertMovieHistory(movie as Dynamic, position as Integer, duration as Dynamic)
-    if movie = invalid then return
-    history = normalizeViewingHistory(LoadViewingHistory())
-    key = "movie:" + historyContentId(movie, "stream_id")
+sub UpsertMovieHistory(movie as Dynamic, position as Dynamic, duration as Dynamic)
+    if isHistoryObject(movie) = false then return
+
+    id = historyContentId(movie, "stream_id")
+    key = "movie:" + id
+    if key = "movie:" then return
+
     item = {
         type: "movie",
         key: key,
-        id: historyContentId(movie, "stream_id"),
+        id: id,
         url: historyUrl(movie),
-        title: historyTitle(movie, "Filme"),
+        title: historyTitle(movie, ""),
         poster: historyPoster(movie),
-        position: position,
+        position: historyInt(position),
         duration: historyInt(duration),
         updatedAt: historyNowIso(),
         content: minimalMovieContent(movie)
     }
-    upsertHistoryItem(history.movies, item, 5)
-    SaveViewingHistory(history)
+
+    SaveMovieHistory(upsertLimitedHistoryItem(GetMovieHistory(), item, 5))
 end sub
 
-sub UpsertSeriesHistory(series as Dynamic, season as Dynamic, episode as Dynamic, position as Integer, duration as Dynamic)
-    if episode = invalid then return
-    history = normalizeViewingHistory(LoadViewingHistory())
+function GetSeriesHistory() as Object
+    return loadHistoryBucket("series")
+end function
+
+sub SaveSeriesHistory(history as Object)
+    saveHistoryBucket("series", history)
+end sub
+
+sub UpsertSeriesHistory(series as Dynamic, season as Dynamic, episode as Dynamic, position as Dynamic, duration as Dynamic)
+    if isHistoryObject(episode) = false then return
+
+    id = historyContentId(episode, "id")
+    key = "episode:" + id
+    if key = "episode:" then return
+
     item = {
         type: "series",
-        key: "episode:" + historyContentId(episode, "id"),
-        id: historyContentId(episode, "id"),
+        key: key,
+        id: id,
         url: historyUrl(episode),
-        title: historyTitle(episode, "Episódio"),
+        title: historyTitle(episode, ""),
         poster: historyPoster(series),
-        seriesTitle: historyTitle(series, "Série"),
+        seriesTitle: historyTitle(series, ""),
         seasonNumber: historySeasonNumber(season),
         episodeNumber: historyEpisodeNumber(episode),
-        position: position,
+        position: historyInt(position),
         duration: historyInt(duration),
         updatedAt: historyNowIso(),
         series: minimalSeriesContent(series),
         season: minimalSeasonContent(season),
         content: minimalEpisodeContent(episode)
     }
-    upsertHistoryItem(history.series, item, 5)
-    SaveViewingHistory(history)
+
+    SaveSeriesHistory(upsertLimitedHistoryItem(GetSeriesHistory(), item, 5))
+end sub
+
+function LoadViewingHistory() as Object
+    return { movies: GetMovieHistory(), series: GetSeriesHistory() }
+end function
+
+sub SaveViewingHistory(history as Object)
+    if isHistoryObject(history) = false then return
+    SaveMovieHistory(history.movies)
+    SaveSeriesHistory(history.series)
 end sub
 
 function GetHistoryPosition(historyType as String, item as Dynamic) as Integer
-    keyPrefix = historyType + ":"
-    if historyType = "episode" then keyPrefix = "episode:"
-    key = keyPrefix + historyContentId(item, "stream_id")
-    if historyType = "episode" then key = keyPrefix + historyContentId(item, "id")
-    history = LoadViewingHistory()
-    for each bucket in [history.movies, history.series]
-        for each entry in bucket
-            if entry.key <> invalid and entry.key.ToStr() = key and entry.position <> invalid then return historyInt(entry.position)
-        end for
+    if isHistoryObject(item) = false then return 0
+    keyPrefix = "movie:"
+    keyId = historyContentId(item, "stream_id")
+    if historyType = "episode" then
+        keyPrefix = "episode:"
+        keyId = historyContentId(item, "id")
+    end if
+    key = keyPrefix + keyId
+    if keyId = "" then return 0
+
+    buckets = [GetMovieHistory(), GetSeriesHistory()]
+    for each bucket in buckets
+        if Type(bucket) = "roArray" then
+            for each entry in bucket
+                if isHistoryObject(entry) then
+                    if historyText(entry, "key") = key then return historyInt(entry.position)
+                end if
+            end for
+        end if
     end for
     return 0
 end function
 
-function createEmptyViewingHistory() as Object
-    return { movies: [], series: [] }
+function loadHistoryBucket(name as String) as Object
+    section = CreateObject("roRegistrySection", "PXTPlayerHistory")
+    json = section.Read(name)
+
+    ' Backward-compatible migration from the previous combined key.
+    if json <> invalid then
+        if Type(json) = "String" then
+            if json.Trim() <> "" then
+                data = ParseJson(json)
+                return limitHistory(data, 5)
+            end if
+        end if
+    end if
+
+    legacy = section.Read("items")
+    if legacy <> invalid then
+        if Type(legacy) = "String" then
+            if legacy.Trim() <> "" then
+                legacyData = ParseJson(legacy)
+                if isHistoryObject(legacyData) then
+                    if legacyData.DoesExist(name) then return limitHistory(legacyData[name], 5)
+                end if
+            end if
+        end if
+    end if
+    return []
 end function
 
-function normalizeViewingHistory(data as Dynamic) as Object
-    history = createEmptyViewingHistory()
-    if data = invalid or Type(data) <> "roAssociativeArray" then return history
-    if data.movies <> invalid and Type(data.movies) = "roArray" then history.movies = limitHistory(data.movies, 5)
-    if data.series <> invalid and Type(data.series) = "roArray" then history.series = limitHistory(data.series, 5)
-    return history
-end function
-
-sub upsertHistoryItem(bucket as Object, item as Object, maxItems as Integer)
-    if bucket = invalid or Type(bucket) <> "roArray" or item = invalid then return
-    if item.key = invalid or item.key.ToStr() = "" then return
-    for i = bucket.Count() - 1 to 0 step -1
-        if bucket[i] <> invalid and bucket[i].key <> invalid and bucket[i].key.ToStr() = item.key.ToStr() then bucket.Delete(i)
-    end for
-    bucket.Insert(0, item)
-    while bucket.Count() > maxItems
-        bucket.Delete(bucket.Count() - 1)
-    end while
+sub saveHistoryBucket(name as String, history as Object)
+    section = CreateObject("roRegistrySection", "PXTPlayerHistory")
+    section.Write(name, FormatJson(limitHistory(history, 5)))
+    section.Flush()
 end sub
 
-function limitHistory(items as Object, maxItems as Integer) as Object
+function upsertLimitedHistoryItem(history as Dynamic, item as Dynamic, maxItems as Integer) as Object
+    result = []
+    if isHistoryObject(item) = false then return limitHistory(history, maxItems)
+    itemKey = historyText(item, "key")
+    if itemKey = "" then return limitHistory(history, maxItems)
+
+    result.Push(item)
+    copied = 1
+    if Type(history) = "roArray" then
+        for each existing in history
+            if copied >= maxItems then exit for
+            if isHistoryObject(existing) then
+                if historyText(existing, "key") <> itemKey then
+                    result.Push(existing)
+                    copied = copied + 1
+                end if
+            end if
+        end for
+    end if
+    return result
+end function
+
+function limitHistory(items as Dynamic, maxItems as Integer) as Object
     limited = []
+    copied = 0
+    if Type(items) <> "roArray" then return limited
     for each item in items
-        if limited.Count() >= maxItems then exit for
-        limited.Push(item)
+        if copied >= maxItems then exit for
+        if item <> invalid then
+            limited.Push(item)
+            copied = copied + 1
+        end if
     end for
     return limited
 end function
 
 function minimalMovieContent(movie as Dynamic) as Object
-    return { stream_id: historyContentId(movie, "stream_id"), name: historyTitle(movie, "Filme"), title: historyTitle(movie, "Filme"), stream_icon: historyPoster(movie), cover: historyPoster(movie), url: historyUrl(movie), streamUrl: historyUrl(movie), category_id: historyCategoryId(movie) }
+    return { stream_id: historyContentId(movie, "stream_id"), name: historyTitle(movie, ""), title: historyTitle(movie, ""), stream_icon: historyPoster(movie), cover: historyPoster(movie), url: historyUrl(movie), streamUrl: historyUrl(movie), category_id: historyCategoryId(movie) }
 end function
 
 function minimalSeriesContent(series as Dynamic) as Object
-    return { series_id: historyContentId(series, "series_id"), name: historyTitle(series, "Série"), title: historyTitle(series, "Série"), series_image: historyPoster(series), cover: historyPoster(series), category_id: historyCategoryId(series) }
+    return { series_id: historyContentId(series, "series_id"), name: historyTitle(series, ""), title: historyTitle(series, ""), series_image: historyPoster(series), cover: historyPoster(series), category_id: historyCategoryId(series) }
 end function
 
 function minimalSeasonContent(season as Dynamic) as Object
@@ -120,69 +186,85 @@ function minimalSeasonContent(season as Dynamic) as Object
 end function
 
 function minimalEpisodeContent(episode as Dynamic) as Object
-    return { id: historyContentId(episode, "id"), episode_id: historyContentId(episode, "id"), title: historyTitle(episode, "Episódio"), name: historyTitle(episode, "Episódio"), streamUrl: historyUrl(episode), url: historyUrl(episode), episode_num: historyEpisodeNumber(episode) }
+    return { id: historyContentId(episode, "id"), episode_id: historyContentId(episode, "id"), title: historyTitle(episode, ""), name: historyTitle(episode, ""), streamUrl: historyUrl(episode), url: historyUrl(episode), episode_num: historyEpisodeNumber(episode) }
+end function
+
+function isHistoryObject(item as Dynamic) as Boolean
+    if item = invalid then return false
+    return Type(item) = "roAssociativeArray"
+end function
+
+function historyText(item as Dynamic, field as String) as String
+    if isHistoryObject(item) = false then return ""
+    if item.DoesExist(field) = false then return ""
+    if item[field] = invalid then return ""
+    return item[field].ToStr()
 end function
 
 function historyContentId(item as Dynamic, primaryField as String) as String
-    if item = invalid then return ""
-    if primaryField = "stream_id" and item.stream_id <> invalid then return item.stream_id.ToStr()
-    if primaryField = "series_id" and item.series_id <> invalid then return item.series_id.ToStr()
-    if primaryField = "id" and item.id <> invalid then return item.id.ToStr()
-    if item.episode_id <> invalid then return item.episode_id.ToStr()
-    if item.stream_id <> invalid then return item.stream_id.ToStr()
-    if item.id <> invalid then return item.id.ToStr()
-    if item.series_id <> invalid then return item.series_id.ToStr()
+    if isHistoryObject(item) = false then return ""
+    if primaryField <> "" then
+        if item.DoesExist(primaryField) then
+            if item[primaryField] <> invalid then return item[primaryField].ToStr()
+        end if
+    end if
+    for each field in ["episode_id", "stream_id", "id", "series_id"]
+        if item.DoesExist(field) then
+            if item[field] <> invalid then return item[field].ToStr()
+        end if
+    end for
     url = historyUrl(item)
     if url <> "" then return url
     return historyTitle(item, "")
 end function
 
 function historyTitle(item as Dynamic, fallback as String) as String
-    if item = invalid then return fallback
-    if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
-    if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
+    title = historyText(item, "name").Trim()
+    if title <> "" then return title
+    title = historyText(item, "title").Trim()
+    if title <> "" then return title
     return fallback
 end function
 
 function historyUrl(item as Dynamic) as String
-    if item = invalid then return ""
-    if item.streamUrl <> invalid and item.streamUrl.ToStr().Trim() <> "" then return item.streamUrl.ToStr()
-    if item.url <> invalid and item.url.ToStr().Trim() <> "" then return item.url.ToStr()
-    if item.direct_source <> invalid and item.direct_source.ToStr().Trim() <> "" then return item.direct_source.ToStr()
+    for each field in ["streamUrl", "url", "direct_source"]
+        value = historyText(item, field).Trim()
+        if value <> "" then return value
+    end for
     return ""
 end function
 
 function historyPoster(item as Dynamic) as String
-    if item = invalid then return ""
     for each field in ["stream_icon", "cover", "movie_image", "series_image", "poster", "cover_big"]
-        if item.DoesExist(field) and item[field] <> invalid and item[field].ToStr().Trim() <> "" then return item[field].ToStr()
+        value = historyText(item, field).Trim()
+        if value <> "" then return value
     end for
     return ""
 end function
 
 function historyCategoryId(item as Dynamic) as String
-    if item = invalid then return ""
-    if item.category_id <> invalid then return item.category_id.ToStr()
-    return ""
+    return historyText(item, "category_id")
 end function
 
 function historySeasonNumber(season as Dynamic) as String
-    if season = invalid then return ""
-    if season.season_number <> invalid then return season.season_number.ToStr()
-    if season.number <> invalid then return season.number.ToStr()
-    return ""
+    value = historyText(season, "season_number")
+    if value <> "" then return value
+    return historyText(season, "number")
 end function
 
 function historyEpisodeNumber(episode as Dynamic) as String
-    if episode = invalid then return ""
-    if episode.episode_num <> invalid then return episode.episode_num.ToStr()
-    if episode.episode_number <> invalid then return episode.episode_number.ToStr()
-    return ""
+    value = historyText(episode, "episode_num")
+    if value <> "" then return value
+    return historyText(episode, "episode_number")
 end function
 
 function historyInt(value as Dynamic) as Integer
     if value = invalid then return 0
-    return Int(value)
+    text = value.ToStr()
+    if text = "" then return 0
+    number = Int(Val(text))
+    if number < 0 then return 0
+    return number
 end function
 
 function historyNowIso() as String
