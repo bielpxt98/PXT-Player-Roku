@@ -26,6 +26,7 @@
         <MoviePlayerScreen id="moviePlayerScreen" visible="false" />
         <SimpleSeriesScreen id="simpleSeriesScreen" visible="false" />
         <SeriesDetailsScene id="seriesDetailsScreen" visible="false" />
+        <SeriesPlayerScreen id="seriesPlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />

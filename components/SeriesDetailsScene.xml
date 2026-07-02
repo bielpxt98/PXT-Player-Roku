@@ -3,10 +3,12 @@
     <interface>
         <function name="show" />
         <function name="hide" />
+        <function name="focusEpisodes" />
         <function name="setLoading" />
         <function name="showMessage" />
         <function name="setDetails" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="episodeSelected" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesDetailsScene.brs" />
     <children>
