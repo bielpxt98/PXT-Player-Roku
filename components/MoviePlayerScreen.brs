@@ -10,10 +10,9 @@ sub Init()
     m.errorMessage = m.top.FindNode("errorMessage")
     m.controlsGroup = m.top.FindNode("controlsGroup")
     m.controlsBackground = m.top.FindNode("controlsBackground")
-    m.rewindIcon = m.top.FindNode("rewindIcon")
     m.playPauseIcon = m.top.FindNode("playPauseIcon")
-    m.forwardIcon = m.top.FindNode("forwardIcon")
     m.seekHoldTimer = m.top.FindNode("seekHoldTimer")
+    m.controlsAutoHideTimer = m.top.FindNode("controlsAutoHideTimer")
 
     m.movie = invalid
     m.movieName = "Filme"
@@ -23,7 +22,7 @@ sub Init()
     m.resumePosition = 0
     m.lastPosition = 0
     m.seekStep = 10
-    m.longSeekStep = 10
+    m.longSeekStep = 20
     m.holdThresholdMs = 450
     m.heldSeekKey = ""
     m.seekHoldHandled = false
@@ -35,6 +34,7 @@ sub Init()
     m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
     m.seekHoldTimer.ObserveField("fire", "onSeekHoldTimerFire")
+    m.controlsAutoHideTimer.ObserveField("fire", "onControlsAutoHideTimerFire")
     hide()
 end sub
 
@@ -59,25 +59,16 @@ sub configureLayout()
     m.errorMessage.font = "font:MediumSystemFont"
     m.errorMessage.translation = [0, 78]
 
-    controlsWidth = 420
+    controlsWidth = 140
     controlsHeight = 140
     iconSize = 92
-    iconGap = 24
     m.controlsGroup.translation = [Int((width - controlsWidth) / 2), Int((height - controlsHeight) / 2)]
     m.controlsBackground.width = controlsWidth
     m.controlsBackground.height = controlsHeight
-    m.rewindIcon.translation = [24, 24]
-    m.rewindIcon.width = iconSize
-    m.rewindIcon.height = iconSize
-    m.rewindIcon.font = "font:LargeBoldSystemFont"
-    m.playPauseIcon.translation = [24 + iconSize + iconGap, 24]
+    m.playPauseIcon.translation = [24, 24]
     m.playPauseIcon.width = iconSize
     m.playPauseIcon.height = iconSize
     m.playPauseIcon.font = "font:LargeBoldSystemFont"
-    m.forwardIcon.translation = [24 + ((iconSize + iconGap) * 2), 24]
-    m.forwardIcon.width = iconSize
-    m.forwardIcon.height = iconSize
-    m.forwardIcon.font = "font:LargeBoldSystemFont"
 end sub
 
 sub show(movie as Dynamic)
@@ -122,6 +113,7 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     m.isPlaying = true
     m.top.SetFocus(true)
     showLoading("Carregando " + m.movieName + "...")
+    showControls()
 end sub
 
 
@@ -187,6 +179,7 @@ sub stopPlayback()
     if m.loadingSpinner <> invalid then m.loadingSpinner.control = "stop"
     if m.loadingGroup <> invalid then m.loadingGroup.visible = false
     stopSeekHold()
+    stopControlsAutoHideTimer()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
 end sub
 
@@ -215,6 +208,7 @@ sub onVideoStateChanged()
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
+        showControls()
     else if state = "paused" then
         m.isPlaying = false
         showControls()
@@ -339,17 +333,40 @@ end sub
 sub seekTo(position as Integer)
     if m.video = invalid then return
     if position < 0 then position = 0
+    duration = getPlaybackDuration()
+    if duration > 0 and position > duration then position = duration
     m.video.seek = position
     showControls()
 end sub
 
+function getPlaybackDuration() as Integer
+    if m.video <> invalid and m.video.duration <> invalid then return Int(m.video.duration)
+    return 0
+end function
+
 sub showControls()
     updateControls()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = true
+    startControlsAutoHideTimer()
 end sub
 
 sub hideControls()
+    stopControlsAutoHideTimer()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
+end sub
+
+sub startControlsAutoHideTimer()
+    if m.controlsAutoHideTimer = invalid then return
+    m.controlsAutoHideTimer.control = "stop"
+    m.controlsAutoHideTimer.control = "start"
+end sub
+
+sub stopControlsAutoHideTimer()
+    if m.controlsAutoHideTimer <> invalid then m.controlsAutoHideTimer.control = "stop"
+end sub
+
+sub onControlsAutoHideTimerFire()
+    if m.isPlaying = true then hideControls()
 end sub
 
 sub updateControls()
