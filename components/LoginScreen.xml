@@ -33,5 +33,13 @@
             <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 548]" visible="false" />
             <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 488]" visible="false" />
         </Group>
+
+        <Group id="customKeyboard" visible="false">
+            <Rectangle id="keyboardOverlay" color="#000000" opacity="0.92" width="900" height="520" />
+            <Label id="keyboardTitle" text="Editar" color="#FFFFFF" horizAlign="center" width="900" translation="[0, 24]" font="font:MediumBoldSystemFont" />
+            <Rectangle id="keyboardTextBackground" color="#101A2A" width="820" height="58" translation="[40, 76]" />
+            <Label id="keyboardText" text="" color="#FFFFFF" width="790" height="48" translation="[55, 82]" horizAlign="left" vertAlign="center" font="font:MediumSystemFont" />
+            <Group id="keyboardGrid" translation="[20, 158]" />
+        </Group>
     </children>
 </component>
