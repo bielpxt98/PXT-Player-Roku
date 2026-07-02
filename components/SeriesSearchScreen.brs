@@ -133,7 +133,7 @@ end function
 
 sub moveFocus(key as String)
     if m.focusArea = "posters" then
-        if key = "down" then m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = m.posterIndex : return
+        if key = "down" then m.focusArea = "keyboard" : return
         if key = "left" and m.posterIndex > 0 then m.posterIndex = m.posterIndex - 1
         if key = "right" and m.posterIndex < m.results.Count() - 1 then m.posterIndex = m.posterIndex + 1
         return
@@ -141,17 +141,53 @@ sub moveFocus(key as String)
     if key = "up" and m.keyRow = 0 and m.results.Count() > 0 then m.focusArea = "posters" : m.posterIndex = nearestPosterIndexForKeyCol(m.keyCol) : return
     if key = "left" and m.keyCol > 0 then m.keyCol = m.keyCol - 1
     if key = "right" and m.keyCol < m.rows[m.keyRow].Count() - 1 then m.keyCol = m.keyCol + 1
-    if key = "up" and m.keyRow > 0 then m.keyRow = m.keyRow - 1
-    if key = "down" and m.keyRow < m.rows.Count() - 1 then m.keyRow = m.keyRow + 1
-    if m.keyCol >= m.rows[m.keyRow].Count() then m.keyCol = m.rows[m.keyRow].Count() - 1
+    if key = "up" and m.keyRow > 0 then moveKeyboardVertical(-1)
+    if key = "down" and m.keyRow < m.rows.Count() - 1 then moveKeyboardVertical(1)
 end sub
+
+sub moveKeyboardVertical(direction as Integer)
+    targetX = keyCenterX(m.keyRow, m.keyCol)
+    m.keyRow = m.keyRow + direction
+    m.keyCol = nearestKeyColForX(m.keyRow, targetX)
+end sub
+
+function keyCenterX(row as Integer, col as Integer) as Integer
+    keyW = m.keyW
+    if row = 2 then keyW = Int((m.contentW - (9 * m.keyGap)) / 10)
+    if row = 3 then keyW = Int((m.contentW - (3 * m.keyGap)) / 4)
+    return Int((col * (keyW + m.keyGap)) + (keyW / 2))
+end function
+
+function nearestKeyColForX(row as Integer, targetX as Integer) as Integer
+    bestCol = 0
+    bestDistance = Abs(keyCenterX(row, 0) - targetX)
+    for c = 1 to m.rows[row].Count() - 1
+        distance = Abs(keyCenterX(row, c) - targetX)
+        if distance < bestDistance then
+            bestDistance = distance
+            bestCol = c
+        end if
+    end for
+    return bestCol
+end function
 
 function nearestPosterIndexForKeyCol(col as Integer) as Integer
     if m.results.Count() <= 0 then return 0
-    idx = col
-    if idx >= m.results.Count() then idx = m.results.Count() - 1
-    if idx < 0 then idx = 0
-    return idx
+    targetX = keyCenterX(0, col)
+    bestIndex = 0
+    bestDistance = Abs(posterCenterX(0) - targetX)
+    for i = 1 to m.results.Count() - 1
+        distance = Abs(posterCenterX(i) - targetX)
+        if distance < bestDistance then
+            bestDistance = distance
+            bestIndex = i
+        end if
+    end for
+    return bestIndex
+end function
+
+function posterCenterX(index as Integer) as Integer
+    return Int((index * (m.posterW + m.posterGap)) + (m.posterW / 2))
 end function
 
 sub activate()
