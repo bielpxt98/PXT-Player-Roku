@@ -17,6 +17,7 @@ sub Init()
     m.fixedItems = ["PESQUISAR", "FAVORITOS"]
     m.previewCache = []
     m.currentCategoryId = ""
+    m.isLoading = false
 
     m.background = m.top.FindNode("background")
     m.overlay = m.top.FindNode("overlay")
@@ -198,6 +199,7 @@ sub hide()
 end sub
 
 sub setSeries(series as Object)
+    m.isLoading = false
     if series = invalid or Type(series) <> "roArray" then
         m.allSeriesItems = []
     else
@@ -215,6 +217,15 @@ sub setSeries(series as Object)
     renderSeriesGrid()
     ensureNavigationLayoutDefaults()
     updateNavigationState()
+end sub
+
+sub setLoading(isLoading as Boolean)
+    m.isLoading = isLoading
+    if isLoading = true then
+        m.emptyMessageLabel.text = "Carregando séries..."
+        m.statusLabel.text = ""
+    end if
+    renderSeriesGrid()
 end sub
 
 
@@ -329,6 +340,7 @@ sub handleCategoryOk()
         end if
 
         m.currentCategoryId = ""
+        m.isLoading = false
         m.seriesItems = []
         m.selectedSeriesIndex = 0
         m.firstVisibleSeriesIndex = 0
@@ -426,6 +438,11 @@ sub renderSeriesGrid()
     clearSeriesNodes()
     if m.seriesItems.Count() = 0 then
         m.emptyMessageLabel.visible = true
+        if m.isLoading = true then
+            m.emptyMessageLabel.text = "Carregando séries..."
+        else
+            m.emptyMessageLabel.text = "Nenhuma série encontrada."
+        end if
         return
     end if
     m.emptyMessageLabel.visible = false
@@ -460,7 +477,7 @@ function createSeriesItem(series as Object, visualIndex as Integer, itemIndex as
     poster.translation = [8, 8]
     poster.width = m.posterWidth
     poster.height = m.posterHeight
-    poster.uri = getSeriesPoster(series)
+    poster.uri = resizeTmdbSeriesPoster(getSeriesPoster(series))
 
     title = CreateObject("roSGNode", "Label")
     title.id = "seriesName"
@@ -659,4 +676,14 @@ function normalizeRecentSeriesItems(items as Dynamic) as Object
         end if
     end for
     return recent
+end function
+
+
+function resizeTmdbSeriesPoster(uri as Dynamic) as String
+    if uri = invalid then return ""
+    text = uri.ToStr().Trim()
+    if text = "" then return ""
+    text = text.Replace("/w780/", "/w342/")
+    text = text.Replace("/original/", "/w342/")
+    return text
 end function

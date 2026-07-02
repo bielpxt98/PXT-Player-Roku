@@ -10,6 +10,7 @@
         <function name="setSeries" />
         <function name="setCategories" />
         <function name="setPreviewCache" />
+        <function name="setLoading" />
     </interface>
 
     <script type="text/brightscript" uri="pkg:/components/SimpleSeriesScreen.brs" />

@@ -8,7 +8,10 @@ sub Init()
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.keyboardGroup = m.top.FindNode("keyboardGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
-    m.allSeries = [] : m.results = [] : m.query = ""
+    m.filterDebounceTimer = m.top.FindNode("filterDebounceTimer")
+    if m.filterDebounceTimer <> invalid then m.filterDebounceTimer.ObserveField("fire", "onFilterDebounce")
+    m.allSeries = [] : m.initialSeries = [] : m.results = [] : m.query = ""
+    m.initialLimit = 60 : m.resultLimit = 5
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
@@ -44,7 +47,7 @@ sub show()
     m.query = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
     renderKeyboard()
-    applyFilter()
+    showInitialResults()
 end sub
 
 sub hide()
@@ -53,7 +56,12 @@ end sub
 
 sub setSeries(items as Object)
     m.allSeries = normalizeArray(items)
-    applyFilter()
+    if m.query = "" then showInitialResults() else scheduleFilter()
+end sub
+
+sub setInitialSeries(items as Object)
+    m.initialSeries = limitArray(normalizeArray(items), m.initialLimit)
+    if m.query = "" then showInitialResults()
 end sub
 
 sub showMessage(message as String)
@@ -61,7 +69,43 @@ sub showMessage(message as String)
     m.messageLabel.text = message
 end sub
 
+sub showInitialResults()
+    m.results = []
+    m.posterIndex = 0
+    source = m.initialSeries
+    if source = invalid or source.Count() = 0 then source = limitArray(m.allSeries, m.initialLimit)
+    for each series in source
+        if m.results.Count() >= m.resultLimit then exit for
+        m.results.Push(series)
+    end for
+    if m.results.Count() = 0 then
+        showMessage("Digite para pesquisar séries.")
+    else
+        m.messageLabel.text = ""
+        renderPosters()
+    end if
+    updateFocus()
+end sub
+
+sub scheduleFilter()
+    if m.filterDebounceTimer = invalid then
+        applyFilter()
+        return
+    end if
+    m.filterDebounceTimer.control = "stop"
+    m.filterDebounceTimer.duration = 0.35
+    m.filterDebounceTimer.control = "start"
+end sub
+
+sub onFilterDebounce()
+    applyFilter()
+end sub
+
 sub applyFilter()
+    if m.query = "" then
+        showInitialResults()
+        return
+    end if
     m.results = []
     m.posterIndex = 0
     if m.allSeries.Count() = 0 then
@@ -95,7 +139,7 @@ end sub
 
 sub appendLimitedResults(items as Object)
     for each item in items
-        if m.results.Count() >= 5 then exit for
+        if m.results.Count() >= m.resultLimit then exit for
         m.results.Push(item)
     end for
 end sub
@@ -106,7 +150,7 @@ sub renderPosters()
         series = m.results[i]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
-        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getSeriesImage(series)
+        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = resizeTmdbPoster(getSeriesImage(series))
         label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getSeriesName(series)
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
         m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, label: label })
@@ -224,7 +268,7 @@ sub activate()
         m.query = m.query + key
     end if
     m.queryLabel.text = "Buscar: " + m.query
-    applyFilter()
+    scheduleFilter()
 end sub
 
 sub updateFocus()
@@ -272,4 +316,24 @@ function getSeriesImage(series as Dynamic) as String
     if series.cover <> invalid and series.cover.ToStr().Trim() <> "" then return series.cover.ToStr()
     if series.poster <> invalid and series.poster.ToStr().Trim() <> "" then return series.poster.ToStr()
     return ""
+end function
+
+
+function limitArray(items as Dynamic, maxItems as Integer) as Object
+    limited = []
+    if items = invalid or Type(items) <> "roArray" then return limited
+    for each item in items
+        if limited.Count() >= maxItems then exit for
+        limited.Push(item)
+    end for
+    return limited
+end function
+
+function resizeTmdbPoster(uri as Dynamic) as String
+    if uri = invalid then return ""
+    text = uri.ToStr().Trim()
+    if text = "" then return ""
+    text = text.Replace("/w780/", "/w342/")
+    text = text.Replace("/original/", "/w342/")
+    return text
 end function
