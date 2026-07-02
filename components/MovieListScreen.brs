@@ -385,6 +385,23 @@ sub restoreState(state as Dynamic)
     updateFocus()
 end sub
 
+function getSelectedIndex() as Integer
+    return m.selectedMovieIndex
+end function
+
+function getFirstVisibleIndex() as Integer
+    return m.firstVisibleMovieIndex
+end function
+
+sub restoreMovieSelection(selectedIndex as Integer, firstVisibleIndex as Integer)
+    m.selectedMovieIndex = selectedIndex
+    m.firstVisibleMovieIndex = firstVisibleIndex
+    m.activePane = "grid"
+    updateGridWindow()
+    renderGrid()
+    updateFocus()
+end sub
+
 sub syncSelectedCategory(category as Dynamic)
     id = getCategoryId(category)
     for i = 0 to m.categories.Count() - 1
