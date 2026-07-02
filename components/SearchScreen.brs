@@ -18,7 +18,7 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
 
     m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = ""
-    m.resultBatchSize = 5 : m.renderedResultLimit = 5
+    m.resultBatchSize = 80 : m.renderedResultLimit = 80 : m.maxSearchResults = 100
     m.searchMode = "live"
     m.searchLetters = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"] ]
     m.searchNumbers = ["0","1","2","3","4","5","6","7","8","9"]
@@ -253,6 +253,7 @@ end function
 
 sub appendSearchEntries(entries as Object)
     for each entry in entries
+        if m.results.Count() >= m.maxSearchResults then exit for
         m.results.Push({ type: entry.type, title: entry.title, meta: entry.meta, item: entry.item })
     end for
 end sub
