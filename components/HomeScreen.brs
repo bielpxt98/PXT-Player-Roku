@@ -5,13 +5,11 @@ sub Init()
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
-    m.favoritesButton = m.top.FindNode("favoritesButton")
-    m.recentButton = m.top.FindNode("recentButton")
     m.accountIconLabel = m.top.FindNode("accountIconLabel")
     m.accountFooterLabel = m.top.FindNode("accountFooterLabel")
     m.connectionStatusLabel = m.top.FindNode("connectionStatusLabel")
 
-    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton, m.favoritesButton, m.recentButton]
+    m.buttons = [m.liveTvButton, m.moviesButton, m.seriesButton]
     m.focusIndex = 0
     m.focusArea = "cards"
     configureLayout()
@@ -30,21 +28,12 @@ sub configureLayout()
     buttonWidth = 294
     buttonGap = 34
     columns = 3
-    secondRowCount = 2
     totalFirstRowWidth = (buttonWidth * columns) + (buttonGap * (columns - 1))
     startX = Int((width - totalFirstRowWidth) / 2)
     firstRowY = Int(height * 0.28)
-    secondRowY = firstRowY + 238
 
     for i = 0 to m.buttons.Count() - 1
-        if i < columns then
-            m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), firstRowY]
-        else
-            secondRowWidth = (buttonWidth * secondRowCount) + (buttonGap * (secondRowCount - 1))
-            secondRowX = Int((width - secondRowWidth) / 2)
-            rowIndex = i - columns
-            m.buttons[i].translation = [secondRowX + (rowIndex * (buttonWidth + buttonGap)), secondRowY]
-        end if
+        m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), firstRowY]
     end for
 
     footerY = Int(height * 0.82)
@@ -95,15 +84,6 @@ end sub
 sub onSeriesSelected()
     m.top.openSeriesCategories = true
 end sub
-
-sub onFavoritesSelected()
-    m.top.openFavorites = true
-end sub
-
-sub onRecentSelected()
-    m.top.openRecent = true
-end sub
-
 
 sub onPlaylistSelected()
     m.top.openPlaylist = true
@@ -198,10 +178,6 @@ sub selectFocusedButton()
         onMoviesSelected()
     else if m.focusIndex = 2 then
         onSeriesSelected()
-    else if m.focusIndex = 3 then
-        onFavoritesSelected()
-    else if m.focusIndex = 4 then
-        onRecentSelected()
     end if
 end sub
 

@@ -22,7 +22,6 @@ sub Init()
     m.resumePosition = 0
     m.lastPosition = 0
     m.seekStep = 10
-    m.longSeekStep = 20
     m.seekDirection = ""
     m.isHoldingSeek = false
     m.pendingStreamUrl = ""
@@ -31,7 +30,7 @@ sub Init()
     configureLayout()
     m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
-    m.seekHoldTimer.ObserveField("fire", "onSeekHoldTimerFire")
+    m.seekHoldTimer.ObserveField("fire", "onSeekHoldTick")
     m.controlsAutoHideTimer.ObserveField("fire", "onControlsAutoHideTimerFire")
     hide()
 end sub
@@ -297,13 +296,13 @@ sub stopSeekHold()
     m.seekDirection = ""
 end sub
 
-sub onSeekHoldTimerFire()
+sub onSeekHoldTick()
     if m.isHoldingSeek = false then return
 
     if m.seekDirection = "right" then
-        seekBy(m.longSeekStep)
+        seekBy(20)
     else if m.seekDirection = "left" then
-        seekBy(-m.longSeekStep)
+        seekBy(-20)
     end if
 end sub
 
