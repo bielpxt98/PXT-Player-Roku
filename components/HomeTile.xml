@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HomeTile" extends="Group">
+    <interface>
+        <field id="title" type="string" onChange="onTitleChanged" />
+        <field id="iconUri" type="uri" onChange="onIconUriChanged" />
+        <field id="baseColor" type="string" onChange="onBaseColorChanged" />
+        <field id="focused" type="boolean" value="false" onChange="onFocusedChanged" />
+        <field id="selected" type="boolean" value="false" onChange="onSelectedChanged" />
+    </interface>
+
+    <script type="text/brightscript" uri="pkg:/components/HomeTile.brs" />
+
+    <children>
+        <Rectangle id="outerGlow" width="272" height="196" color="#FFFFFF" opacity="0" translation="[-10, -10]" />
+        <Group id="tileGroup" scaleRotateCenter="[126, 88]">
+            <Rectangle id="tileShadow" width="252" height="176" color="#000000" opacity="0.48" translation="[8, 10]" />
+            <Rectangle id="tileBorder" width="252" height="176" color="#FFFFFF" opacity="0.16" />
+            <Rectangle id="tileBackground" width="244" height="168" color="#07101F" opacity="0.88" translation="[4, 4]" />
+            <Rectangle id="tileColorWash" width="244" height="168" color="#8B0000" opacity="0.20" translation="[4, 4]" />
+            <Poster id="tileIcon" width="70" height="70" translation="[91, 34]" loadDisplayMode="scaleToFit" />
+            <Label id="tileTitle" width="224" height="38" translation="[14, 120]" horizAlign="center" vertAlign="center" color="#FFFFFF" />
+        </Group>
+
+        <Animation id="focusInAnimation" duration="0.18" easeFunction="outQuad">
+            <Vector2DFieldInterpolator key="[0.0, 1.0]" keyValue="[[1.0, 1.0], [1.07, 1.07]]" fieldToInterp="tileGroup.scale" />
+            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.0, 0.42]" fieldToInterp="outerGlow.opacity" />
+        </Animation>
+
+        <Animation id="focusOutAnimation" duration="0.14" easeFunction="outQuad">
+            <Vector2DFieldInterpolator key="[0.0, 1.0]" keyValue="[[1.07, 1.07], [1.0, 1.0]]" fieldToInterp="tileGroup.scale" />
+            <FloatFieldInterpolator key="[0.0, 1.0]" keyValue="[0.42, 0.0]" fieldToInterp="outerGlow.opacity" />
+        </Animation>
+    </children>
+</component>

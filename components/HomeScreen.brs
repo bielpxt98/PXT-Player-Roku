@@ -2,7 +2,6 @@
 sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.overlay = m.top.FindNode("homeOverlay")
-    m.title = m.top.FindNode("homeTitle")
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
@@ -26,19 +25,15 @@ sub configureLayout()
     m.overlay.width = width
     m.overlay.height = height
 
-    m.title.width = width
-    m.title.font = "font:LargeBoldSystemFont"
-    m.title.translation = [0, Int(height * 0.18)]
-
-    buttonWidth = 176
-    buttonGap = 24
+    buttonWidth = 252
+    buttonGap = 38
     if width > 1500 then
-        buttonWidth = 192
-        buttonGap = 30
+        buttonWidth = 252
+        buttonGap = 46
     end if
     totalWidth = (buttonWidth * m.buttons.Count()) + (buttonGap * (m.buttons.Count() - 1))
     startX = Int((width - totalWidth) / 2)
-    buttonY = Int(height * 0.46)
+    buttonY = Int(height * 0.43)
 
     for i = 0 to m.buttons.Count() - 1
         m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), buttonY]
@@ -155,6 +150,7 @@ end sub
 sub updateFocus()
     for i = 0 to m.buttons.Count() - 1
         isCardFocused = (m.focusArea = "cards" and i = m.focusIndex)
+        m.buttons[i].focused = isCardFocused
         m.buttons[i].selected = isCardFocused
         m.buttons[i].SetFocus(isCardFocused)
     end for
