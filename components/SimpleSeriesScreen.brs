@@ -27,6 +27,8 @@ sub Init()
     m.seriesTitleLabel = m.top.FindNode("seriesTitleLabel")
     m.verticalDivider = m.top.FindNode("verticalDivider")
     m.categoryFocus = m.top.FindNode("categoryFocus")
+    m.categoriesGroup = m.top.FindNode("categoriesGroup")
+    m.categoryLabelNodes = []
     m.seriesGridGroup = m.top.FindNode("seriesGridGroup")
     m.searchLabel = m.top.FindNode("searchLabel")
     m.favoritesLabel = m.top.FindNode("favoritesLabel")
@@ -127,13 +129,10 @@ sub configureLayout()
     m.categoryFocus.translation = [m.categoryX, m.firstItemY]
 
     updateCategoryItems()
-    labels = [m.searchLabel, m.favoritesLabel, m.categoryLabel4]
-    for i = 0 to labels.Count() - 1
-        labels[i].translation = [m.categoryX + 14, m.firstItemY + (i * m.itemHeight)]
-        labels[i].width = m.categoryWidth - 24
-        labels[i].height = m.focusHeight
-        labels[i].vertAlign = "center"
-    end for
+    m.categoriesGroup.translation = [m.categoryX + 14, m.firstItemY]
+    m.visibleCategoryCount = Int((m.panelHeight - 92) / m.itemHeight)
+    if m.visibleCategoryCount < 3 then m.visibleCategoryCount = 3
+    buildCategoryLabels()
 
     m.gridX = m.rightPanelX + 28
     m.gridY = m.panelY + 34
@@ -252,6 +251,27 @@ sub updateCategoryItems()
     if m.firstVisibleCategoryIndex = invalid then m.firstVisibleCategoryIndex = 0
 end sub
 
+sub buildCategoryLabels()
+    if m.categoriesGroup = invalid then return
+    while m.categoriesGroup.GetChildCount() > 0
+        m.categoriesGroup.RemoveChildIndex(0)
+    end while
+    m.categoryLabelNodes = []
+    count = m.visibleCategoryCount
+    if count = invalid or count < 1 then count = 10
+    for i = 0 to count - 1
+        label = CreateObject("roSGNode", "Label")
+        label.translation = [0, i * m.itemHeight]
+        label.width = m.categoryWidth - 24
+        label.height = m.focusHeight
+        label.vertAlign = "center"
+        label.font = "font:MediumSystemFont"
+        label.color = "#B9C4CF"
+        m.categoriesGroup.AppendChild(label)
+        m.categoryLabelNodes.Push(label)
+    end for
+end sub
+
 function getCategoryName(category as Dynamic) as String
     if category <> invalid then
         if category.category_name <> invalid then return category.category_name.ToStr()
@@ -347,7 +367,8 @@ sub updateNavigationState()
     end if
 
     updateCategoryItems()
-    labels = [m.searchLabel, m.favoritesLabel, m.categoryLabel4]
+    buildCategoryLabels()
+    labels = m.categoryLabelNodes
     visibleCategoryCount = labels.Count()
     if m.selectedIndex < m.firstVisibleCategoryIndex then m.firstVisibleCategoryIndex = m.selectedIndex
     if m.selectedIndex >= m.firstVisibleCategoryIndex + visibleCategoryCount then m.firstVisibleCategoryIndex = m.selectedIndex - visibleCategoryCount + 1

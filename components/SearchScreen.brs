@@ -255,8 +255,8 @@ sub appendSearchEntries(entries as Object)
 end sub
 
 sub renderResults()
+    clearResultNodes()
     if m.results.Count() = 0 then
-        clearResultNodes()
         return
     end if
     updateResultWindow()
@@ -324,11 +324,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 end function
 
 sub moveSearchFocus(key as String)
-    if key = "up" and m.results.Count() > 0 and Left(m.searchFocusArea, 8) = "keyboard" then
-        m.searchFocusArea = "results"
-        updateResultWindow()
-        return
-    end if
     if m.searchFocusArea = "keyboardLetters" then
         if key = "right" and m.searchLetterCol < 12 then m.searchLetterCol = m.searchLetterCol + 1
         if key = "left" and m.searchLetterCol > 0 then m.searchLetterCol = m.searchLetterCol - 1
