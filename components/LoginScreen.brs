@@ -11,6 +11,7 @@ sub Init()
     m.passwordInput = m.top.FindNode("passwordInput")
     m.enterButton = m.top.FindNode("enterButton")
     m.backButton = m.top.FindNode("backButton")
+    m.demoButton = m.top.FindNode("demoButton")
     m.loadingSpinner = m.top.FindNode("loadingSpinner")
     m.loadingLabel = m.top.FindNode("loadingLabel")
     m.messageLabel = m.top.FindNode("messageLabel")
@@ -24,7 +25,7 @@ sub Init()
         m.top.FindNode("userFocus"),
         m.top.FindNode("passwordFocus")
     ]
-    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.backButton]
+    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.backButton, m.demoButton]
     m.textFieldMaxLengths = [200, 100, 100]
     m.textFieldTitles = ["DNS", "USUÁRIO", "SENHA"]
     m.textFieldLogNames = ["dns", "username", "password"]
@@ -44,6 +45,7 @@ sub Init()
 
     m.enterButton.ObserveField("buttonSelected", "onEnterSelected")
     m.backButton.ObserveField("buttonSelected", "onBackSelected")
+    m.demoButton.ObserveField("buttonSelected", "onDemoSelected")
 
     configureLayout()
     buildCustomKeyboard()
@@ -106,6 +108,7 @@ sub setLoading(isLoading as Boolean)
     m.loadingLabel.visible = isLoading
     m.enterButton.enabled = not isLoading
     m.backButton.enabled = not isLoading
+    m.demoButton.enabled = not isLoading
 end sub
 
 sub showError(message as String)
@@ -145,6 +148,12 @@ end sub
 sub onBackSelected()
     setLoading(false)
     m.top.backRequested = true
+end sub
+
+sub onDemoSelected()
+    setLoading(false)
+    clearMessage()
+    m.top.demoRequested = true
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean

@@ -4,6 +4,7 @@
     <script type="text/brightscript" uri="pkg:/source/FavoritesStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/SearchIndexStorage.brs" />
+    <script type="text/brightscript" uri="pkg:/source/DemoData.brs" />
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
