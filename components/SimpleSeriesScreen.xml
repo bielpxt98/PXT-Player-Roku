@@ -27,9 +27,10 @@
         <Rectangle id="verticalDivider" color="#FFFFFF" opacity="0.22" translation="[580, 204]" width="2" height="682" />
 
         <Rectangle id="categoryFocus" color="#23384A" opacity="0.95" translation="[150, 326]" width="390" height="58" />
-        <Label id="searchLabel" text="> PESQUISAR" translation="[185, 338]" width="340" height="42" color="#FFFFFF" />
-        <Label id="favoritesLabel" text="  FAVORITOS" translation="[185, 408]" width="340" height="42" color="#B9C4CF" />
-        <Label id="categoryLabel4" text="  SÉRIES DEMO" translation="[185, 478]" width="360" height="42" color="#B9C4CF" />
+        <Group id="categoriesGroup" />
+        <Label id="searchLabel" text="" visible="false" />
+        <Label id="favoritesLabel" text="" visible="false" />
+        <Label id="categoryLabel4" text="" visible="false" />
 
         <Group id="seriesGridGroup" translation="[620, 300]" />
         <Label id="emptyMessageLabel" text="Conecte uma lista Xtream&#10;para carregar as séries." horizAlign="center" vertAlign="center" translation="[620, 420]" width="1120" height="180" color="#FFFFFF" />

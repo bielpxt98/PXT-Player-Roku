@@ -31,6 +31,8 @@ sub executeRequest()
         m.top.result = getSeries()
     else if action = "getmovieinfo" then
         m.top.result = getMovieInfo()
+    else if action = "getseriesinfo" then
+        m.top.result = getSeriesInfo()
     else
         m.top.result = buildFailure("Ação Xtream não suportada: " + m.top.action)
     end if
@@ -79,6 +81,13 @@ function getMovieInfo() as Object
     cacheKey = "getMovieInfo"
     if streamId <> "" then cacheKey = cacheKey + ":" + streamId
     return requestXtream(cacheKey, "get_vod_info")
+end function
+
+function getSeriesInfo() as Object
+    seriesId = safeTrim(m.top.streamId)
+    cacheKey = "getSeriesInfo"
+    if seriesId <> "" then cacheKey = cacheKey + ":" + seriesId
+    return requestXtream(cacheKey, "get_series_info")
 end function
 
 
@@ -154,6 +163,9 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     end if
     if apiAction = "get_vod_info" and safeTrim(m.top.streamId) <> "" then
         url = url + "&vod_id=" + escapeQueryValue(m.top.streamId)
+    end if
+    if apiAction = "get_series_info" and safeTrim(m.top.streamId) <> "" then
+        url = url + "&series_id=" + escapeQueryValue(m.top.streamId)
     end if
     timeoutMs = 8000
 

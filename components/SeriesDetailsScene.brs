@@ -1,5 +1,6 @@
 sub Init()
     m.background = m.top.FindNode("background")
+    m.backgroundTint = m.top.FindNode("backgroundTint")
     m.heroOverlay = m.top.FindNode("heroOverlay")
     m.poster = m.top.FindNode("poster")
     m.posterBorder = m.top.FindNode("posterBorder")
@@ -42,6 +43,10 @@ sub configureLayout()
     h = size.h
     m.background.width = w
     m.background.height = h
+    if m.backgroundTint <> invalid then
+        m.backgroundTint.width = w
+        m.backgroundTint.height = h
+    end if
 
     marginX = 76
     topY = 54
@@ -111,6 +116,7 @@ sub configureLayout()
     if h <= 720 then seasonY = topY + 360
     m.seasonTitle.translation = [contentX, seasonY]
     m.seasonTitle.width = contentW
+    m.seasonTitle.horizAlign = "left"
     m.seasonTitle.font = "font:MediumBoldSystemFont"
     m.seasonsGroup.translation = [contentX, seasonY + 42]
 
@@ -214,7 +220,78 @@ function mergeItem(base as Dynamic, details as Dynamic) as Object
             merged[k] = info[k]
         end for
     end if
+    if details <> invalid and Type(details) = "roAssociativeArray" then
+        for each k in ["seasons", "episodes"]
+            if details.DoesExist(k) and details[k] <> invalid then merged[k] = details[k]
+        end for
+    end if
+    merged = normalizeSeriesDetailsForPlayback(merged)
     return merged
+end function
+
+function normalizeSeriesDetailsForPlayback(item as Object) as Object
+    if item = invalid then return {}
+    seasons = []
+    episodesBySeason = {}
+    if item.DoesExist("episodes") and item.episodes <> invalid then
+        if Type(item.episodes) = "roAssociativeArray" then
+            for each seasonKey in item.episodes
+                eps = normalizeEpisodeArray(item.episodes[seasonKey], Val(seasonKey))
+                episodesBySeason[seasonKey] = eps
+            end for
+        else if Type(item.episodes) = "roArray" then
+            for each ep in normalizeEpisodeArray(item.episodes, 0)
+                seasonNo = getEpisodeSeasonNumber(ep)
+                if seasonNo <= 0 then seasonNo = 1
+                key = seasonNo.ToStr()
+                if not episodesBySeason.DoesExist(key) then episodesBySeason[key] = []
+                episodesBySeason[key].Push(ep)
+            end for
+        end if
+    end if
+    if item.DoesExist("seasons") and item.seasons <> invalid and Type(item.seasons) = "roArray" then
+        for each season in item.seasons
+            seasonObj = season
+            if seasonObj = invalid or Type(seasonObj) <> "roAssociativeArray" then seasonObj = { season_number: seasons.Count() + 1 }
+            sn = getSeasonNumber(seasonObj, seasons.Count() + 1)
+            key = sn.ToStr()
+            if not seasonObj.DoesExist("episodes") or seasonObj.episodes = invalid or Type(seasonObj.episodes) <> "roArray" then
+                if episodesBySeason.DoesExist(key) then seasonObj.episodes = episodesBySeason[key]
+            end if
+            seasons.Push(seasonObj)
+        end for
+    end if
+    if seasons.Count() = 0 then
+        for each key in episodesBySeason
+            seasons.Push({ season_number: Val(key), name: "TEMPORADA " + key, episodes: episodesBySeason[key] })
+        end for
+    end if
+    item.seasons = seasons
+    return item
+end function
+
+function normalizeEpisodeArray(value as Dynamic, fallbackSeason as Integer) as Object
+    result = []
+    if value = invalid or Type(value) <> "roArray" then return result
+    for each ep in value
+        if ep <> invalid and Type(ep) = "roAssociativeArray" then
+            if fallbackSeason > 0 and (not ep.DoesExist("season_number") or ep.season_number = invalid) then ep.season_number = fallbackSeason
+            result.Push(ep)
+        end if
+    end for
+    return result
+end function
+
+function getSeasonNumber(season as Dynamic, fallback as Integer) as Integer
+    label = firstText(season, ["season_number", "season", "number"])
+    if label <> "" then return Val(label)
+    return fallback
+end function
+
+function getEpisodeSeasonNumber(episode as Dynamic) as Integer
+    label = firstText(episode, ["season_number", "season"])
+    if label <> "" then return Val(label)
+    return 0
 end function
 
 function firstText(item as Dynamic, keys as Object) as String
@@ -283,7 +360,7 @@ sub renderSeasonButtons()
         m.seasonNodes.Push({ group: group, bg: bg, border: border, label: label })
         x = x + 190
     end for
-    if m.seasons.Count() > 0 then m.seasonTitle.text = m.seasons[m.selectedSeasonIndex]
+    if m.seasons.Count() > 0 then m.seasonTitle.text = "TEMPORADAS"
 end sub
 
 sub setupEpisodes(item as Dynamic)
@@ -435,7 +512,7 @@ sub updateFocus()
             m.episodeNodes[i].bg.color = "#203454"
         end if
     end for
-    if m.seasons.Count() > 0 then m.seasonTitle.text = m.seasons[m.selectedSeasonIndex]
+    if m.seasons.Count() > 0 then m.seasonTitle.text = "TEMPORADAS"
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean

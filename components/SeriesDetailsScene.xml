@@ -13,8 +13,9 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesDetailsScene.brs" />
     <children>
-        <Rectangle id="background" color="#05070D" translation="[0,0]" />
-        <Rectangle id="heroOverlay" color="#0B1220" opacity="0.92" />
+        <Poster id="background" uri="pkg:/images/background.jpeg" loadDisplayMode="scaleToFill" translation="[0,0]" />
+        <Rectangle id="backgroundTint" color="#020611" opacity="0.68" translation="[0,0]" />
+        <Rectangle id="heroOverlay" color="#0B1220" opacity="0.84" />
         <Poster id="poster" loadDisplayMode="scaleToFit" />
         <Rectangle id="posterBorder" color="#FFFFFF" opacity="0.12" />
         <Label id="titleLabel" color="#FFFFFF" wrap="true" />
@@ -33,7 +34,7 @@
                 <Label id="continueButtonLabel" text="CONTINUAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             </Group>
         </Group>
-        <Label id="seasonTitle" text="TEMPORADA 1" color="#FFFFFF" horizAlign="center" />
+        <Label id="seasonTitle" text="TEMPORADAS" color="#FFFFFF" horizAlign="left" />
         <Group id="seasonsGroup" />
         <Group id="episodesGroup" />
         <Label id="episodesMessageLabel" text="Nenhum episódio disponível." color="#B8C3D6" wrap="true" horizAlign="center" />

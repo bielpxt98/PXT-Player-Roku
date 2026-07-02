@@ -528,7 +528,9 @@ sub onSeriesSearchSeriesSelected()
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
     m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
+    loadSeriesInfo(series)
 end sub
+
 
 function getMoviesForSearch() as Object
     if m.movies <> invalid and m.movies.Count() > 0 then return m.movies
@@ -587,6 +589,7 @@ sub onSearchSeriesSelected()
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
     m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
+    loadSeriesInfo(series)
 end sub
 
 
@@ -1461,6 +1464,9 @@ sub onXtreamConnectionResult()
     if isMovieInfoResult(result) then
         onMovieInfoResult(result)
         return
+    else if isSeriesInfoResult(result) then
+        onSeriesInfoResult(result)
+        return
     else if result.request = "getMovieCategories" then
         onMovieCategoriesResult(result)
         return
@@ -1847,7 +1853,70 @@ sub onSeriesSelected()
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
     m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
+    loadSeriesInfo(series)
 end sub
+
+sub loadSeriesInfo(series as Dynamic)
+    seriesId = getSeriesId(series)
+    if seriesId = "" or not hasAccount(m.account) or m.isDemoMode = true or m.isLoadingRequest = true then return
+    if beginXtreamRequest("getSeriesInfo") then
+        m.seriesDetailsScreen.callFunc("setLoading", true)
+        m.xtreamService.control = "STOP"
+        m.xtreamService.action = "getSeriesInfo"
+        m.xtreamService.cacheEnabled = true
+        m.xtreamService.categoryId = ""
+        m.xtreamService.streamId = seriesId
+        m.xtreamService.dns = m.account.dns
+        m.xtreamService.username = m.account.username
+        m.xtreamService.password = m.account.password
+        m.xtreamService.control = "RUN"
+    end if
+end sub
+
+function getSeriesId(series as Dynamic) as String
+    if series = invalid then return ""
+    if series.series_id <> invalid then return series.series_id.ToStr()
+    if series.stream_id <> invalid then return series.stream_id.ToStr()
+    if series.id <> invalid then return series.id.ToStr()
+    return ""
+end function
+
+function isSeriesInfoResult(result as Dynamic) as Boolean
+    return result <> invalid and result.request <> invalid and Left(result.request.ToStr(), 13) = "getSeriesInfo"
+end function
+
+sub onSeriesInfoResult(result as Object)
+    if m.seriesDetailsScreen.visible = true then m.seriesDetailsScreen.callFunc("setLoading", false)
+    if result.success = true and result.data <> invalid then
+        details = result.data
+        m.selectedSeries = mergeSeriesDetails(m.selectedSeries, details)
+        if m.seriesDetailsScreen.visible = true then m.seriesDetailsScreen.callFunc("setDetails", m.selectedSeries)
+    else if m.seriesDetailsScreen.visible = true then
+        m.seriesDetailsScreen.callFunc("showMessage", "Não foi possível carregar episódios desta série.")
+    end if
+end sub
+
+function mergeSeriesDetails(series as Dynamic, details as Dynamic) as Object
+    merged = {}
+    if series <> invalid and Type(series) = "roAssociativeArray" then
+        for each k in series
+            merged[k] = series[k]
+        end for
+    end if
+    if details <> invalid and Type(details) = "roAssociativeArray" then
+        info = details
+        if details.info <> invalid then info = details.info
+        if info <> invalid and Type(info) = "roAssociativeArray" then
+            for each k in info
+                merged[k] = info[k]
+            end for
+        end if
+        for each k in ["seasons", "episodes"]
+            if details.DoesExist(k) and details[k] <> invalid then merged[k] = details[k]
+        end for
+    end if
+    return merged
+end function
 
 sub onSeriesDetailsBack()
     m.seriesDetailsScreen.callFunc("hide")
