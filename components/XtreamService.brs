@@ -104,9 +104,9 @@ function buildLiveStreamUrl() as Object
         return buildFailure("Canal sem identificador de reprodução.")
     end if
 
-    extension = safeTrim(m.top.streamExtension)
-    if extension = "" then extension = "ts"
+    extension = LCase(safeTrim(m.top.streamExtension))
     if Left(extension, 1) = "." then extension = Mid(extension, 2)
+    if extension <> "ts" and extension <> "m3u8" then extension = "m3u8"
 
     return {
         success: true,

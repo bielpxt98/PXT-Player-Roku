@@ -1158,9 +1158,10 @@ sub openPlayer(item as Dynamic, itemType as String)
 end sub
 
 sub buildLiveStreamUrl(channel as Object)
-    directUrl = getDirectUrl(channel)
+    directUrl = getLiveDirectUrl(channel)
     if directUrl = "" and m.isDemoMode = true then directUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
     if directUrl <> "" then
+        print "LIVE PLAYER URL: "; directUrl
         m.livePlayerScreen.callFunc("play", directUrl)
         return
     end if
@@ -2063,6 +2064,7 @@ sub onLiveStreamUrlResult(result as Object)
     if result.data.streamId <> invalid and result.data.streamId.ToStr() <> getStreamId(m.selectedLiveChannel) then return
 
     if result.success = true and result.data.url <> invalid then
+        print "LIVE PLAYER URL: "; result.data.url
         m.livePlayerScreen.callFunc("play", result.data.url)
     else
         m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
@@ -2148,6 +2150,23 @@ function getDirectUrl(item as Dynamic) as String
         if item.DoesExist(field) and item[field] <> invalid and item[field].ToStr().Trim() <> "" then return item[field].ToStr().Trim()
     end for
     return ""
+end function
+
+function getLiveDirectUrl(item as Dynamic) as String
+    if item = invalid then return ""
+    urlFields = ["stream_url", "streamUrl", "url", "direct_url", "directUrl", "playbackUrl"]
+    for each field in urlFields
+        if item.DoesExist(field) and item[field] <> invalid then
+            candidate = item[field].ToStr().Trim()
+            if isSupportedLiveStreamUrl(candidate) then return candidate
+        end if
+    end for
+    return ""
+end function
+
+function isSupportedLiveStreamUrl(streamUrl as String) as Boolean
+    lowerUrl = LCase(streamUrl)
+    return Instr(1, lowerUrl, ".m3u8") > 0 or Instr(1, lowerUrl, ".ts") > 0
 end function
 
 function getStreamId(channel as Dynamic) as String

@@ -13,9 +13,15 @@ sub Init()
     m.channelName = "Canal ao vivo"
     m.isPlaying = false
     m.isClosing = false
+    m.isLoading = false
+    m.loadingTimer = CreateObject("roSGNode", "Timer")
+    m.loadingTimer.duration = 15
+    m.loadingTimer.repeat = false
+    m.top.AppendChild(m.loadingTimer)
 
     configureLayout()
     m.video.ObserveField("state", "onVideoStateChanged")
+    m.loadingTimer.ObserveField("fire", "onLoadingTimeout")
     hide()
 end sub
 
@@ -58,7 +64,7 @@ end sub
 
 sub play(streamUrl as String)
     cleanUrl = streamUrl.Trim()
-    if cleanUrl = "" then
+    if cleanUrl = "" or not isSupportedLiveUrl(cleanUrl) then
         showError("Stream sem URL válida")
         return
     end if
@@ -67,18 +73,21 @@ sub play(streamUrl as String)
     content = CreateObject("roSGNode", "ContentNode")
     content.url = cleanUrl
     content.title = m.channelName
-    content.streamFormat = "hls"
+    content.streamFormat = getStreamFormat(cleanUrl)
     content.live = true
 
     if m.video = invalid or m.isClosing = true then return
     if m.channelName <> content.title then return
 
+    print "LIVE PLAYER URL: "; cleanUrl
     m.video.content = invalid
+    m.video.control = "stop"
     m.video.visible = false
     m.video.content = content
     m.video.control = "play"
     m.isPlaying = true
     showLoading("Carregando " + m.channelName + "...")
+    startLoadingTimeout()
 end sub
 
 sub hide()
@@ -94,6 +103,8 @@ sub stopPlayback()
         m.video.content = invalid
     end if
     m.isPlaying = false
+    m.isLoading = false
+    if m.loadingTimer <> invalid then m.loadingTimer.control = "stop"
     m.loadingSpinner.control = "stop"
 end sub
 
@@ -115,11 +126,16 @@ end sub
 sub onVideoStateChanged()
     if m.isClosing = true or m.video = invalid then return
     state = LCase(m.video.state)
+    print "LIVE PLAYER STATE: "; state
     if state = "playing" then
+        m.isLoading = false
+        if m.loadingTimer <> invalid then m.loadingTimer.control = "stop"
         m.video.visible = true
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
+    else if state = "buffering" or state = "loading" then
+        if m.isPlaying = true then showLoading("Carregando " + m.channelName + "...")
     else if state = "error" then
         if m.top.visible = true and m.isClosing <> true then
             showError("Não foi possível reproduzir este canal.")
@@ -158,11 +174,30 @@ function getChannelName(channel as Dynamic) as String
     return "Canal ao vivo"
 end function
 
+sub startLoadingTimeout()
+    m.isLoading = true
+    if m.loadingTimer <> invalid then
+        m.loadingTimer.control = "stop"
+        m.loadingTimer.control = "start"
+    end if
+end sub
+
+sub onLoadingTimeout()
+    if m.top.visible = true and m.isClosing <> true and m.isLoading = true then
+        showError("Não foi possível reproduzir o canal")
+    end if
+end sub
+
+function isSupportedLiveUrl(streamUrl as String) as Boolean
+    lowerUrl = LCase(streamUrl)
+    return Instr(1, lowerUrl, ".m3u8") > 0 or Instr(1, lowerUrl, ".ts") > 0
+end function
+
 function getStreamFormat(streamUrl as String) as String
     lowerUrl = LCase(streamUrl)
     if Instr(1, lowerUrl, ".m3u8") > 0 then return "hls"
-    if Instr(1, lowerUrl, ".mp4") > 0 then return "mp4"
-    return "ts"
+    if Instr(1, lowerUrl, ".ts") > 0 then return "ts"
+    return "hls"
 end function
 
 function getDisplayResolution() as Object
