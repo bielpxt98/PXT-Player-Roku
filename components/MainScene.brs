@@ -64,10 +64,16 @@ sub Init()
     m.cachedMovies = m.searchIndexCache.movies
     m.cachedSeries = m.searchIndexCache.series
     m.seriesCategories = m.searchIndexCache.seriesCategories
+    m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
+    m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
     m.searchIndexQueue = []
     m.searchIndexKind = ""
     m.searchIndexCategoryId = ""
+    m.previewQueue = []
+    m.previewUpdating = false
+    m.previewKind = ""
+    m.previewCategory = invalid
     m.searchIndexUpdating = false
     m.searchMode = "all"
     m.searchBackTarget = "home"
@@ -92,6 +98,8 @@ sub Init()
     if m.cachedSeries = invalid then m.cachedSeries = []
     if m.seriesCategories = invalid then m.seriesCategories = []
     if m.cachedLiveChannels = invalid then m.cachedLiveChannels = []
+    if m.movieCategoryPreviewCache = invalid then m.movieCategoryPreviewCache = []
+    if m.seriesCategoryPreviewCache = invalid then m.seriesCategoryPreviewCache = []
 
     configureScene()
 
@@ -133,6 +141,7 @@ sub Init()
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
     m.simpleSeriesScreen.ObserveField("backRequested", "onSimpleSeriesBack")
     m.simpleSeriesScreen.ObserveField("seriesSelected", "onSeriesSelected")
+    m.simpleSeriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
     m.seriesDetailsScreen.ObserveField("backRequested", "onSeriesDetailsBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
@@ -1266,7 +1275,8 @@ function isContinueCategory(category as Dynamic) as Boolean
 end function
 
 sub showMoviesFromCacheOrLoad(category as Object)
-    cached = filterItemsByCategory(m.cachedMovies, getCategoryId(category))
+    categoryId = getCategoryId(category)
+    cached = filterItemsByCategory(m.cachedMovies, categoryId)
     if cached.Count() > 0 then
         m.movies = cached
         m.moviesLoading = false
@@ -1274,8 +1284,13 @@ sub showMoviesFromCacheOrLoad(category as Object)
         m.movieListScreen.callFunc("setMovies", m.movies)
         return
     end if
+    preview = getPreviewItems(m.movieCategoryPreviewCache, categoryId)
+    if preview.Count() > 0 then
+        m.movies = preview
+        m.movieListScreen.callFunc("setMovies", m.movies)
+    end if
     m.moviesLoading = true
-    m.movieListScreen.callFunc("setLoading", true)
+    m.movieListScreen.callFunc("setLoading", preview.Count() = 0)
     loadMovies(category)
 end sub
 
@@ -1331,6 +1346,7 @@ sub onXtreamConnectionResult()
     if result = invalid then return
     completeXtreamRequest()
 
+    if handlePreviewCacheResult(result) then return
     if handleSearchIndexResult(result) then return
 
     if isMovieInfoResult(result) then
@@ -1339,8 +1355,14 @@ sub onXtreamConnectionResult()
     else if result.request = "getMovieCategories" then
         onMovieCategoriesResult(result)
         return
+    else if result.request = "getSeriesCategories" then
+        onSeriesCategoriesResult(result)
+        return
     else if Left(result.request, 9) = "getMovies" then
         onMoviesResult(result)
+        return
+    else if Left(result.request, 9) = "getSeries" then
+        onSeriesResult(result)
         return
     else if result.request = "buildMovieStreamUrl" then
         onMovieStreamUrlResult(result)
@@ -1385,7 +1407,7 @@ sub handleLoginConnectionResult(result as Object)
         loadLocalSearchIndexCache()
         m.loginScreen.callFunc("showMessage", "Login confirmado. Carregando...")
         showHome()
-        startSearchIndexRefresh()
+        startInitialCategoryPreviewCache()
     else
         SavePlaylistConnectionStatus("Desconectado")
         m.pendingAccount = invalid
@@ -1414,6 +1436,10 @@ sub resetAccountLoadedData()
     m.movieSearchIndex = []
     m.searchIndexQueue = []
     m.searchIndexUpdating = false
+    m.previewQueue = []
+    m.previewUpdating = false
+    m.previewKind = ""
+    m.previewCategory = invalid
     m.liveCategories = []
     m.liveChannels = []
     m.cachedLiveChannels = []
@@ -1422,6 +1448,10 @@ sub resetAccountLoadedData()
     m.movieCategories = []
     m.movies = []
     m.cachedMovies = []
+    m.movieCategoryPreviewCache = []
+    m.seriesCategoryPreviewCache = []
+    m.cachedSeries = []
+    m.seriesCategories = []
     m.searchChannels = []
     m.searchMovies = []
     m.movieCategoriesLoading = false
@@ -1515,6 +1545,8 @@ sub loadLocalSearchIndexCache()
     m.cachedMovies = m.searchIndexCache.movies
     m.cachedSeries = m.searchIndexCache.series
     m.seriesCategories = m.searchIndexCache.seriesCategories
+    m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
+    m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
     m.cachedLiveChannels = m.searchIndexCache.liveChannels
     if m.searchIndexCache.liveCategories.Count() > 0 then m.liveCategories = m.searchIndexCache.liveCategories
     if m.searchIndexCache.liveChannels.Count() > 0 then m.cachedLiveChannels = m.searchIndexCache.liveChannels
@@ -1522,6 +1554,8 @@ sub loadLocalSearchIndexCache()
     if m.searchIndexCache.movies.Count() > 0 then m.cachedMovies = m.searchIndexCache.movies
     if m.searchIndexCache.seriesCategories.Count() > 0 then m.seriesCategories = m.searchIndexCache.seriesCategories
     if m.searchIndexCache.series.Count() > 0 then m.cachedSeries = m.searchIndexCache.series
+    if m.searchIndexCache.movieCategoryPreviewCache <> invalid then m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
+    if m.searchIndexCache.seriesCategoryPreviewCache <> invalid then m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
     m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
 end sub
 
@@ -1546,14 +1580,18 @@ sub startSearchIndexRefresh()
     if m.liveCategories = invalid or m.liveCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveCategories", kind: "liveCategories", categoryId: "" })
     if m.cachedLiveChannels = invalid or m.cachedLiveChannels.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveStreams", kind: "live", categoryId: "" })
     if m.movieCategories = invalid or m.movieCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovieCategories", kind: "movieCategories", categoryId: "" })
-    if m.cachedMovies = invalid or m.cachedMovies.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: "" })
+    ' Do not load full movie/series catalogs into the registry; preview cache handles startup.
     m.searchIndexUpdating = true
     m.searchIndexTimer.control = "stop"
     m.searchIndexTimer.control = "start"
 end sub
 
 sub onSearchIndexTimerFire()
-    processNextSearchIndexRequest()
+    if m.previewUpdating = true then
+        processNextPreviewRequest()
+    else
+        processNextSearchIndexRequest()
+    end if
 end sub
 
 sub processNextSearchIndexRequest()
@@ -1628,9 +1666,53 @@ end sub
 sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
     m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
+    m.simpleSeriesScreen.callFunc("setPreviewCache", m.seriesCategoryPreviewCache)
     m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
+end sub
+
+sub onSeriesCategoriesResult(result as Object)
+    if result.success = true then
+        m.seriesCategories = normalizeSeriesCategories(result.data)
+        m.searchIndexCache.seriesCategories = m.seriesCategories
+        SaveSearchIndexCache(m.searchIndexCache)
+    end if
+end sub
+
+sub onSeriesResult(result as Object)
+    resultCategoryId = getSeriesResultCategoryId(result)
+    if result.success = true then
+        fresh = normalizeSeries(result.data)
+        m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, fresh, resultCategoryId)
+        if m.simpleSeriesScreen.visible = true then m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
+    end if
+end sub
+
+function getSeriesResultCategoryId(result as Dynamic) as String
+    if result = invalid or result.request = invalid then return ""
+    request = result.request.ToStr()
+    prefix = "getSeries:"
+    if Left(request, Len(prefix)) = prefix then return Mid(request, Len(prefix) + 1)
+    return ""
+end function
+
+sub onSeriesCategorySelected()
+    category = m.simpleSeriesScreen.categorySelected
+    if category = invalid then return
+    categoryId = getCategoryId(category)
+    if filterItemsByCategory(m.cachedSeries, categoryId).Count() > 0 then return
+    if not hasAccount(m.account) or m.isLoadingRequest = true then return
+    if beginXtreamRequest("getSeries") then
+        m.xtreamService.control = "STOP"
+        m.xtreamService.action = "getSeries"
+        m.xtreamService.cacheEnabled = true
+        m.xtreamService.categoryId = categoryId
+        m.xtreamService.dns = m.account.dns
+        m.xtreamService.username = m.account.username
+        m.xtreamService.password = m.account.password
+        m.xtreamService.control = "RUN"
+    end if
 end sub
 
 sub onSimpleSeriesBack()
@@ -1956,4 +2038,143 @@ function sortableName(item as Dynamic, kind as String) as String
     if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
     if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()
     return ""
+end function
+
+sub startInitialCategoryPreviewCache()
+    if m.isDemoMode = true then return
+    if not hasAccount(m.account) then return
+    m.previewQueue = []
+    if m.movieCategories = invalid or m.movieCategories.Count() = 0 then m.previewQueue.Push({ action: "getMovieCategories", kind: "movieCategories", categoryId: "" })
+    if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then m.previewQueue.Push({ action: "getSeriesCategories", kind: "seriesCategories", categoryId: "" })
+    m.previewUpdating = true
+    processNextPreviewRequest()
+end sub
+
+sub processNextPreviewRequest()
+    if m.previewUpdating <> true then return
+    if m.isLoadingRequest = true then
+        m.searchIndexTimer.control = "start"
+        return
+    end if
+    if m.previewQueue = invalid or m.previewQueue.Count() = 0 then
+        m.previewUpdating = false
+        m.searchIndexCache.movieCategoryPreviewCache = m.movieCategoryPreviewCache
+        m.searchIndexCache.seriesCategoryPreviewCache = m.seriesCategoryPreviewCache
+        m.searchIndexCache.movieCategories = m.movieCategories
+        m.searchIndexCache.seriesCategories = m.seriesCategories
+        m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
+        SaveSearchIndexCache(m.searchIndexCache)
+        return
+    end if
+    job = m.previewQueue.Shift()
+    m.previewKind = job.kind
+    m.previewCategory = invalid
+    if job.DoesExist("category") then m.previewCategory = job.category
+    if beginXtreamRequest(job.action) then
+        m.xtreamService.control = "STOP"
+        m.xtreamService.action = job.action
+        m.xtreamService.cacheEnabled = true
+        m.xtreamService.categoryId = job.categoryId
+        m.xtreamService.dns = m.account.dns
+        m.xtreamService.username = m.account.username
+        m.xtreamService.password = m.account.password
+        m.xtreamService.control = "RUN"
+    end if
+end sub
+
+function handlePreviewCacheResult(result as Object) as Boolean
+    if m.previewUpdating <> true or m.previewKind = "" then return false
+    kind = m.previewKind
+    category = m.previewCategory
+    m.previewKind = ""
+    m.previewCategory = invalid
+    if result <> invalid and result.success = true then
+        if kind = "movieCategories" then
+            m.movieCategories = normalizeMovieCategories(result.data)
+            m.searchIndexCache.movieCategories = m.movieCategories
+            for each cat in m.movieCategories
+                m.previewQueue.Push({ action: "getMovies", kind: "moviePreview", categoryId: getCategoryId(cat), category: cat })
+            end for
+        else if kind = "seriesCategories" then
+            m.seriesCategories = normalizeSeriesCategories(result.data)
+            m.searchIndexCache.seriesCategories = m.seriesCategories
+            for each cat in m.seriesCategories
+                m.previewQueue.Push({ action: "getSeries", kind: "seriesPreview", categoryId: getCategoryId(cat), category: cat })
+            end for
+        else if kind = "moviePreview" then
+            m.movieCategoryPreviewCache = upsertCategoryPreview(m.movieCategoryPreviewCache, category, normalizeMovies(result.data), "movie")
+            m.searchIndexCache.movieCategoryPreviewCache = m.movieCategoryPreviewCache
+        else if kind = "seriesPreview" then
+            m.seriesCategoryPreviewCache = upsertCategoryPreview(m.seriesCategoryPreviewCache, category, normalizeSeries(result.data), "series")
+            m.searchIndexCache.seriesCategoryPreviewCache = m.seriesCategoryPreviewCache
+        end if
+        SaveSearchIndexCache(m.searchIndexCache)
+    end if
+    processNextPreviewRequest()
+    return true
+end function
+
+function upsertCategoryPreview(cache as Dynamic, category as Dynamic, items as Object, itemType as String) as Object
+    categoryId = getCategoryId(category)
+    result = []
+    if cache <> invalid and Type(cache) = "roArray" then
+        for each preview in cache
+            if preview <> invalid and preview.categoryId <> invalid and preview.categoryId.ToStr() <> categoryId then result.Push(preview)
+        end for
+    end if
+    lightItems = []
+    maxItems = items.Count()
+    if maxItems > 10 then maxItems = 10
+    for i = 0 to maxItems - 1
+        lightItems.Push(createLightPreviewItem(items[i], categoryId, itemType))
+    end for
+    result.Push({ categoryId: categoryId, categoryName: getCategoryName(category), items: lightItems })
+    return result
+end function
+
+function createLightPreviewItem(item as Dynamic, categoryId as String, itemType as String) as Object
+    return { id: getPreviewItemId(item, itemType), title: getPreviewTitle(item), poster: getPreviewPoster(item), categoryId: categoryId, category_id: categoryId, type: itemType, stream_id: getPreviewItemId(item, itemType), series_id: getPreviewItemId(item, itemType), name: getPreviewTitle(item), stream_icon: getPreviewPoster(item), cover: getPreviewPoster(item) }
+end function
+
+function getPreviewItems(cache as Dynamic, categoryId as String) as Object
+    if cache = invalid or Type(cache) <> "roArray" then return []
+    for each preview in cache
+        if preview <> invalid and preview.categoryId <> invalid and preview.categoryId.ToStr() = categoryId and preview.items <> invalid and Type(preview.items) = "roArray" then return preview.items
+    end for
+    return []
+end function
+
+function getPreviewItemId(item as Dynamic, itemType as String) as String
+    if item = invalid then return ""
+    if itemType = "series" and item.series_id <> invalid then return item.series_id.ToStr()
+    if item.stream_id <> invalid then return item.stream_id.ToStr()
+    if item.id <> invalid then return item.id.ToStr()
+    return getPreviewTitle(item)
+end function
+
+function getPreviewTitle(item as Dynamic) as String
+    if item = invalid then return ""
+    if item.name <> invalid then return item.name.ToStr()
+    if item.title <> invalid then return item.title.ToStr()
+    return ""
+end function
+
+function getPreviewPoster(item as Dynamic) as String
+    if item = invalid then return ""
+    if item.stream_icon <> invalid and item.stream_icon.ToStr().Trim() <> "" then return item.stream_icon.ToStr()
+    if item.cover <> invalid and item.cover.ToStr().Trim() <> "" then return item.cover.ToStr()
+    if item.series_image <> invalid and item.series_image.ToStr().Trim() <> "" then return item.series_image.ToStr()
+    return ""
+end function
+
+function normalizeSeriesCategories(data as Dynamic) as Object
+    if data = invalid then return []
+    if Type(data) = "roArray" then return data
+    return []
+end function
+
+function normalizeSeries(data as Dynamic) as Object
+    if data = invalid then return []
+    if Type(data) = "roArray" then return data
+    return []
 end function

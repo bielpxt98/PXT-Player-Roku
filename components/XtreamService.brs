@@ -17,6 +17,8 @@ sub executeRequest()
         m.top.result = getLiveCategories()
     else if action = "getmoviecategories" then
         m.top.result = getMovieCategories()
+    else if action = "getseriescategories" then
+        m.top.result = getSeriesCategories()
     else if action = "getlivestreams" then
         m.top.result = getLiveStreams()
     else if action = "buildlivestreamurl" then
@@ -25,6 +27,8 @@ sub executeRequest()
         m.top.result = buildMovieStreamUrl()
     else if action = "getmovies" then
         m.top.result = getMovies()
+    else if action = "getseries" then
+        m.top.result = getSeries()
     else if action = "getmovieinfo" then
         m.top.result = getMovieInfo()
     else
@@ -44,6 +48,10 @@ function getMovieCategories() as Object
     return requestXtream("getMovieCategories", "get_vod_categories")
 end function
 
+function getSeriesCategories() as Object
+    return requestXtream("getSeriesCategories", "get_series_categories")
+end function
+
 
 function getLiveStreams() as Object
     categoryId = safeTrim(m.top.categoryId)
@@ -57,6 +65,13 @@ function getMovies() as Object
     cacheKey = "getMovies"
     if categoryId <> "" then cacheKey = cacheKey + ":" + categoryId
     return requestXtream(cacheKey, "get_vod_streams")
+end function
+
+function getSeries() as Object
+    categoryId = safeTrim(m.top.categoryId)
+    cacheKey = "getSeries"
+    if categoryId <> "" then cacheKey = cacheKey + ":" + categoryId
+    return requestXtream(cacheKey, "get_series")
 end function
 
 function getMovieInfo() as Object
@@ -134,7 +149,7 @@ function requestXtream(cacheKey as String, apiAction as String) as Object
     end if
 
     url = buildPlayerApiUrl(credentials.dns, credentials.username, credentials.password, apiAction)
-    if (apiAction = "get_live_streams" or apiAction = "get_vod_streams") and safeTrim(m.top.categoryId) <> "" then
+    if (apiAction = "get_live_streams" or apiAction = "get_vod_streams" or apiAction = "get_series") and safeTrim(m.top.categoryId) <> "" then
         url = url + "&category_id=" + escapeQueryValue(m.top.categoryId)
     end if
     if apiAction = "get_vod_info" and safeTrim(m.top.streamId) <> "" then
