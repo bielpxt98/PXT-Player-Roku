@@ -2,6 +2,7 @@
 sub Init()
     m.background = m.top.FindNode("homeBackground")
     m.overlay = m.top.FindNode("homeOverlay")
+    m.buttonReadabilityScrim = m.top.FindNode("buttonReadabilityScrim")
     m.liveTvButton = m.top.FindNode("liveTvButton")
     m.moviesButton = m.top.FindNode("moviesButton")
     m.seriesButton = m.top.FindNode("seriesButton")
@@ -25,14 +26,25 @@ sub configureLayout()
     m.overlay.width = width
     m.overlay.height = height
 
-    buttonWidth = 294
-    buttonGap = 34
+    buttonScale = 0.88
+    buttonWidth = Int(294 * buttonScale)
+    buttonHeight = Int(202 * buttonScale)
+    buttonGap = 30
     columns = 3
     totalFirstRowWidth = (buttonWidth * columns) + (buttonGap * (columns - 1))
     startX = Int((width - totalFirstRowWidth) / 2)
-    firstRowY = Int(height * 0.28)
+    firstRowY = Int(height * 0.36)
+
+    if m.buttonReadabilityScrim <> invalid then
+        scrimPaddingX = 24
+        scrimPaddingY = 18
+        m.buttonReadabilityScrim.width = totalFirstRowWidth + (scrimPaddingX * 2)
+        m.buttonReadabilityScrim.height = buttonHeight + (scrimPaddingY * 2)
+        m.buttonReadabilityScrim.translation = [startX - scrimPaddingX, firstRowY - scrimPaddingY]
+    end if
 
     for i = 0 to m.buttons.Count() - 1
+        m.buttons[i].scale = [buttonScale, buttonScale]
         m.buttons[i].translation = [startX + (i * (buttonWidth + buttonGap)), firstRowY]
     end for
 
