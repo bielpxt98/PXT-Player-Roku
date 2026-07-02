@@ -14,9 +14,10 @@ sub Init()
     m.favoritesEntry = { isFavorites: true, category_name: "FAVORITOS", name: "FAVORITOS" }
     m.recentEntry = { isRecent: true, category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS" }
     m.categories = [m.searchEntry, m.favoritesEntry, m.recentEntry] : m.movies = [] : m.allMovie = []
-    m.categoryNodes = [] : m.categoryRefs = [] : m.itemNodes = [] : m.itemRefs = []
+    m.categoryNodes = [] : m.categoryRefs = []
+    m.movieNodes = [] : m.movieRefs = []
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
-    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "categories"
+    m.selectedMovieIndex = 0 : m.firstVisibleMovieIndex = 0 : m.activePane = "categories"
     configureLayout()
 end sub
 
@@ -40,9 +41,9 @@ sub configureLayout()
     if m.columns > 1 then m.posterGapX = Int((m.gridW - (m.columns * m.posterW)) / (m.columns - 1))
     if m.posterGapX < 24 then m.posterGapX = 24
     m.itemH = m.posterH + m.titleOffsetY + m.titleH + m.posterGapY
-    m.rows = 3
+    m.rows = 2
     m.visibleItemCount = m.columns * m.rows
-    if m.visibleItemCount > 15 then m.visibleItemCount = 15
+    if m.visibleItemCount > 10 then m.visibleItemCount = 10
     m.visibleCategoryCount = Int((m.panelH - 90) / m.categoryItemH) : if m.visibleCategoryCount < 1 then m.visibleCategoryCount = 1
     m.background.width = w : m.background.height = h
     m.searchBar.width = w : m.searchBar.height = m.searchH
@@ -54,10 +55,6 @@ sub configureLayout()
     m.statusLabel.translation = [m.gridX, m.gridY + Int(m.gridH / 2)] : m.statusLabel.width = m.gridW : m.statusLabel.font = "font:MediumSystemFont"
     m.categoriesGroup.translation = [m.categoryX, m.categoryY]
     m.moviesGrid.translation = [m.gridX, m.gridY]
-    m.moviesGrid.itemSize = [m.posterW, m.posterH]
-    m.moviesGrid.itemSpacing = [m.posterGapX, m.posterGapY]
-    m.moviesGrid.numColumns = m.columns
-    m.moviesGrid.numRows = m.rows
     m.hintLabel.translation = [0, h - 34] : m.hintLabel.width = w : m.hintLabel.font = "font:SmallSystemFont"
 end sub
 
@@ -83,7 +80,7 @@ sub resetSelection()
 end sub
 
 sub resetGridSelection()
-    m.selectedIndex = 0 : m.firstVisibleRow = 0
+    m.selectedMovieIndex = 0 : m.firstVisibleMovieIndex = 0
     resetGridFocusToFirstItem()
 end sub
 
@@ -149,17 +146,19 @@ sub renderGrid()
     clearGridNodes()
     if m.movies.Count() = 0 then return
 
-    content = CreateObject("roSGNode", "ContentNode")
-    for each movie in m.movies
-        node = content.CreateChild("ContentNode")
-        node.title = getMovieName(movie)
-        node.HDPosterUrl = getMovieCover(movie)
-        node.SDPosterUrl = getMovieCover(movie)
+    updateGridWindow()
+    lastIndex = m.firstVisibleMovieIndex + m.visibleItemCount - 1
+    if lastIndex >= m.movies.Count() then lastIndex = m.movies.Count() - 1
+
+    for visualIndex = 0 to lastIndex - m.firstVisibleMovieIndex
+        realIndex = m.firstVisibleMovieIndex + visualIndex
+        node = createPosterItem(m.movies[realIndex], visualIndex, realIndex)
+        m.moviesGrid.AppendChild(node)
+        m.movieNodes.Push(node)
+        m.movieRefs.Push(m.lastMovieRefs)
     end for
 
-    m.moviesGrid.content = content
     m.moviesGrid.visible = true
-    resetGridFocusToFirstItem()
 end sub
 
 function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
@@ -168,7 +167,9 @@ function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIn
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#063B66" : bg.opacity = 0.0
     poster = CreateObject("roSGNode", "Poster") : poster.id = "poster" : poster.width = m.posterW : poster.height = m.posterH : poster.loadDisplayMode = "scaleToFill" : poster.uri = getMovieCover(itemData)
     label = CreateObject("roSGNode", "Label") : label.id = "itemLabel" : label.translation = [0, m.posterH + m.titleOffsetY] : label.width = m.posterW : label.height = m.titleH : label.font = "font:SmallSystemFont" : label.color = "#DDE6F3" : label.text = getMovieName(itemData) : label.horizAlign = "center" : label.vertAlign = "top"
-    item.AppendChild(bg) : item.AppendChild(poster) : item.AppendChild(label) : return item
+    item.AppendChild(bg) : item.AppendChild(poster) : item.AppendChild(label)
+    m.lastMovieRefs = { background: bg, poster: poster, label: label }
+    return item
 end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -193,7 +194,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if m.activePane = "categories" or m.activePane = "search" then
             if m.movies.Count() > 0 then m.activePane = "grid" : updateFocus()
         else
-            if (m.selectedIndex mod m.columns) < m.columns - 1 and m.selectedIndex < m.movies.Count() - 1 then moveGrid(1, 0)
+            if (m.selectedMovieIndex mod m.columns) < m.columns - 1 and m.selectedMovieIndex < m.movies.Count() - 1 then moveGrid(1, 0)
         end if
         return true
     end if
@@ -216,7 +217,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     end if
     if key = "options" then
-        if m.movies.Count() > 0 then m.top.movieFavoriteToggled = m.movies[m.selectedIndex]
+        if m.movies.Count() > 0 then m.top.movieFavoriteToggled = m.movies[m.selectedMovieIndex]
         return true
     end if
     if key = "OK" then
@@ -231,7 +232,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 end if
             end if
         else if m.movies.Count() > 0 then
-            m.top.movieSelected = m.movies[m.selectedIndex]
+            m.top.movieSelected = m.movies[m.selectedMovieIndex]
         end if
         return true
     end if
@@ -250,11 +251,11 @@ end sub
 
 sub moveGrid(dx as Integer, dy as Integer)
     if m.movies.Count() = 0 then return
-    oldSelected = m.selectedIndex
-    oldFirst = m.firstVisibleRow
-    m.selectedIndex = m.selectedIndex + (dy * m.columns) + dx
+    oldSelected = m.selectedMovieIndex
+    oldFirst = m.firstVisibleMovieIndex
+    m.selectedMovieIndex = m.selectedMovieIndex + (dy * m.columns) + dx
     updateGridWindow()
-    if oldSelected <> m.selectedIndex or oldFirst <> m.firstVisibleRow then m.moviesGrid.jumpToItem = m.selectedIndex
+    if oldSelected <> m.selectedMovieIndex or oldFirst <> m.firstVisibleMovieIndex then renderGrid()
     updateFocus()
 end sub
 
@@ -267,12 +268,44 @@ sub updateCategoryWindow()
 end sub
 
 sub updateGridWindow()
-    if m.selectedIndex < 0 then m.selectedIndex = 0
-    if m.selectedIndex >= m.movies.Count() then m.selectedIndex = m.movies.Count() - 1
-    row = Int(m.selectedIndex / m.columns)
-    if row < m.firstVisibleRow then m.firstVisibleRow = row
-    if row >= m.firstVisibleRow + m.rows then m.firstVisibleRow = row - m.rows + 1
-    if m.firstVisibleRow < 0 then m.firstVisibleRow = 0
+    if m.movies.Count() = 0 then
+        m.selectedMovieIndex = 0
+        m.firstVisibleMovieIndex = 0
+        return
+    end if
+    if m.selectedMovieIndex < 0 then m.selectedMovieIndex = 0
+    if m.selectedMovieIndex >= m.movies.Count() then m.selectedMovieIndex = m.movies.Count() - 1
+    if m.firstVisibleMovieIndex < 0 then m.firstVisibleMovieIndex = 0
+
+    selectedRow = Int(m.selectedMovieIndex / m.columns)
+    firstVisibleRow = Int(m.firstVisibleMovieIndex / m.columns)
+    if selectedRow < firstVisibleRow then
+        m.firstVisibleMovieIndex = selectedRow * m.columns
+    else if selectedRow >= firstVisibleRow + m.rows then
+        m.firstVisibleMovieIndex = (selectedRow - m.rows + 1) * m.columns
+    end if
+
+    maxFirstRow = Int((m.movies.Count() - 1) / m.columns) - m.rows + 1
+    if maxFirstRow < 0 then maxFirstRow = 0
+    maxFirst = maxFirstRow * m.columns
+    if m.firstVisibleMovieIndex > maxFirst then m.firstVisibleMovieIndex = maxFirst
+end sub
+
+sub updateMovieFocus()
+    for i = 0 to m.movieNodes.Count() - 1
+        realIndex = m.firstVisibleMovieIndex + i
+        refs = m.movieRefs[i]
+        if refs.background <> invalid then refs.background.opacity = 0.0
+        if refs.label <> invalid then refs.label.color = "#DDE6F3"
+        if realIndex = m.selectedMovieIndex then
+            if refs.background <> invalid then
+                refs.background.opacity = 1.0
+                if m.activePane = "grid" then refs.background.color = "#0A6FB5" else refs.background.color = "#063B66"
+            end if
+            if refs.label <> invalid and m.activePane = "grid" then refs.label.color = "#FFFFFF"
+        end if
+        if realIndex = m.selectedMovieIndex and m.activePane = "grid" then m.movieNodes[i].scale = [1.04, 1.04] else m.movieNodes[i].scale = [1.0, 1.0]
+    end for
 end sub
 
 sub updateFocus()
@@ -295,23 +328,21 @@ sub updateFocus()
         end if
         if realIndex = m.selectedCategoryIndex and m.activePane = "categories" then m.categoryNodes[i].scale = [1.03, 1.03] else m.categoryNodes[i].scale = [1.0, 1.0]
     end for
-    if m.activePane = "grid" and m.movies.Count() > 0 then m.moviesGrid.SetFocus(true) else m.top.SetFocus(true)
+    updateMovieFocus()
+    m.top.SetFocus(true)
 end sub
 
 sub resetGridFocusToFirstItem()
-    m.selectedIndex = 0
-    m.firstVisibleRow = 0
-    if m.moviesGrid <> invalid then
-        m.moviesGrid.jumpToItem = 0
-    end if
+    m.selectedMovieIndex = 0
+    m.firstVisibleMovieIndex = 0
 end sub
 
 function getState() as Object
     return {
         selectedCategoryIndex: m.selectedCategoryIndex,
         firstVisibleCategoryIndex: m.firstVisibleCategoryIndex,
-        selectedIndex: m.selectedIndex,
-        firstVisibleRow: m.firstVisibleRow,
+        selectedIndex: m.selectedMovieIndex,
+        firstVisibleRow: Int(m.firstVisibleMovieIndex / m.columns),
         activePane: m.activePane,
         movies: m.movies
     }
@@ -322,17 +353,11 @@ sub restoreState(state as Dynamic)
     if state.movies <> invalid then m.movies = normalizeArray(state.movies) : m.allMovie = m.movies
     if state.selectedCategoryIndex <> invalid then m.selectedCategoryIndex = state.selectedCategoryIndex
     if state.firstVisibleCategoryIndex <> invalid then m.firstVisibleCategoryIndex = state.firstVisibleCategoryIndex
-    if state.selectedIndex <> invalid then m.selectedIndex = state.selectedIndex
-    if state.firstVisibleRow <> invalid then m.firstVisibleRow = state.firstVisibleRow
+    if state.selectedIndex <> invalid then m.selectedMovieIndex = state.selectedIndex
+    if state.firstVisibleRow <> invalid then m.firstVisibleMovieIndex = state.firstVisibleRow * m.columns
     if state.activePane <> invalid then m.activePane = state.activePane else m.activePane = "grid"
     updateCategoryWindow() : updateGridWindow()
-    restoredIndex = m.selectedIndex
-    restoredFirstRow = m.firstVisibleRow
     renderCategories() : renderGrid()
-    m.selectedIndex = restoredIndex
-    m.firstVisibleRow = restoredFirstRow
-    updateGridWindow()
-    if m.moviesGrid <> invalid then m.moviesGrid.jumpToItem = m.selectedIndex
     updateFocus()
 end sub
 
@@ -352,10 +377,12 @@ sub clearCategoryNodes()
 end sub
 
 sub clearGridNodes()
-    m.moviesGrid.content = invalid
+    while m.moviesGrid.GetChildCount() > 0
+        m.moviesGrid.RemoveChildIndex(0)
+    end while
     m.moviesGrid.visible = false
-    m.itemNodes = []
-    m.itemRefs = []
+    m.movieNodes = []
+    m.movieRefs = []
 end sub
 
 function getCategoryId(category as Dynamic) as String

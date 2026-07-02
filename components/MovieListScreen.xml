@@ -28,13 +28,7 @@
         <Label id="subtitle" text="FILMES" color="#9FAEC4" horizAlign="right" />
         <Label id="statusLabel" text="" color="#B8C3D6" horizAlign="center" />
         <Group id="categoriesGroup" />
-        <PosterGrid id="moviesGrid"
-            translation="[0, 0]"
-            numRows="3"
-            numColumns="5"
-            itemSize="[178, 264]"
-            itemSpacing="[149, 54]"
-            posterShape="portrait" />
+        <Group id="moviesGrid" translation="[0, 0]" />
         <Label id="hintLabel" text="←/→ alternar painel • OK selecionar • * favoritar • Voltar" color="#7D8CA3" horizAlign="center" />
     </children>
 </component>
