@@ -9,6 +9,10 @@ sub Init()
     m.seriesNodes = []
     m.seriesNodeRefs = []
     m.seriesItems = []
+    m.allSeriesItems = []
+    m.categories = []
+    m.categoryItems = []
+    m.firstVisibleCategoryIndex = 0
     m.activePanel = "categories"
     m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS ASSISTIDOS"]
 
@@ -120,6 +124,7 @@ sub configureLayout()
     m.categoryFocus.height = m.focusHeight
     m.categoryFocus.translation = [m.categoryX, m.firstItemY]
 
+    updateCategoryItems()
     labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
     for i = 0 to labels.Count() - 1
         labels[i].translation = [m.categoryX + 14, m.firstItemY + (i * m.itemHeight)]
@@ -188,16 +193,88 @@ end sub
 
 sub setSeries(series as Object)
     if series = invalid or Type(series) <> "roArray" then
-        m.seriesItems = []
+        m.allSeriesItems = []
     else
-        m.seriesItems = series
+        m.allSeriesItems = series
     end if
+    m.seriesItems = m.allSeriesItems
     m.selectedSeriesIndex = 0
     m.firstVisibleSeriesIndex = 0
     updateSeriesWindow()
     renderSeriesGrid()
     ensureNavigationLayoutDefaults()
     updateNavigationState()
+end sub
+
+
+sub setCategories(categories as Object)
+    if categories = invalid or Type(categories) <> "roArray" then
+        m.categories = []
+    else
+        m.categories = categories
+    end if
+    updateCategoryItems()
+    updateNavigationState()
+end sub
+
+sub updateCategoryItems()
+    m.categoryItems = []
+    if m.categories <> invalid and m.categories.Count() > 0 then
+        for each category in m.categories
+            m.categoryItems.Push({ label: getCategoryName(category), fixed: false, category: category })
+        end for
+    else
+        for each item in m.fixedItems
+            m.categoryItems.Push({ label: item, fixed: true })
+        end for
+    end if
+    if m.categoryItems.Count() = 0 then
+        m.selectedIndex = 0
+    else if m.selectedIndex >= m.categoryItems.Count() then
+        m.selectedIndex = 0
+    end if
+    if m.firstVisibleCategoryIndex = invalid then m.firstVisibleCategoryIndex = 0
+end sub
+
+function getCategoryName(category as Dynamic) as String
+    if category <> invalid then
+        if category.category_name <> invalid then return category.category_name.ToStr()
+        if category.name <> invalid then return category.name.ToStr()
+    end if
+    return "Categoria"
+end function
+
+function getCategoryIdValue(category as Dynamic) as String
+    if category <> invalid then
+        if category.category_id <> invalid then return category.category_id.ToStr()
+        if category.id <> invalid then return category.id.ToStr()
+    end if
+    return ""
+end function
+
+sub filterSeriesByCategory(category as Dynamic)
+    categoryId = getCategoryIdValue(category)
+    filtered = []
+    if categoryId = "" then
+        filtered = m.allSeriesItems
+    else
+        for each series in m.allSeriesItems
+            if series <> invalid and series.category_id <> invalid and series.category_id.ToStr() = categoryId then filtered.Push(series)
+        end for
+    end if
+    m.seriesItems = filtered
+    m.selectedSeriesIndex = 0
+    m.firstVisibleSeriesIndex = 0
+    updateSeriesWindow()
+    renderSeriesGrid()
+    m.activePanel = "series"
+end sub
+
+sub openSelectedSeries()
+    if m.seriesItems = invalid or m.seriesItems.Count() = 0 then return
+    if m.selectedSeriesIndex < 0 or m.selectedSeriesIndex >= m.seriesItems.Count() then return
+    selectedSeries = m.seriesItems[m.selectedSeriesIndex]
+    if selectedSeries <> invalid then m.top.seriesSelected = selectedSeries
 end sub
 
 sub ensureNavigationLayoutDefaults()
@@ -211,17 +288,29 @@ sub updateNavigationState()
         return
     end if
 
+    updateCategoryItems()
     labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
+    visibleCategoryCount = labels.Count()
+    if m.selectedIndex < m.firstVisibleCategoryIndex then m.firstVisibleCategoryIndex = m.selectedIndex
+    if m.selectedIndex >= m.firstVisibleCategoryIndex + visibleCategoryCount then m.firstVisibleCategoryIndex = m.selectedIndex - visibleCategoryCount + 1
+    maxFirstCategory = m.categoryItems.Count() - visibleCategoryCount
+    if maxFirstCategory < 0 then maxFirstCategory = 0
+    if m.firstVisibleCategoryIndex > maxFirstCategory then m.firstVisibleCategoryIndex = maxFirstCategory
 
-    m.categoryFocus.translation = [m.panelX + 32, m.firstItemY + (m.selectedIndex * m.itemHeight)]
+    focusRow = m.selectedIndex - m.firstVisibleCategoryIndex
+    m.categoryFocus.translation = [m.panelX + 32, m.firstItemY + (focusRow * m.itemHeight)]
 
     for i = 0 to labels.Count() - 1
-        if i = m.selectedIndex and m.activePanel = "categories" then
-            labels[i].text = "> " + m.fixedItems[i]
+        itemIndex = m.firstVisibleCategoryIndex + i
+        labelText = ""
+        isSelected = itemIndex = m.selectedIndex
+        if m.categoryItems <> invalid and itemIndex < m.categoryItems.Count() then labelText = m.categoryItems[itemIndex].label
+        if isSelected and m.activePanel = "categories" then
+            labels[i].text = "> " + labelText
             labels[i].color = "#FFFFFF"
             labels[i].font = "font:MediumBoldSystemFont"
         else
-            labels[i].text = "  " + m.fixedItems[i]
+            labels[i].text = "  " + labelText
             labels[i].color = "#B9C4CF"
             labels[i].font = "font:MediumSystemFont"
         end if
@@ -233,10 +322,6 @@ sub updateNavigationState()
         m.categoryFocus.opacity = 0.95
     end if
     updateSeriesFocus()
-end sub
-
-sub showPendingMessage()
-    m.statusLabel.text = "Função será ativada na próxima etapa."
 end sub
 
 sub configureSeriesGridMetrics()
@@ -390,7 +475,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "up" then
         if m.activePanel = "categories" then
             m.selectedIndex = m.selectedIndex - 1
-            if m.selectedIndex < 0 then m.selectedIndex = m.fixedItems.Count() - 1
+            if m.categoryItems.Count() = 0 then
+                m.selectedIndex = 0
+            else if m.selectedIndex < 0 then
+                m.selectedIndex = m.categoryItems.Count() - 1
+            end if
         else
             moveSeriesFocus(-m.seriesColumns)
         end if
@@ -400,7 +489,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "down" then
         if m.activePanel = "categories" then
             m.selectedIndex = m.selectedIndex + 1
-            if m.selectedIndex >= m.fixedItems.Count() then m.selectedIndex = 0
+            if m.categoryItems.Count() = 0 then
+                m.selectedIndex = 0
+            else if m.selectedIndex >= m.categoryItems.Count() then
+                m.selectedIndex = 0
+            end if
         else
             moveSeriesFocus(m.seriesColumns)
         end if
@@ -426,7 +519,24 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateNavigationState()
         return true
     else if key = "OK" then
-        showPendingMessage()
+        if m.activePanel = "categories" then
+            if m.categoryItems <> invalid and m.selectedIndex < m.categoryItems.Count() then
+                selected = m.categoryItems[m.selectedIndex]
+                if selected.fixed = true then
+                    m.seriesItems = m.allSeriesItems
+                    m.selectedSeriesIndex = 0
+                    m.firstVisibleSeriesIndex = 0
+                    renderSeriesGrid()
+                    m.activePanel = "series"
+                else
+                    filterSeriesByCategory(selected.category)
+                end if
+            end if
+        else
+            openSelectedSeries()
+        end if
+        m.statusLabel.text = ""
+        updateNavigationState()
         return true
     end if
 

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SeriesDetailsScene" extends="Group">
+    <interface>
+        <function name="show" />
+        <function name="hide" />
+        <function name="setLoading" />
+        <function name="showMessage" />
+        <function name="setDetails" />
+        <field id="backRequested" type="boolean" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/SeriesDetailsScene.brs" />
+    <children>
+        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0,0]" />
+        <Poster id="poster" loadDisplayMode="scaleToFit" />
+        <Label id="titleLabel" color="#FFFFFF" />
+        <Label id="metaLabel" color="#B8C3D6" />
+        <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
+        <Label id="synopsisLabel" color="#D1D5DB" wrap="true" />
+        <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" />
+        <Group id="buttonsGroup">
+            <Label id="seasonsButton" text="TEMPORADAS" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+        </Group>
+    </children>
+</component>
