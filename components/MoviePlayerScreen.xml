@@ -13,15 +13,21 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/MoviePlayerScreen.brs" />
     <children>
-        <Video id="video" translation="[0, 0]" showPlaybackInfo="false" />
+        <Rectangle id="cleanBackground" color="#000000" translation="[0, 0]" width="1280" height="720" />
+        <Video id="video" translation="[0, 0]" showPlaybackInfo="false" visible="false" />
         <Group id="loadingGroup" visible="false">
             <BusySpinner id="loadingSpinner" width="60" height="60" />
             <Label id="loadingLabel" text="Carregando filme..." color="#FFFFFF" horizAlign="center" />
         </Group>
         <Group id="controlsGroup" visible="false">
-            <Rectangle id="controlsBackground" color="#000000" opacity="0.55" />
+            <Rectangle id="controlsBackground" color="#000000" opacity="0.62" />
             <Label id="playPauseIcon" text="Ⅱ" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="currentTimeLabel" text="00:00" color="#FFFFFF" horizAlign="left" />
+            <Rectangle id="progressBackground" color="#5B6472" opacity="0.85" />
+            <Rectangle id="progressFill" color="#FFFFFF" opacity="1" />
+            <Label id="durationLabel" text="00:00" color="#FFFFFF" horizAlign="right" />
         </Group>
+        <Timer id="progressUpdateTimer" duration="0.5" repeat="true" />
         <Timer id="seekHoldTimer" duration="0.35" repeat="true" />
         <Timer id="controlsAutoHideTimer" duration="3" repeat="false" />
         <Group id="errorGroup" visible="false">

@@ -538,7 +538,7 @@ sub onSearchMovieSelected()
     if movie = invalid then return
     m.selectedMovie = movie
     m.openedFromSearch = true
-    m.searchScreen.callFunc("hide")
+    hideAllScreensExcept(m.moviePlayerScreen)
     m.moviePlayerScreen.callFunc("show", movie)
     m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
     buildMovieStreamUrl(movie)
@@ -597,6 +597,7 @@ sub onHistorySelected()
     m.openedFromRecent = true
     if item.type = "movie" then
         m.selectedMovie = item.content
+        hideAllScreensExcept(m.moviePlayerScreen)
         m.moviePlayerScreen.callFunc("show", item.content)
         m.moviePlayerScreen.callFunc("setResumePosition", item.position)
         buildMovieStreamUrl(item.content)
@@ -616,6 +617,7 @@ sub onFavoriteSelected()
         buildLiveStreamUrl(content)
     else if favorite.type = "movie" then
         m.selectedMovie = content
+        hideAllScreensExcept(m.moviePlayerScreen)
         m.moviePlayerScreen.callFunc("show", content)
         m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", content))
         buildMovieStreamUrl(content)
@@ -917,7 +919,7 @@ sub onMovieDetailPlay()
         m.movieDetailScreen.callFunc("setLoading", false)
         return
     end if
-    m.movieDetailScreen.callFunc("hide")
+    hideAllScreensExcept(m.moviePlayerScreen)
     m.moviePlayerScreen.callFunc("show", m.selectedMovie)
     m.moviePlayerScreen.callFunc("setResumePosition", GetHistoryPosition("movie", m.selectedMovie))
     buildMovieStreamUrl(m.selectedMovie)

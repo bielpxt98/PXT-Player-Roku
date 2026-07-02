@@ -1,5 +1,6 @@
 ' Native Roku player screen for movie streams.
 sub Init()
+    m.cleanBackground = m.top.FindNode("cleanBackground")
     m.video = m.top.FindNode("video")
     m.videoPlayer = m.video
     m.loadingGroup = m.top.FindNode("loadingGroup")
@@ -10,7 +11,12 @@ sub Init()
     m.errorMessage = m.top.FindNode("errorMessage")
     m.controlsGroup = m.top.FindNode("controlsGroup")
     m.controlsBackground = m.top.FindNode("controlsBackground")
+    m.progressBackground = m.top.FindNode("progressBackground")
+    m.progressFill = m.top.FindNode("progressFill")
+    m.currentTimeLabel = m.top.FindNode("currentTimeLabel")
+    m.durationLabel = m.top.FindNode("durationLabel")
     m.playPauseIcon = m.top.FindNode("playPauseIcon")
+    m.progressUpdateTimer = m.top.FindNode("progressUpdateTimer")
     m.seekHoldTimer = m.top.FindNode("seekHoldTimer")
     m.controlsAutoHideTimer = m.top.FindNode("controlsAutoHideTimer")
 
@@ -30,6 +36,7 @@ sub Init()
     configureLayout()
     m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
+    m.progressUpdateTimer.ObserveField("fire", "onProgressUpdateTimerFire")
     m.seekHoldTimer.ObserveField("fire", "onSeekHoldTick")
     m.controlsAutoHideTimer.ObserveField("fire", "onControlsAutoHideTimerFire")
     hide()
@@ -40,6 +47,8 @@ sub configureLayout()
     width = resolution.width
     height = resolution.height
 
+    m.cleanBackground.width = width
+    m.cleanBackground.height = height
     m.video.width = width
     m.video.height = height
 
@@ -56,16 +65,29 @@ sub configureLayout()
     m.errorMessage.font = "font:MediumSystemFont"
     m.errorMessage.translation = [0, 78]
 
-    controlsWidth = 140
-    controlsHeight = 140
-    iconSize = 92
-    m.controlsGroup.translation = [Int((width - controlsWidth) / 2), Int((height - controlsHeight) / 2)]
+    controlsWidth = width
+    controlsHeight = 116
+    progressWidth = width - 220
+    controlsTop = height - controlsHeight
+    m.controlsGroup.translation = [0, controlsTop]
     m.controlsBackground.width = controlsWidth
     m.controlsBackground.height = controlsHeight
-    m.playPauseIcon.translation = [24, 24]
-    m.playPauseIcon.width = iconSize
-    m.playPauseIcon.height = iconSize
+    m.playPauseIcon.translation = [42, 18]
+    m.playPauseIcon.width = 52
+    m.playPauseIcon.height = 52
     m.playPauseIcon.font = "font:LargeBoldSystemFont"
+    m.currentTimeLabel.translation = [42, 74]
+    m.currentTimeLabel.width = 76
+    m.currentTimeLabel.font = "font:SmallSystemFont"
+    m.durationLabel.translation = [width - 118, 74]
+    m.durationLabel.width = 76
+    m.durationLabel.font = "font:SmallSystemFont"
+    m.progressBackground.translation = [120, 82]
+    m.progressBackground.width = progressWidth
+    m.progressBackground.height = 8
+    m.progressFill.translation = [120, 82]
+    m.progressFill.width = 0
+    m.progressFill.height = 8
 end sub
 
 sub show(movie as Dynamic)
@@ -74,6 +96,7 @@ sub show(movie as Dynamic)
     m.top.movieName = m.movieName
     m.isClosing = false
     m.isReturningFromPlayer = false
+    m.video.visible = false
     m.top.visible = true
     showLoading("Preparando " + m.movieName + "...")
     hideControls()
@@ -108,6 +131,7 @@ sub startPlayback(streamUrl as String, startPosition as Integer)
     if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
+    startProgressUpdateTimer()
     m.top.SetFocus(true)
     showLoading("Carregando " + m.movieName + "...")
     showControls()
@@ -175,6 +199,7 @@ sub stopPlayback()
     m.isPlaying = false
     if m.loadingSpinner <> invalid then m.loadingSpinner.control = "stop"
     if m.loadingGroup <> invalid then m.loadingGroup.visible = false
+    stopProgressUpdateTimer()
     stopSeekHold()
     stopControlsAutoHideTimer()
     if m.controlsGroup <> invalid then m.controlsGroup.visible = false
@@ -205,12 +230,14 @@ sub onVideoStateChanged()
         m.loadingGroup.visible = false
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
+        startProgressUpdateTimer()
         showControls()
     else if state = "paused" then
         m.isPlaying = false
         showControls()
     else if state = "finished" then
         m.isPlaying = false
+        stopProgressUpdateTimer()
         showControls()
     else if state = "error" then
         if m.top.visible = true and m.isClosing <> true then
@@ -296,6 +323,10 @@ sub stopSeekHold()
     m.seekDirection = ""
 end sub
 
+sub onProgressUpdateTimerFire()
+    updateControls()
+end sub
+
 sub onSeekHoldTick()
     if m.isHoldingSeek = false then return
 
@@ -359,12 +390,37 @@ sub stopControlsAutoHideTimer()
     if m.controlsAutoHideTimer <> invalid then m.controlsAutoHideTimer.control = "stop"
 end sub
 
+sub startProgressUpdateTimer()
+    if m.progressUpdateTimer = invalid then return
+    m.progressUpdateTimer.control = "stop"
+    m.progressUpdateTimer.control = "start"
+end sub
+
+sub stopProgressUpdateTimer()
+    if m.progressUpdateTimer <> invalid then m.progressUpdateTimer.control = "stop"
+end sub
+
 sub onControlsAutoHideTimerFire()
     if m.isPlaying = true then hideControls()
 end sub
 
 sub updateControls()
     updatePlayPauseIcon()
+    updateProgress()
+end sub
+
+sub updateProgress()
+    position = getPlaybackPosition()
+    duration = getPlaybackDuration()
+    if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = formatTime(position)
+    if m.durationLabel <> invalid then m.durationLabel.text = formatTime(duration)
+    if m.progressFill <> invalid and m.progressBackground <> invalid then
+        progressWidth = 0
+        if duration > 0 then progressWidth = Int((position / duration) * m.progressBackground.width)
+        if progressWidth < 0 then progressWidth = 0
+        if progressWidth > m.progressBackground.width then progressWidth = m.progressBackground.width
+        m.progressFill.width = progressWidth
+    end if
 end sub
 
 sub updatePlayPauseIcon()
