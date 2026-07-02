@@ -1,4 +1,4 @@
-' Native Roku player screen for movie streams.
+' Movie player screen based on the SeriesPlayerScreen playback pattern.
 sub Init()
     m.cleanBackground = m.top.FindNode("cleanBackground")
     m.video = m.top.FindNode("video")
@@ -19,24 +19,23 @@ sub Init()
     m.seekHoldTimer = m.top.FindNode("seekHoldTimer")
     m.controlsAutoHideTimer = m.top.FindNode("controlsAutoHideTimer")
 
-    m.movie = invalid
-    m.movieName = "Filme"
     m.isClosing = false
     m.isPlaying = false
     m.isHoldingSeek = false
     m.seekDirection = ""
     m.seekStep = 20
+    m.pendingSeekPosition = invalid
+    m.movie = invalid
+    m.movieName = "Filme"
+    m.title = "Filme"
     m.resumePosition = 0
     m.lastPosition = 0
     m.pendingStreamUrl = ""
     m.resumeDialog = invalid
-    m.startedFromBeginning = false
 
     configureLayout()
     m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
-    m.video.ObserveField("position", "onVideoPositionChanged")
-    m.video.ObserveField("duration", "onVideoDurationChanged")
     m.progressUpdateTimer.ObserveField("fire", "onProgressUpdateTimerFire")
     m.seekHoldTimer.ObserveField("fire", "onSeekHoldTick")
     m.controlsAutoHideTimer.ObserveField("fire", "onControlsAutoHideTimerFire")
@@ -46,21 +45,19 @@ end sub
 sub configureLayout()
     deviceInfo = CreateObject("roDeviceInfo")
     size = deviceInfo.GetDisplaySize()
-    width = size.w
-    height = size.h
 
-    m.cleanBackground.width = width
-    m.cleanBackground.height = height
-    m.video.width = width
-    m.video.height = height
+    m.cleanBackground.width = size.w
+    m.cleanBackground.height = size.h
+    m.video.width = size.w
+    m.video.height = size.h
 
-    m.loadingGroup.translation = [Int((width - 420) / 2), Int((height - 140) / 2)]
+    m.loadingGroup.translation = [Int((size.w - 420) / 2), Int((size.h - 140) / 2)]
     m.loadingSpinner.translation = [180, 0]
     m.loadingLabel.width = 420
     m.loadingLabel.font = "font:MediumSystemFont"
     m.loadingLabel.translation = [0, 86]
 
-    m.errorGroup.translation = [Int((width - 760) / 2), Int((height - 180) / 2)]
+    m.errorGroup.translation = [Int((size.w - 760) / 2), Int((size.h - 180) / 2)]
     m.errorTitle.width = 760
     m.errorTitle.font = "font:LargeBoldSystemFont"
     m.errorMessage.width = 760
@@ -68,9 +65,9 @@ sub configureLayout()
     m.errorMessage.translation = [0, 78]
 
     controlsHeight = 116
-    progressWidth = width - 220
-    m.controlsGroup.translation = [0, height - controlsHeight]
-    m.controlsBackground.width = width
+    progressWidth = size.w - 220
+    m.controlsGroup.translation = [0, size.h - controlsHeight]
+    m.controlsBackground.width = size.w
     m.controlsBackground.height = controlsHeight
     m.playPauseIcon.translation = [42, 18]
     m.playPauseIcon.width = 52
@@ -79,7 +76,7 @@ sub configureLayout()
     m.currentTimeLabel.translation = [42, 74]
     m.currentTimeLabel.width = 76
     m.currentTimeLabel.font = "font:SmallSystemFont"
-    m.durationLabel.translation = [width - 118, 74]
+    m.durationLabel.translation = [size.w - 118, 74]
     m.durationLabel.width = 76
     m.durationLabel.font = "font:SmallSystemFont"
     m.progressBackground.translation = [120, 82]
@@ -95,12 +92,11 @@ sub show(movie as Dynamic)
     m.movie = movie
     m.movieName = getMovieName(movie)
     m.top.movieName = m.movieName
+    m.title = m.movieName
     m.isClosing = false
-    m.startedFromBeginning = false
     m.top.visible = true
     m.top.SetFocus(true)
     hideControls()
-    resetProgress()
     showLoading("Preparando " + m.movieName + "...")
 end sub
 
@@ -116,45 +112,31 @@ sub play(streamUrl as String)
         return
     end if
 
-    startPlayback(streamUrl, 0)
+    startPlayback(streamUrl, m.movieName, 0)
 end sub
 
-sub startPlayback(streamUrl as String, startPosition as Integer)
+sub startPlayback(streamUrl as String, title as String, startPosition as Integer)
     content = CreateObject("roSGNode", "ContentNode")
     content.url = streamUrl
-    content.title = m.movieName
+    content.title = title
     content.streamFormat = getStreamFormat(streamUrl)
     content.live = false
-    if startPosition > 0 then content.PlayStart = startPosition
 
     m.lastPosition = startPosition
-    m.startedFromBeginning = startPosition < 1
     m.video.content = invalid
     m.video.visible = true
     m.video.content = content
+    if startPosition > 0 then content.PlayStart = startPosition
     m.video.control = "play"
     m.isPlaying = true
-    showLoading("Carregando " + m.movieName + "...")
+    startProgressUpdateTimer()
+    showLoading("Carregando " + title + "...")
     showControls()
 end sub
 
 sub setResumePosition(position as Dynamic)
     if position = invalid then m.resumePosition = 0 else m.resumePosition = Int(position)
 end sub
-
-function getPlaybackPosition() as Integer
-    if m.video <> invalid and m.video.position <> invalid then
-        position = Int(m.video.position)
-        if position > 0 then return position
-    end if
-    if m.lastPosition <> invalid and m.lastPosition > 0 then return Int(m.lastPosition)
-    return 0
-end function
-
-function getPlaybackDuration() as Integer
-    if m.video <> invalid and m.video.duration <> invalid then return Int(m.video.duration)
-    return 0
-end function
 
 sub showResumeDialog()
     dialog = CreateObject("roSGNode", "StandardMessageDialog")
@@ -170,14 +152,11 @@ sub onResumeDialogButtonSelected()
     if m.resumeDialog = invalid then return
     selected = m.resumeDialog.buttonSelected
     streamUrl = m.pendingStreamUrl
+    title = m.title
     m.top.GetScene().dialog = invalid
     m.resumeDialog = invalid
     m.pendingStreamUrl = ""
-    if selected = 0 then
-        startPlayback(streamUrl, m.resumePosition)
-    else
-        startPlayback(streamUrl, 0)
-    end if
+    if selected = 0 then startPlayback(streamUrl, title, m.resumePosition) else startPlayback(streamUrl, title, 0)
 end sub
 
 sub hide()
@@ -186,7 +165,7 @@ sub hide()
 end sub
 
 sub stopPlayback()
-    if m.isClosing = false then m.lastPosition = getPlaybackPosition()
+    m.lastPosition = getPlaybackPosition()
     m.isClosing = true
     if m.resumeDialog <> invalid then
         m.top.GetScene().dialog = invalid
@@ -199,7 +178,8 @@ sub stopPlayback()
         m.video.content = invalid
     end if
     m.isPlaying = false
-    hideLoading()
+    if m.loadingSpinner <> invalid then m.loadingSpinner.control = "stop"
+    if m.loadingGroup <> invalid then m.loadingGroup.visible = false
     stopProgressUpdateTimer()
     stopSeekHold()
     stopControlsAutoHideTimer()
@@ -207,20 +187,15 @@ sub stopPlayback()
 end sub
 
 sub showLoading(message as String)
-    if m.errorGroup <> invalid then m.errorGroup.visible = false
-    if m.loadingLabel <> invalid then m.loadingLabel.text = message
-    if m.loadingGroup <> invalid then m.loadingGroup.visible = true
-    if m.loadingSpinner <> invalid then m.loadingSpinner.control = "start"
-end sub
-
-sub hideLoading()
-    if m.loadingSpinner <> invalid then m.loadingSpinner.control = "stop"
-    if m.loadingGroup <> invalid then m.loadingGroup.visible = false
+    m.errorGroup.visible = false
+    m.loadingLabel.text = message
+    m.loadingGroup.visible = true
+    m.loadingSpinner.control = "start"
 end sub
 
 sub showError(message as String)
     stopPlayback()
-    hideLoading()
+    m.loadingGroup.visible = false
     m.errorTitle.text = "Não foi possível reproduzir o filme"
     m.errorMessage.text = message + Chr(10) + "Pressione Voltar e tente novamente."
     m.errorGroup.visible = true
@@ -232,27 +207,34 @@ sub onVideoStateChanged()
     if state = "playing" then
         m.isPlaying = true
         m.video.visible = true
-        hideLoading()
+        m.loadingGroup.visible = false
+        m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
         startProgressUpdateTimer()
-        updateControls()
         showControls()
-    else if state = "opening" or state = "buffering" or state = "loading" then
-        showLoading("Carregando " + m.movieName + "...")
+    else if state = "buffering" or state = "loading" then
+        showLoading("Carregando " + m.title + "...")
     else if state = "paused" then
         m.isPlaying = false
-        hideLoading()
         showControls()
     else if state = "finished" then
         m.isPlaying = false
-        hideLoading()
         stopProgressUpdateTimer()
         showControls()
     else if state = "error" then
-        stopProgressUpdateTimer()
         showError("Não foi possível reproduzir este filme.")
     end if
 end sub
+
+function isSeekKey(key as String) as Boolean
+    return normalizeSeekDirection(key) <> ""
+end function
+
+function normalizeSeekDirection(key as String) as String
+    if key = "right" or key = "fastforward" then return "right"
+    if key = "left" or key = "rewind" then return "left"
+    return ""
+end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if isSeekKey(key) then
@@ -263,7 +245,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return true
     end if
+
     if not press then return false
+
     if key = "back" then
         closeMoviePlayer()
         return true
@@ -289,27 +273,20 @@ sub closeMoviePlayer()
     m.top.backRequested = true
 end sub
 
-function isSeekKey(key as String) as Boolean
-    return normalizeSeekDirection(key) <> ""
-end function
-
-function normalizeSeekDirection(key as String) as String
-    if key = "right" or key = "fastforward" then return "right"
-    if key = "left" or key = "rewind" then return "left"
-    return ""
-end function
-
 sub beginSeekHold(key as String)
     direction = normalizeSeekDirection(key)
     if direction = "" then return
+
     if m.isHoldingSeek = true and m.seekDirection = direction then return
     stopSeekHold()
+
     m.isHoldingSeek = true
     m.seekDirection = direction
+
     if direction = "right" then
-        seekBy(m.seekStep)
-    else
-        seekBy(-m.seekStep)
+        seekForward()
+    else if direction = "left" then
+        seekBackward()
     end if
     if m.seekHoldTimer <> invalid then
         m.seekHoldTimer.control = "stop"
@@ -328,53 +305,20 @@ sub stopSeekHold()
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "stop"
     m.isHoldingSeek = false
     m.seekDirection = ""
+    m.pendingSeekPosition = invalid
+end sub
+
+sub onProgressUpdateTimerFire()
+    updateControls()
 end sub
 
 sub onSeekHoldTick()
     if m.isHoldingSeek = false then return
     if m.seekDirection = "right" then
-        seekBy(m.seekStep)
-    else
-        seekBy(-m.seekStep)
+        seekForward()
+    else if m.seekDirection = "left" then
+        seekBackward()
     end if
-end sub
-
-sub seekBy(delta as Integer)
-    if m.video = invalid then return
-    current = 0
-    if m.video.position <> invalid then current = Int(m.video.position)
-    seekTo(current + delta)
-end sub
-
-sub seekTo(position as Integer)
-    if m.video = invalid then return
-    target = clampSeekPosition(position)
-    m.video.seek = target
-    updateProgress()
-    showControls()
-end sub
-
-function clampSeekPosition(position as Integer) as Integer
-    target = position
-    if target < 0 then target = 0
-    duration = getPlaybackDuration()
-    if duration > 0 and target > duration then target = duration
-    return target
-end function
-
-sub onVideoPositionChanged()
-    if m.video = invalid or m.video.position = invalid then return
-    position = Int(m.video.position)
-    if position > 0 then m.lastPosition = position
-    updateProgress()
-end sub
-
-sub onVideoDurationChanged()
-    updateProgress()
-end sub
-
-sub onProgressUpdateTimerFire()
-    updateControls()
 end sub
 
 sub togglePause()
@@ -391,6 +335,53 @@ sub togglePause()
     end if
     updatePlayPauseIcon()
 end sub
+
+sub seekForward()
+    seekBy(m.seekStep)
+end sub
+
+sub seekBackward()
+    seekBy(-m.seekStep)
+end sub
+
+sub seekBy(delta as Integer)
+    current = getSeekBasePosition()
+    seekTo(current + delta)
+end sub
+
+sub seekTo(position as Integer)
+    if m.video = invalid then return
+    target = clampSeekPosition(position)
+    m.pendingSeekPosition = target
+    m.video.seek = target
+    updateProgress()
+    showControls()
+end sub
+
+function getSeekBasePosition() as Integer
+    if m.pendingSeekPosition <> invalid then return Int(m.pendingSeekPosition)
+    return getPlaybackPosition()
+end function
+
+function clampSeekPosition(position as Integer) as Integer
+    target = position
+    if target < 0 then target = 0
+    duration = getPlaybackDuration()
+    if duration > 0 and target > duration then target = duration
+    if target < 0 then target = 0
+    return target
+end function
+
+function getPlaybackPosition() as Integer
+    if m.lastPosition <> invalid and m.lastPosition > 0 and (m.video = invalid or m.video.position = invalid or Int(m.video.position) = 0) then return Int(m.lastPosition)
+    if m.video <> invalid and m.video.position <> invalid then return Int(m.video.position)
+    return 0
+end function
+
+function getPlaybackDuration() as Integer
+    if m.video <> invalid and m.video.duration <> invalid then return Int(m.video.duration)
+    return 0
+end function
 
 sub showControls()
     updateControls()
@@ -432,15 +423,8 @@ sub updateControls()
     updateProgress()
 end sub
 
-sub resetProgress()
-    if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = "00:00"
-    if m.durationLabel <> invalid then m.durationLabel.text = "00:00"
-    if m.progressFill <> invalid then m.progressFill.width = 0
-end sub
-
 sub updateProgress()
-    position = 0
-    if m.video <> invalid and m.video.position <> invalid then position = Int(m.video.position)
+    position = getSeekBasePosition()
     duration = getPlaybackDuration()
     if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = formatTime(position)
     if m.durationLabel <> invalid then m.durationLabel.text = formatTime(duration)
@@ -476,8 +460,13 @@ end function
 
 function getMovieName(movie as Dynamic) as String
     if movie = invalid then return "Filme"
-    if movie.name <> invalid and movie.name.ToStr().Trim() <> "" then return movie.name.ToStr()
-    if movie.title <> invalid and movie.title.ToStr().Trim() <> "" then return movie.title.ToStr()
+    if Type(movie) = "roAssociativeArray" then
+        if movie.DoesExist("name") and movie.name <> invalid and movie.name.ToStr().Trim() <> "" then return movie.name.ToStr().Trim()
+        if movie.DoesExist("title") and movie.title <> invalid and movie.title.ToStr().Trim() <> "" then return movie.title.ToStr().Trim()
+    else
+        if movie.name <> invalid and movie.name.ToStr().Trim() <> "" then return movie.name.ToStr().Trim()
+        if movie.title <> invalid and movie.title.ToStr().Trim() <> "" then return movie.title.ToStr().Trim()
+    end if
     return "Filme"
 end function
 
