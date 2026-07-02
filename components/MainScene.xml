@@ -23,7 +23,7 @@
         <MovieListScreen id="movieListScreen" visible="false" />
         <MovieDetailScreen id="movieDetailScreen" visible="false" />
         <MoviePlayerScreen id="moviePlayerScreen" visible="false" />
-        <SeriesHomeScreen id="seriesHomeScreen" visible="false" />
+        <SeriesScreen id="seriesScreen" visible="false" />
         <SeriesDetailScreen id="seriesDetailScreen" visible="false" />
         <SeriesPlayerScreen id="seriesPlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />

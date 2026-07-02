@@ -18,7 +18,7 @@ sub Init()
     m.movieListScreen = m.top.FindNode("movieListScreen")
     m.movieDetailScreen = m.top.FindNode("movieDetailScreen")
     m.moviePlayerScreen = m.top.FindNode("moviePlayerScreen")
-    m.seriesHomeScreen = m.top.FindNode("seriesHomeScreen")
+    m.seriesScreen = m.top.FindNode("seriesScreen")
     m.seriesDetailScreen = m.top.FindNode("seriesDetailScreen")
     m.seriesPlayerScreen = m.top.FindNode("seriesPlayerScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
@@ -138,10 +138,10 @@ sub Init()
     m.movieDetailScreen.ObserveField("playRequested", "onMovieDetailPlay")
     m.movieDetailScreen.ObserveField("favoriteToggled", "onMovieDetailFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
-    m.seriesHomeScreen.ObserveField("backRequested", "onSeriesHomeBack")
-    m.seriesHomeScreen.ObserveField("categorySelected", "onSeriesHomeCategorySelected")
-    m.seriesHomeScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
-    m.seriesHomeScreen.ObserveField("seriesSelected", "onSeriesSelected")
+    m.seriesScreen.ObserveField("backRequested", "onSeriesScreenBack")
+    m.seriesScreen.ObserveField("categorySelected", "onSeriesScreenCategorySelected")
+    m.seriesScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
+    m.seriesScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.seriesDetailScreen.ObserveField("backRequested", "onSeriesDetailBack")
     m.seriesDetailScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
     m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
@@ -325,7 +325,7 @@ function closeActivePlayerScreen() as Boolean
 end function
 
 sub focusActiveScreen()
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.seriesHomeScreen, m.seriesDetailScreen]
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.seriesScreen, m.seriesDetailScreen]
     for each screen in screens
         if screen <> invalid and screen.visible = true then
             screen.SetFocus(true)
@@ -363,7 +363,7 @@ end function
 sub hideAllScreensExcept(visibleScreen as Object)
     visibleId = ""
     if visibleScreen <> invalid then visibleId = visibleScreen.id
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.seriesHomeScreen, m.seriesDetailScreen, m.seriesPlayerScreen]
+    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.seriesScreen, m.seriesDetailScreen, m.seriesPlayerScreen]
     for each screen in screens
         if screen <> invalid and screen.id <> visibleId then screen.callFunc("hide")
     end for
@@ -456,8 +456,8 @@ sub onSearchBack()
         m.movieListScreen.callFunc("focusCategories")
         m.searchScreen.callFunc("hide")
     else if m.searchBackTarget = "series" then
-        m.seriesHomeScreen.callFunc("show")
-        m.seriesHomeScreen.callFunc("focusSearchEntry")
+        m.seriesScreen.callFunc("show")
+        m.seriesScreen.callFunc("focusSearchEntry")
         m.searchScreen.callFunc("hide")
     else
         showHome()
@@ -1122,23 +1122,33 @@ sub showRecentMoviesInMovieList()
     m.movieListScreen.callFunc("setMovies", m.movies)
 end sub
 
-sub showFavoriteSeriesInSeriesHome()
+sub showFavoriteSeriesInSeriesScreen()
     m.selectedSeriesCategory = { category_name: "FAVORITOS", name: "FAVORITOS", isFavorites: true }
     m.selectedSeriesCategoryId = ""
     m.series = favoriteContents(LoadFavorites().series)
     m.seriesLoading = false
-    m.seriesHomeScreen.callFunc("setLoading", false)
-    m.seriesHomeScreen.callFunc("setSeries", m.series)
+    m.seriesScreen.callFunc("setLoading", false)
+    m.seriesScreen.callFunc("setSeries", m.series)
 end sub
 
-sub showRecentSeriesInSeriesHome()
-    m.selectedSeriesCategory = { category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS", isRecent: true }
+sub showRecentSeriesInSeriesScreen()
+    m.selectedSeriesCategory = { category_name: "RECENTEMENTE", name: "RECENTEMENTE", isRecent: true }
     m.selectedSeriesCategoryId = ""
     history = LoadViewingHistory()
     m.series = historyContents(history.series, "series")
     m.seriesLoading = false
-    m.seriesHomeScreen.callFunc("setLoading", false)
-    m.seriesHomeScreen.callFunc("setSeries", m.series)
+    m.seriesScreen.callFunc("setLoading", false)
+    m.seriesScreen.callFunc("setSeries", m.series)
+end sub
+
+sub showContinueSeriesInSeriesScreen()
+    m.selectedSeriesCategory = { category_name: "CONTINUE ASSISTINDO", name: "CONTINUE ASSISTINDO", isContinue: true }
+    m.selectedSeriesCategoryId = ""
+    history = LoadViewingHistory()
+    m.series = historyContentsWithProgress(history.continueWatching, "series")
+    m.seriesLoading = false
+    m.seriesScreen.callFunc("setLoading", false)
+    m.seriesScreen.callFunc("setSeries", m.series)
 end sub
 
 function favoriteContents(items as Dynamic) as Object
@@ -1165,12 +1175,31 @@ function historyContents(items as Dynamic, contentField as String) as Object
     return contents
 end function
 
+function historyContentsWithProgress(items as Dynamic, contentField as String) as Object
+    contents = []
+    if items = invalid or Type(items) <> "roArray" then return contents
+    for each item in items
+        if item <> invalid and item.position <> invalid and item.position > 0 then
+            if contentField = "series" and item.series <> invalid then
+                contents.Push(item.series)
+            else if item.content <> invalid then
+                contents.Push(item.content)
+            end if
+        end if
+    end for
+    return contents
+end function
+
 function isFavoritesCategory(category as Dynamic) as Boolean
     return category <> invalid and category.isFavorites = true
 end function
 
 function isRecentCategory(category as Dynamic) as Boolean
     return category <> invalid and category.isRecent = true
+end function
+
+function isContinueCategory(category as Dynamic) as Boolean
+    return category <> invalid and category.isContinue = true
 end function
 
 sub showMoviesFromCacheOrLoad(category as Object)
@@ -1192,12 +1221,12 @@ sub showSeriesFromCacheOrLoad(category as Object)
     if cached.Count() > 0 then
         m.series = cached
         m.seriesLoading = false
-        m.seriesHomeScreen.callFunc("setLoading", false)
-        m.seriesHomeScreen.callFunc("setSeries", m.series)
+        m.seriesScreen.callFunc("setLoading", false)
+        m.seriesScreen.callFunc("setSeries", m.series)
         return
     end if
     m.seriesLoading = true
-    m.seriesHomeScreen.callFunc("setLoading", true)
+    m.seriesScreen.callFunc("setLoading", true)
     loadSeries(category)
 end sub
 
@@ -1573,7 +1602,7 @@ sub replaceSearchIndexCategory(kind as String, categoryId as String, entries as 
 end sub
 
 sub hideSeriesScreens()
-    m.seriesHomeScreen.callFunc("hide")
+    m.seriesScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("hide")
     m.seriesPlayerScreen.callFunc("hide")
 end sub
@@ -1594,21 +1623,28 @@ sub onOpenSeriesRequested()
     m.isOpeningSeries = true
     cancelSearchIndexRefresh()
 
-    hideAllScreensExcept(m.seriesHomeScreen)
-    m.seriesHomeScreen.callFunc("resetSelection")
-    m.seriesHomeScreen.callFunc("setCategories", [])
-    m.seriesHomeScreen.callFunc("setSeries", [])
-    m.seriesHomeScreen.callFunc("show")
-    m.seriesHomeScreen.SetFocus(true)
+    hideAllScreensExcept(m.seriesScreen)
+    m.seriesScreen.callFunc("resetSelection")
+    m.seriesScreen.callFunc("setCategories", [])
+    m.seriesScreen.callFunc("setSeries", [])
+    m.seriesScreen.callFunc("show")
+    m.seriesScreen.SetFocus(true)
 
     if not isValidAccount(m.account) then
-        m.seriesHomeScreen.callFunc("setLoading", false)
-        m.seriesHomeScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de séries.")
+        m.seriesScreen.callFunc("setLoading", false)
+        m.seriesScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de séries.")
         m.isOpeningSeries = false
         return
     end if
 
-    m.seriesHomeScreen.callFunc("showMessage", "Carregando categorias de séries...")
+    if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
+        m.seriesScreen.callFunc("setCategories", m.seriesCategories)
+        m.seriesScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
+        m.isOpeningSeries = false
+        return
+    end if
+
+    m.seriesScreen.callFunc("showMessage", "Carregando categorias de séries...")
     runXtreamRequest("getSeriesCategories", "")
     m.isOpeningSeries = false
 end sub
@@ -1635,14 +1671,14 @@ sub onSeriesOpenTimeout()
     m.seriesCategoriesLoading = false
     m.seriesLoading = false
     m.isOpeningSeries = false
-    if m.seriesHomeScreen.visible = true then
-        m.seriesHomeScreen.callFunc("setLoading", false)
-        m.seriesHomeScreen.callFunc("showMessage", "Não foi possível carregar séries. Pressione Voltar e tente novamente.")
-        m.seriesHomeScreen.SetFocus(true)
+    if m.seriesScreen.visible = true then
+        m.seriesScreen.callFunc("setLoading", false)
+        m.seriesScreen.callFunc("showMessage", "Não foi possível carregar séries. Pressione Voltar e tente novamente.")
+        m.seriesScreen.SetFocus(true)
     end if
 end sub
 
-sub onSeriesHomeBack()
+sub onSeriesScreenBack()
     stopSeriesOpenTimeout()
     m.seriesCategoriesLoading = false
     m.seriesLoading = false
@@ -1652,7 +1688,7 @@ end sub
 sub onSeriesDetailBack()
     if m.pendingRequest = "getSeriesInfo" then cancelXtreamRequest()
     m.seriesDetailScreen.callFunc("hide")
-    m.seriesHomeScreen.callFunc("show")
+    m.seriesScreen.callFunc("show")
 end sub
 
 sub onSeriesPlayerBack()
@@ -1674,14 +1710,17 @@ sub onSeriesSearchRequested()
     openSearch("series", "series")
 end sub
 
-sub onSeriesHomeCategorySelected()
-    category = m.seriesHomeScreen.categorySelected
+sub onSeriesScreenCategorySelected()
+    category = m.seriesScreen.categorySelected
     if category = invalid then return
     if isFavoritesCategory(category) then
-        showFavoriteSeriesInSeriesHome()
+        showFavoriteSeriesInSeriesScreen()
         return
     else if isRecentCategory(category) then
-        showRecentSeriesInSeriesHome()
+        showRecentSeriesInSeriesScreen()
+        return
+    else if isContinueCategory(category) then
+        showContinueSeriesInSeriesScreen()
         return
     end if
     m.selectedSeriesCategory = category
@@ -1692,10 +1731,10 @@ sub onSeriesHomeCategorySelected()
 end sub
 
 sub onSeriesSelected()
-    series = m.seriesHomeScreen.seriesSelected
+    series = m.seriesScreen.seriesSelected
     if series = invalid then return
     m.selectedSeries = series
-    m.seriesHomeScreen.callFunc("hide")
+    m.seriesScreen.callFunc("hide")
     m.seriesDetailScreen.callFunc("show", series)
     m.seriesDetailScreen.callFunc("setLoading", true)
     m.seriesDetailScreen.callFunc("showMessage", "Carregando temporadas...")
@@ -1725,7 +1764,7 @@ end sub
 sub loadSeriesCategories(account as Object)
     if not beginXtreamRequest("getSeriesCategories") then return
     m.seriesCategoriesLoading = true
-    if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", true)
+    if m.seriesScreen.visible = true then m.seriesScreen.callFunc("setLoading", true)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getSeriesCategories"
     m.xtreamService.cacheEnabled = true
@@ -1739,8 +1778,8 @@ sub loadSeries(category as Object)
     startSeriesOpenTimeout()
     if not hasAccount(m.account) then
         m.seriesLoading = false
-        m.seriesHomeScreen.callFunc("setLoading", false)
-        m.seriesHomeScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as séries.")
+        m.seriesScreen.callFunc("setLoading", false)
+        m.seriesScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as séries.")
         return
     end if
     if not beginXtreamRequest("getSeries") then return
@@ -1884,17 +1923,17 @@ end sub
 sub onSeriesCategoriesResult(result as Object)
     stopSeriesOpenTimeout()
     m.seriesCategoriesLoading = false
-    if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", false)
+    if m.seriesScreen.visible = true then m.seriesScreen.callFunc("setLoading", false)
     if result.success = true then
         m.seriesCategories = normalizeSeriesCategories(result.data)
         m.searchIndexCache.seriesCategories = m.seriesCategories
         SaveSearchIndexCache(m.searchIndexCache)
-        if m.seriesHomeScreen.visible = true then
-            m.seriesHomeScreen.callFunc("setCategories", m.seriesCategories)
-            m.seriesHomeScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
+        if m.seriesScreen.visible = true then
+            m.seriesScreen.callFunc("setCategories", m.seriesCategories)
+            m.seriesScreen.callFunc("showMessage", "Escolha uma categoria para carregar as séries.")
         end if
-    else if m.seriesHomeScreen.visible = true then
-        m.seriesHomeScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
+    else if m.seriesScreen.visible = true then
+        m.seriesScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
     end if
 end sub
 
@@ -1907,7 +1946,7 @@ sub onSeriesResult(result as Object)
     if resultCategoryId <> "" and resultCategoryId <> m.selectedSeriesCategoryId then return
     stopSeriesOpenTimeout()
     m.seriesLoading = false
-    if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setLoading", false)
+    if m.seriesScreen.visible = true then m.seriesScreen.callFunc("setLoading", false)
     if result.success = true then
         m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, normalizeSeries(result.data), resultCategoryId)
         m.searchIndexCache.series = m.cachedSeries
@@ -1915,9 +1954,9 @@ sub onSeriesResult(result as Object)
         m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
         SaveSearchIndexCache(m.searchIndexCache)
         m.series = filterItemsByCategory(m.cachedSeries, m.selectedSeriesCategoryId)
-        if m.seriesHomeScreen.visible = true then m.seriesHomeScreen.callFunc("setSeries", m.series)
-    else if m.seriesHomeScreen.visible = true then
-        m.seriesHomeScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
+        if m.seriesScreen.visible = true then m.seriesScreen.callFunc("setSeries", m.series)
+    else if m.seriesScreen.visible = true then
+        m.seriesScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
     end if
 end sub
 
