@@ -22,7 +22,7 @@
             <Rectangle id="controlsBackground" color="#000000" opacity="0.55" />
             <Label id="playPauseIcon" text="Ⅱ" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         </Group>
-        <Timer id="seekHoldTimer" duration="0.25" repeat="true" />
+        <Timer id="seekHoldTimer" duration="0.35" repeat="true" />
         <Timer id="controlsAutoHideTimer" duration="3" repeat="false" />
         <Group id="errorGroup" visible="false">
             <Label id="errorTitle" text="Não foi possível reproduzir o filme" color="#FFFFFF" horizAlign="center" />

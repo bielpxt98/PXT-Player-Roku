@@ -11,14 +11,18 @@
         <field id="openLiveCategories" type="boolean" alwaysNotify="true" />
         <field id="openMovieCategories" type="boolean" alwaysNotify="true" />
         <field id="openSeriesCategories" type="boolean" alwaysNotify="true" />
+        <field id="openFavorites" type="boolean" alwaysNotify="true" />
+        <field id="openRecent" type="boolean" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/HomeScreen.brs" />
     <children>
         <Poster id="homeBackground" uri="pkg:/images/background.jpeg" opacity="0" translation="[0, 0]" loadDisplayMode="scaleToFill" />
         <Rectangle id="homeOverlay" color="#000000" opacity="0.24" translation="[0, 0]" />
-        <HomeTile id="liveTvButton" title="TV AO VIVO" iconUri="pkg:/images/icons/tv.svg" baseColor="#8B0000" />
-        <HomeTile id="moviesButton" title="FILMES" iconUri="pkg:/images/icons/movies.svg" baseColor="#0B3A75" />
-        <HomeTile id="seriesButton" title="SÉRIES" iconUri="pkg:/images/icons/series.svg" baseColor="#4C1D95" />
+        <HomeTile id="liveTvButton" title="TV AO VIVO" iconUri="pkg:/images/icons/tv.svg" baseColor="#E11D48" />
+        <HomeTile id="moviesButton" title="FILMES" iconUri="pkg:/images/icons/movies.svg" baseColor="#2563EB" />
+        <HomeTile id="seriesButton" title="SÉRIES" iconUri="pkg:/images/icons/series.svg" baseColor="#9333EA" />
+        <HomeTile id="favoritesButton" title="FAVORITOS" iconText="★" baseColor="#FACC15" />
+        <HomeTile id="recentButton" title="ÚLTIMOS ASSISTIDOS" iconText="↺" baseColor="#CBD5E1" />
         <Label id="accountIconLabel" text="●" color="#D8E2F3" horizAlign="center" />
         <Label id="accountFooterLabel" text="CONTA" color="#D8E2F3" horizAlign="center" />
         <Label id="connectionStatusLabel" text="" color="#5CE08A" horizAlign="center" />

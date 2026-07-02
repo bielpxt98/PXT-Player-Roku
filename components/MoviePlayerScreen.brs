@@ -23,10 +23,8 @@ sub Init()
     m.lastPosition = 0
     m.seekStep = 10
     m.longSeekStep = 20
-    m.holdThresholdMs = 450
-    m.heldSeekKey = ""
-    m.seekHoldHandled = false
-    m.seekPressTimer = invalid
+    m.seekDirection = ""
+    m.isHoldingSeek = false
     m.pendingStreamUrl = ""
     m.resumeDialog = invalid
 
@@ -270,44 +268,41 @@ sub closeMoviePlayer()
 end sub
 
 sub beginSeekHold(key as String)
-    if m.heldSeekKey = key then return
-    m.heldSeekKey = key
-    m.seekHoldHandled = false
-    m.seekPressTimer = CreateObject("roTimespan")
-    m.seekPressTimer.Mark()
-    if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "start"
+    if m.isHoldingSeek = true then return
+
+    m.isHoldingSeek = true
+    m.seekDirection = key
+
+    if key = "right" then
+        seekBy(m.seekStep)
+    else if key = "left" then
+        seekBy(-m.seekStep)
+    end if
+
+    if m.seekHoldTimer <> invalid then
+        m.seekHoldTimer.control = "stop"
+        m.seekHoldTimer.control = "start"
+    end if
     showControls()
 end sub
 
 sub finishSeekHold(key as String)
-    if m.heldSeekKey <> key then return
-    elapsedMs = 0
-    if m.seekPressTimer <> invalid then elapsedMs = m.seekPressTimer.TotalMilliseconds()
-    wasLongPress = m.seekHoldHandled = true or elapsedMs >= m.holdThresholdMs
+    if m.seekDirection <> key then return
     stopSeekHold()
-    if not wasLongPress then
-        if key = "right" then
-            seekBy(m.seekStep)
-        else
-            seekBy(-m.seekStep)
-        end if
-    end if
 end sub
 
 sub stopSeekHold()
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "stop"
-    m.heldSeekKey = ""
-    m.seekHoldHandled = false
-    m.seekPressTimer = invalid
+    m.isHoldingSeek = false
+    m.seekDirection = ""
 end sub
 
 sub onSeekHoldTimerFire()
-    if m.heldSeekKey = "" or m.seekPressTimer = invalid then return
-    if m.seekPressTimer.TotalMilliseconds() < m.holdThresholdMs then return
-    m.seekHoldHandled = true
-    if m.heldSeekKey = "right" then
+    if m.isHoldingSeek = false then return
+
+    if m.seekDirection = "right" then
         seekBy(m.longSeekStep)
-    else
+    else if m.seekDirection = "left" then
         seekBy(-m.longSeekStep)
     end if
 end sub
@@ -334,7 +329,7 @@ sub seekTo(position as Integer)
     if m.video = invalid then return
     if position < 0 then position = 0
     duration = getPlaybackDuration()
-    if duration > 0 and position > duration then position = duration
+    if duration > 0 and position > duration then position = duration - 1
     m.video.seek = position
     showControls()
 end sub

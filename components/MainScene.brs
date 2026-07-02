@@ -99,6 +99,8 @@ sub Init()
     m.homeScreen.ObserveField("openLiveCategories", "onOpenLiveCategoriesRequested")
     m.homeScreen.ObserveField("openMovieCategories", "onOpenMovieCategoriesRequested")
     m.homeScreen.ObserveField("openSeriesCategories", "onOpenSeriesRequested")
+    m.homeScreen.ObserveField("openFavorites", "onOpenFavoritesRequested")
+    m.homeScreen.ObserveField("openRecent", "onOpenRecentRequested")
     m.searchScreen.ObserveField("backRequested", "onSearchBack")
     m.searchScreen.ObserveField("channelSelected", "onSearchChannelSelected")
     m.movieSearchScreen.ObserveField("backRequested", "onMovieSearchBack")
@@ -596,6 +598,21 @@ end sub
 
 sub onMovieFavoriteToggled()
     ToggleFavorite("movie", m.movieListScreen.movieFavoriteToggled)
+end sub
+
+
+sub onOpenFavoritesRequested()
+    m.homeScreen.callFunc("hide")
+    m.recentScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("show")
+    m.favoritesScreen.callFunc("setFavorites", LoadFavorites())
+end sub
+
+sub onOpenRecentRequested()
+    m.homeScreen.callFunc("hide")
+    m.favoritesScreen.callFunc("hide")
+    m.recentScreen.callFunc("show")
+    m.recentScreen.callFunc("setHistory", LoadViewingHistory())
 end sub
 
 sub onOpenPlaylistRequested()
