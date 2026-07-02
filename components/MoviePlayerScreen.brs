@@ -148,6 +148,7 @@ sub setResumePosition(position as Dynamic)
 end sub
 
 function getPlaybackPosition() as Integer
+    if m.lastPosition <> invalid and m.lastPosition > 0 and (m.video = invalid or m.video.position = invalid or Int(m.video.position) = 0) then return Int(m.lastPosition)
     if m.video <> invalid and m.video.position <> invalid then return Int(m.video.position)
     return 0
 end function

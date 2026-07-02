@@ -16,6 +16,7 @@ sub Init()
     m.activePanel = "categories"
     m.fixedItems = ["PESQUISAR", "FAVORITOS", "ÚLTIMOS ASSISTIDOS"]
     m.previewCache = []
+    m.recentSeriesItems = []
     m.currentCategoryId = ""
 
     m.background = m.top.FindNode("background")
@@ -225,6 +226,10 @@ sub setPreviewCache(cache as Object)
     if cache = invalid or Type(cache) <> "roArray" then m.previewCache = [] else m.previewCache = cache
 end sub
 
+sub setRecentSeries(items as Object)
+    m.recentSeriesItems = normalizeRecentSeriesItems(items)
+end sub
+
 sub setCategories(categories as Object)
     if categories = invalid or Type(categories) <> "roArray" then
         m.categories = []
@@ -317,7 +322,10 @@ sub handleCategoryOk()
         if label = "FAVORITOS" then
             m.statusLabel.text = "Nenhuma série favorita encontrada."
         else if label = "ÚLTIMOS ASSISTIDOS" then
-            m.statusLabel.text = "Nenhuma série assistida recentemente."
+            m.seriesItems = m.recentSeriesItems
+            if m.seriesItems.Count() = 0 then m.statusLabel.text = "Nenhuma série assistida recentemente." else m.statusLabel.text = ""
+            m.activePanel = "grid"
+            renderSeriesGrid()
         else
             m.statusLabel.text = ""
         end if
@@ -615,4 +623,30 @@ function filterSeriesItems(items as Dynamic, categoryId as String) as Object
         if series <> invalid and series.category_id <> invalid and series.category_id.ToStr() = categoryId then filtered.Push(series)
     end for
     return filtered
+end function
+
+
+function normalizeRecentSeriesItems(items as Dynamic) as Object
+    recent = []
+    if items = invalid or Type(items) <> "roArray" then return recent
+    for each item in items
+        if item <> invalid then
+            title = "Episódio"
+            if item.title <> invalid then title = item.title.ToStr()
+            seriesTitle = "Série"
+            if item.seriesTitle <> invalid then seriesTitle = item.seriesTitle.ToStr()
+            poster = ""
+            if item.poster <> invalid then poster = item.poster.ToStr()
+            recent.Push({
+                isHistoryEpisode: true,
+                name: seriesTitle + " • " + title,
+                title: seriesTitle + " • " + title,
+                cover: poster,
+                series_image: poster,
+                series: item.series,
+                episode: item.content
+            })
+        end if
+    end for
+    return recent
 end function
