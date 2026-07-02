@@ -13,7 +13,7 @@ sub Init()
     m.categories = [] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.categoryRefs = [] : m.itemNodes = [] : m.itemRefs = []
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0
-    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "grid"
+    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "search"
     configureLayout()
 end sub
 
@@ -60,7 +60,7 @@ end sub
 
 sub show(category as Dynamic)
     if category <> invalid then syncSelectedCategory(category)
-    resetGridSelection()
+    if m.activePane = "" then m.activePane = "search"
     renderCategories() : renderGrid() : updateFocus()
     m.top.visible = true : m.top.SetFocus(true)
 end sub
@@ -76,10 +76,11 @@ end sub
 
 sub resetSelection()
     m.selectedCategoryIndex = 0 : m.firstVisibleCategoryIndex = 0 : resetGridSelection()
+    m.activePane = "search"
 end sub
 
 sub resetGridSelection()
-    m.selectedIndex = 0 : m.firstVisibleRow = 0 : m.activePane = "grid"
+    m.selectedIndex = 0 : m.firstVisibleRow = 0
     resetGridFocusToFirstItem()
 end sub
 
@@ -168,11 +169,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     if key = "left" then
         if m.activePane = "grid" then
-            if (m.selectedIndex mod m.columns) = 0 then
-                m.activePane = "categories" : updateFocus()
-            else
-                moveGrid(-1, 0)
-            end if
+            m.activePane = "categories" : updateFocus()
         else if m.activePane = "search" then
             m.activePane = "categories" : updateFocus()
         end if
@@ -291,6 +288,36 @@ sub resetGridFocusToFirstItem()
     if m.moviesGrid <> invalid then
         m.moviesGrid.jumpToItem = 0
     end if
+end sub
+
+function getState() as Object
+    return {
+        selectedCategoryIndex: m.selectedCategoryIndex,
+        firstVisibleCategoryIndex: m.firstVisibleCategoryIndex,
+        selectedIndex: m.selectedIndex,
+        firstVisibleRow: m.firstVisibleRow,
+        activePane: m.activePane,
+        movies: m.movies
+    }
+end function
+
+sub restoreState(state as Dynamic)
+    if state = invalid then return
+    if state.movies <> invalid then m.movies = normalizeArray(state.movies) : m.allMovie = m.movies
+    if state.selectedCategoryIndex <> invalid then m.selectedCategoryIndex = state.selectedCategoryIndex
+    if state.firstVisibleCategoryIndex <> invalid then m.firstVisibleCategoryIndex = state.firstVisibleCategoryIndex
+    if state.selectedIndex <> invalid then m.selectedIndex = state.selectedIndex
+    if state.firstVisibleRow <> invalid then m.firstVisibleRow = state.firstVisibleRow
+    if state.activePane <> invalid then m.activePane = state.activePane else m.activePane = "grid"
+    updateCategoryWindow() : updateGridWindow()
+    restoredIndex = m.selectedIndex
+    restoredFirstRow = m.firstVisibleRow
+    renderCategories() : renderGrid()
+    m.selectedIndex = restoredIndex
+    m.firstVisibleRow = restoredFirstRow
+    updateGridWindow()
+    if m.moviesGrid <> invalid then m.moviesGrid.jumpToItem = m.selectedIndex
+    updateFocus()
 end sub
 
 sub syncSelectedCategory(category as Dynamic)

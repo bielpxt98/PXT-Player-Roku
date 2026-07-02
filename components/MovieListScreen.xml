@@ -8,6 +8,9 @@
         <function name="setCategories" />
         <function name="showMessage" />
         <function name="resetSelection" />
+        <function name="focusCategories" />
+        <function name="getState" />
+        <function name="restoreState" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="categorySelected" type="assocarray" alwaysNotify="true" />
         <field id="searchRequested" type="boolean" alwaysNotify="true" />
