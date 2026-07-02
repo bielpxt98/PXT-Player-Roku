@@ -16,9 +16,13 @@
         <Label id="metaLabel" color="#B8C3D6" />
         <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
         <Label id="synopsisLabel" color="#D1D5DB" wrap="true" />
+        <Label id="seasonsTitle" text="TEMPORADAS" color="#FFFFFF" />
+        <Group id="seasonsGroup" />
+        <Label id="episodesTitle" text="EPISÓDIOS" color="#FFFFFF" />
+        <Group id="episodesGroup" />
+        <Label id="episodesMessageLabel" text="Episódios serão carregados ao selecionar/reproduzir uma temporada." color="#B8C3D6" wrap="true" />
         <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" />
         <Group id="buttonsGroup">
-            <Label id="seasonsButton" text="TEMPORADAS" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         </Group>
     </children>

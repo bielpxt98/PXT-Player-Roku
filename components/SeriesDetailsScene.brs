@@ -5,11 +5,18 @@ sub Init()
     m.metaLabel = m.top.FindNode("metaLabel")
     m.synopsisTitle = m.top.FindNode("synopsisTitle")
     m.synopsisLabel = m.top.FindNode("synopsisLabel")
+    m.seasonsTitle = m.top.FindNode("seasonsTitle")
+    m.seasonsGroup = m.top.FindNode("seasonsGroup")
+    m.episodesTitle = m.top.FindNode("episodesTitle")
+    m.episodesGroup = m.top.FindNode("episodesGroup")
+    m.episodesMessageLabel = m.top.FindNode("episodesMessageLabel")
     m.loadingLabel = m.top.FindNode("loadingLabel")
     m.buttonsGroup = m.top.FindNode("buttonsGroup")
-    m.seasonsButton = m.top.FindNode("seasonsButton")
     m.backButton = m.top.FindNode("backButton")
     m.selectedButton = 0
+    m.selectedSeasonIndex = 0
+    m.seasons = []
+    m.seasonNodes = []
     m.item = invalid
     configureLayout()
 end sub
@@ -47,14 +54,25 @@ sub configureLayout()
     m.synopsisTitle.font = "font:MediumBoldSystemFont"
     m.synopsisLabel.translation = [contentX, topY + 195]
     m.synopsisLabel.width = contentW
-    m.synopsisLabel.height = 260
+    m.synopsisLabel.height = 150
     m.synopsisLabel.font = "font:MediumSystemFont"
-    m.loadingLabel.translation = [contentX, topY + 500]
+    m.seasonsTitle.translation = [contentX, topY + 365]
+    m.seasonsTitle.width = contentW
+    m.seasonsTitle.font = "font:MediumBoldSystemFont"
+    m.seasonsGroup.translation = [contentX, topY + 410]
+    m.episodesTitle.translation = [contentX, topY + 485]
+    m.episodesTitle.width = contentW
+    m.episodesTitle.font = "font:MediumBoldSystemFont"
+    m.episodesGroup.translation = [contentX, topY + 530]
+    m.episodesMessageLabel.translation = [contentX, topY + 530]
+    m.episodesMessageLabel.width = contentW
+    m.episodesMessageLabel.height = 90
+    m.episodesMessageLabel.font = "font:MediumSystemFont"
+    m.loadingLabel.translation = [contentX, topY + 635]
     m.loadingLabel.width = contentW
     m.loadingLabel.font = "font:MediumSystemFont"
-    m.buttonsGroup.translation = [marginX, h - 105]
-    setupButton(m.seasonsButton, 0, 220)
-    setupButton(m.backButton, 250, 170)
+    m.buttonsGroup.translation = [contentX, h - 95]
+    setupButton(m.backButton, 0, 170)
 end sub
 
 sub setupButton(button as Object, x as Integer, width as Integer)
@@ -67,6 +85,7 @@ end sub
 sub show(item as Dynamic)
     m.item = item
     m.selectedButton = 0
+    m.selectedSeasonIndex = 0
     configureLayout()
     populate(item)
     setLoading(false)
@@ -109,6 +128,8 @@ sub populate(item as Dynamic)
     m.synopsisLabel.text = desc
     m.synopsisTitle.visible = true
     m.synopsisLabel.visible = true
+    setupSeasons(item)
+    renderEpisodes([])
 end sub
 
 function mergeItem(base as Dynamic, details as Dynamic) as Object
@@ -169,31 +190,88 @@ function ratingText(value as String) as String
     return stars
 end function
 
-sub updateButtons()
-    buttons = [m.seasonsButton, m.backButton]
-    for i = 0 to buttons.Count() - 1
-        buttons[i].color = "#FFFFFF"
-        if i = m.selectedButton then buttons[i].color = "#5CE08A"
+sub setupSeasons(item as Dynamic)
+    m.seasons = getSeasonLabels(item)
+    renderSeasonButtons()
+end sub
+
+function getSeasonLabels(item as Dynamic) as Object
+    labels = []
+    if item <> invalid and Type(item) = "roAssociativeArray" then
+        if item.DoesExist("seasons") and item.seasons <> invalid and Type(item.seasons) = "roArray" then
+            for each season in item.seasons
+                label = firstText(season, ["name", "title", "season", "season_number"])
+                if label <> "" then
+                    if LCase(Left(label, 6)) <> "season" then label = "Season " + label
+                    labels.Push(label)
+                end if
+            end for
+        end if
+    end if
+    if labels.Count() = 0 then labels.Push("Season 1")
+    return labels
+end function
+
+sub renderSeasonButtons()
+    while m.seasonsGroup.GetChildCount() > 0
+        m.seasonsGroup.RemoveChildIndex(0)
+    end while
+    m.seasonNodes = []
+    x = 0
+    for i = 0 to m.seasons.Count() - 1
+        node = CreateObject("roSGNode", "Label")
+        node.text = m.seasons[i]
+        node.translation = [x, 0]
+        node.width = 150
+        node.height = 48
+        node.horizAlign = "center"
+        node.vertAlign = "center"
+        node.font = "font:MediumBoldSystemFont"
+        m.seasonsGroup.AppendChild(node)
+        m.seasonNodes.Push(node)
+        x = x + 170
     end for
+end sub
+
+sub renderEpisodes(episodes as Object)
+    while m.episodesGroup.GetChildCount() > 0
+        m.episodesGroup.RemoveChildIndex(0)
+    end while
+    m.episodesMessageLabel.visible = true
+    m.episodesMessageLabel.text = "Episódios serão carregados ao selecionar/reproduzir uma temporada."
+end sub
+
+sub updateButtons()
+    for i = 0 to m.seasonNodes.Count() - 1
+        m.seasonNodes[i].color = "#FFFFFF"
+        if m.selectedButton = 0 and i = m.selectedSeasonIndex then m.seasonNodes[i].color = "#5CE08A"
+    end for
+    m.backButton.color = "#FFFFFF"
+    if m.selectedButton = 1 then m.backButton.color = "#5CE08A"
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "left" then
-        if m.selectedButton > 0 then
-            m.selectedButton = m.selectedButton - 1
-            updateButtons()
-        end if
+        if m.selectedButton = 0 and m.selectedSeasonIndex > 0 then m.selectedSeasonIndex = m.selectedSeasonIndex - 1
+        updateButtons()
         return true
     else if key = "right" then
-        if m.selectedButton < 1 then
-            m.selectedButton = m.selectedButton + 1
-            updateButtons()
-        end if
+        if m.selectedButton = 0 and m.selectedSeasonIndex < m.seasons.Count() - 1 then m.selectedSeasonIndex = m.selectedSeasonIndex + 1
+        updateButtons()
+        return true
+    else if key = "up" then
+        m.selectedButton = 0
+        updateButtons()
+        return true
+    else if key = "down" then
+        m.selectedButton = 1
+        updateButtons()
         return true
     else if key = "OK" then
         if m.selectedButton = 0 then
-            showMessage("Episódios serão carregados ao reproduzir uma temporada.")
+            renderEpisodes([])
+            showMessage("")
         else
             m.top.backRequested = true
         end if
