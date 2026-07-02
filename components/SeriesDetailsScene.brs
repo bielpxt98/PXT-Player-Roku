@@ -164,6 +164,16 @@ sub hide()
 end sub
 
 sub focusEpisodes()
+    if m.episodes = invalid or m.episodes.Count() = 0 then
+        setupEpisodes(m.item)
+    end if
+    if m.episodes = invalid or m.episodes.Count() = 0 then
+        m.selectedArea = 2
+        if not hasSeasons() then m.selectedArea = 0
+        updateFocus()
+        m.top.SetFocus(true)
+        return
+    end if
     m.selectedArea = 3
     if m.selectedEpisodeIndex >= m.episodes.Count() then m.selectedEpisodeIndex = 0
     updateFocus()
@@ -522,14 +532,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     clampFocusState()
     if key = "left" then
-        if m.selectedArea = 1 then
+        if m.focusArea = "posterButton" and m.selectedArea = 1 then
             m.selectedArea = 0
-        else if m.selectedArea = 2 and m.selectedSeasonIndex > 0 then
+        else if m.focusArea = "seasons" and m.selectedSeasonIndex > 0 then
             m.selectedSeasonIndex = m.selectedSeasonIndex - 1
             m.selectedEpisodeIndex = 0
             m.episodeWindowStart = 0
             setupEpisodes(m.item)
-        else if m.selectedArea = 3 and m.selectedEpisodeIndex > 0 then
+        else if m.focusArea = "episodes" and m.selectedEpisodeIndex > 0 then
             m.selectedEpisodeIndex = m.selectedEpisodeIndex - 1
             ensureEpisodeVisible()
             renderEpisodes(m.episodes)
@@ -537,14 +547,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateFocus()
         return true
     else if key = "right" then
-        if m.selectedArea = 0 and m.continueEpisode <> invalid then
+        if m.focusArea = "posterButton" and m.selectedArea = 0 and m.continueEpisode <> invalid then
             m.selectedArea = 1
-        else if m.selectedArea = 2 and m.selectedSeasonIndex < m.seasons.Count() - 1 then
+        else if m.focusArea = "seasons" and m.selectedSeasonIndex < m.seasons.Count() - 1 then
             m.selectedSeasonIndex = m.selectedSeasonIndex + 1
             m.selectedEpisodeIndex = 0
             m.episodeWindowStart = 0
             setupEpisodes(m.item)
-        else if m.selectedArea = 3 and m.selectedEpisodeIndex < m.episodes.Count() - 1 then
+        else if m.focusArea = "episodes" and m.selectedEpisodeIndex < m.episodes.Count() - 1 then
             m.selectedEpisodeIndex = m.selectedEpisodeIndex + 1
             ensureEpisodeVisible()
             renderEpisodes(m.episodes)
@@ -552,26 +562,18 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateFocus()
         return true
     else if key = "up" then
-        if m.selectedArea = 3 then
+        if m.focusArea = "episodes" then
             m.selectedArea = 2
-        else if m.selectedArea = 2 then
+        else if m.focusArea = "seasons" then
             m.selectedArea = 0
         end if
         updateFocus()
         return true
     else if key = "down" then
-        if m.selectedArea = 0 or m.selectedArea = 1 then
-            if hasSeasons() then
-                m.selectedArea = 2
-                m.selectedSeasonIndex = 0
-                setupEpisodes(m.item)
-            else
-                m.selectedArea = 0
-            end if
-        else if m.selectedArea = 2 then
-            if hasEpisodes() then
-                m.selectedArea = 3
-            end if
+        if m.focusArea = "posterButton" then
+            moveFocusToFirstSeason()
+        else if m.focusArea = "seasons" then
+            moveFocusToEpisodes()
         end if
         updateFocus()
         return true
@@ -594,6 +596,24 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     return false
 end function
+
+sub moveFocusToFirstSeason()
+    if not hasSeasons() then
+        m.selectedArea = 0
+        return
+    end if
+    m.selectedArea = 2
+    m.selectedSeasonIndex = 0
+    m.selectedEpisodeIndex = 0
+    m.episodeWindowStart = 0
+    setupEpisodes(m.item)
+end sub
+
+sub moveFocusToEpisodes()
+    if not hasEpisodes() then return
+    m.selectedArea = 3
+    clampFocusState()
+end sub
 
 function hasSeasons() as Boolean
     return m.seasons <> invalid and m.seasons.Count() > 0
