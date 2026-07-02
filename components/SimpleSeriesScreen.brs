@@ -43,6 +43,7 @@ sub Init()
     m.recentLabel.font = "font:MediumSystemFont"
 
     configureLayout()
+    ensureNavigationLayoutDefaults()
     updateNavigationState()
 end sub
 
@@ -57,12 +58,18 @@ sub configureLayout()
     if height <= 720 then m.margin = 32
     m.searchHeight = 76
     m.footerHeight = 46
+    m.panelX = m.margin
     m.panelY = m.searchHeight
     m.panelHeight = height - m.searchHeight - m.footerHeight
+    m.panelH = m.panelHeight
     m.leftPanelWidth = 310
     if width <= 1280 then m.leftPanelWidth = 250
+    m.leftW = m.leftPanelWidth
+    m.panelW = m.leftPanelWidth
     m.rightPanelX = m.margin + m.leftPanelWidth
+    m.rightX = m.rightPanelX
     m.rightPanelWidth = width - m.rightPanelX - m.margin
+    m.rightW = m.rightPanelWidth
     m.categoryX = m.margin + 18
     m.categoryY = m.panelY + 72
     m.categoryWidth = m.leftPanelWidth - 36
@@ -159,6 +166,7 @@ end function
 
 sub show()
     configureLayout()
+    ensureNavigationLayoutDefaults()
     m.top.visible = true
     m.top.SetFocus(true)
     m.selectedIndex = 0
@@ -169,6 +177,7 @@ sub show()
     m.activePanel = "categories"
     m.statusLabel.text = ""
     renderSeriesGrid()
+    ensureNavigationLayoutDefaults()
     updateNavigationState()
 end sub
 
@@ -187,10 +196,21 @@ sub setSeries(series as Object)
     m.firstVisibleSeriesIndex = 0
     updateSeriesWindow()
     renderSeriesGrid()
+    ensureNavigationLayoutDefaults()
     updateNavigationState()
 end sub
 
+sub ensureNavigationLayoutDefaults()
+    if m.panelX = invalid then m.panelX = 0
+    if m.firstItemY = invalid then m.firstItemY = 180
+    if m.itemHeight = invalid then m.itemHeight = 56
+end sub
+
 sub updateNavigationState()
+    if m.panelX = invalid or m.firstItemY = invalid or m.itemHeight = invalid then
+        return
+    end if
+
     labels = [m.searchLabel, m.favoritesLabel, m.recentLabel]
 
     m.categoryFocus.translation = [m.panelX + 32, m.firstItemY + (m.selectedIndex * m.itemHeight)]
