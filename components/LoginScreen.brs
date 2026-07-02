@@ -175,9 +175,15 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "back" then
         onBackSelected()
         return true
-    else if isConfirmKey(key) then
+    else if isOkKey(key) then
         if m.focusIndex <= 2 then
             openTextKeyboard(m.focusIndex)
+            return true
+        else if m.focusIndex = 3 then
+            onEnterSelected()
+            return true
+        else if m.focusIndex = 4 then
+            onBackSelected()
             return true
         end if
     end if
@@ -320,6 +326,11 @@ sub updateKeyboardText()
         m.keyboardText.text = m.keyboardTextValue
     end if
 end sub
+
+function isOkKey(key as String) as Boolean
+    k = LCase(key)
+    return k = "ok" or k = "enter" or k = "return" or k = "select" or k = "numpadenter"
+end function
 
 function isConfirmKey(key as String) as Boolean
     return key = "OK" or key = "enter"
