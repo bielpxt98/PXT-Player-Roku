@@ -145,6 +145,7 @@ sub Init()
     m.movieListScreen.ObserveField("movieFavoriteToggled", "onMovieFavoriteToggled")
     m.movieDetailScreen.ObserveField("backRequested", "onMovieDetailBack")
     m.movieDetailScreen.ObserveField("playRequested", "onMovieDetailPlay")
+    m.movieDetailScreen.ObserveField("continueRequested", "onMovieDetailContinue")
     m.movieDetailScreen.ObserveField("favoriteToggled", "onMovieDetailFavoriteToggled")
     m.moviePlayerScreen.ObserveField("backRequested", "onMoviePlayerBack")
     m.simpleSeriesScreen.ObserveField("backRequested", "onSimpleSeriesBack")
@@ -507,6 +508,7 @@ sub onMovieSearchMovieSelected()
     m.movieSearchScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("show", movie)
     m.movieDetailScreen.callFunc("setDetails", movie)
+    m.movieDetailScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
 end sub
 
 sub onSeriesSearchBack()
@@ -522,6 +524,7 @@ sub onSeriesSearchSeriesSelected()
     m.seriesSearchScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
+    m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
 end sub
 
 function getMoviesForSearch() as Object
@@ -583,6 +586,7 @@ sub onSearchSeriesSelected()
     m.searchScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
+    m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
 end sub
 
 
@@ -894,9 +898,6 @@ sub onMovieListCategorySelected()
     if isFavoritesCategory(category) then
         showFavoriteMoviesInMovieList()
         return
-    else if isRecentCategory(category) then
-        showRecentMoviesInMovieList()
-        return
     end if
     newCategoryId = getCategoryId(category)
     m.selectedMovieCategory = category
@@ -925,6 +926,7 @@ sub onMovieSelected()
     m.movieListScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("show", movie)
     m.movieDetailScreen.callFunc("setDetails", movie)
+    m.movieDetailScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
 end sub
 
 sub onMovieDetailBack()
@@ -935,6 +937,14 @@ sub onMovieDetailBack()
 end sub
 
 sub onMovieDetailPlay()
+    startSelectedMovieFromDetail(0)
+end sub
+
+sub onMovieDetailContinue()
+    startSelectedMovieFromDetail(GetHistoryPosition("movie", m.selectedMovie))
+end sub
+
+sub startSelectedMovieFromDetail(resumePosition as Integer)
     if m.selectedMovie = invalid then return
     cancelSearchIndexRefresh()
     m.lastMovieCategory = m.selectedMovieCategory
@@ -958,12 +968,10 @@ sub onMovieDetailPlay()
         m.movieDetailScreen.callFunc("setLoading", false)
         return
     end if
-    resumePosition = GetHistoryPosition("movie", m.selectedMovie)
     hideAllScreensExcept(m.moviePlayerScreen)
     m.moviePlayerScreen.callFunc("show", m.selectedMovie)
     m.moviePlayerScreen.callFunc("setResumePosition", resumePosition)
     buildMovieStreamUrl(m.selectedMovie)
-    UpsertMovieHistory(m.selectedMovie, resumePosition, 0)
 end sub
 
 sub onMovieDetailFavoriteToggled()
@@ -992,17 +1000,12 @@ sub onMoviePlayerBack()
         m.moviePlayerScreen.SetFocus(false)
     end if
 
-    if m.lastMovieCategory <> invalid and m.lastMovieList <> invalid then
-        hideAllScreensExcept(m.movieListScreen)
-        m.selectedMovieCategory = m.lastMovieCategory
-        m.selectedMovieCategoryId = getCategoryId(m.lastMovieCategory)
-        m.movies = m.lastMovieList
-        m.currentMovieList = m.lastMovieList
-        m.movieListScreen.callFunc("show", m.lastMovieCategory)
-        m.movieListScreen.callFunc("setMovies", m.lastMovieList)
-        m.movieListScreen.callFunc("restoreMovieSelection", m.lastMovieIndex, m.lastMovieFirstVisibleIndex)
-        m.activePanel = "movies"
-        m.movieListScreen.SetFocus(true)
+    if m.selectedMovie <> invalid then
+        hideAllScreensExcept(m.movieDetailScreen)
+        m.movieDetailScreen.callFunc("show", m.selectedMovie)
+        m.movieDetailScreen.callFunc("setDetails", m.selectedMovie)
+        m.movieDetailScreen.callFunc("setResumePosition", position)
+        m.movieDetailScreen.SetFocus(true)
     else if m.movieCategoriesScreen <> invalid then
         hideAllScreensExcept(m.movieCategoriesScreen)
         m.movieCategoriesScreen.callFunc("show")
@@ -1299,18 +1302,6 @@ sub showFavoriteMoviesInMovieList()
     m.movieListScreen.callFunc("setLoading", false)
     m.movieListScreen.callFunc("setMovies", m.movies)
 end sub
-
-sub showRecentMoviesInMovieList()
-    m.selectedMovieCategory = { category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS", isRecent: true }
-    m.selectedMovieCategoryId = ""
-    history = LoadViewingHistory()
-    m.movies = historyContents(history.movies, "content")
-    m.moviesLoading = false
-    m.movieListScreen.callFunc("setLoading", false)
-    m.movieListScreen.callFunc("setMovies", m.movies)
-end sub
-
-
 
 
 function favoriteContents(items as Dynamic) as Object
@@ -1757,7 +1748,6 @@ sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
     m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
     m.simpleSeriesScreen.callFunc("setPreviewCache", m.seriesCategoryPreviewCache)
-    m.simpleSeriesScreen.callFunc("setRecentSeries", LoadViewingHistory().series)
     m.simpleSeriesScreen.callFunc("setSeries", m.cachedSeries)
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
@@ -1828,6 +1818,7 @@ sub onSeriesSelected()
     m.simpleSeriesScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
+    m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
 end sub
 
 sub onSeriesDetailsBack()
@@ -1853,9 +1844,9 @@ sub onSeriesEpisodeSelected()
     episodeToPlay.streamUrl = streamUrl
     resumePosition = GetHistoryPosition("episode", episodeToPlay)
     m.seriesDetailsScreen.callFunc("hide")
-    m.seriesPlayerScreen.callFunc("setResumePosition", resumePosition)
+    m.seriesPlayerScreen.callFunc("setResumePosition", 0)
     m.seriesPlayerScreen.callFunc("show", episodeToPlay)
-    UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, resumePosition, 0)
+    UpsertSeriesHistory(m.selectedSeries, invalid, episodeToPlay, 0, 0)
 end sub
 
 sub onSeriesPlayerBack()
@@ -1869,6 +1860,7 @@ sub onSeriesPlayerBack()
     m.seriesPlayerScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("show", m.selectedSeries)
     m.seriesDetailsScreen.callFunc("setDetails", m.selectedSeries)
+    m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(m.selectedSeries))
     m.seriesDetailsScreen.callFunc("focusEpisodes")
 end sub
 

@@ -6,8 +6,10 @@
         <function name="setLoading" />
         <function name="showMessage" />
         <function name="setDetails" />
+        <function name="setResumePosition" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="playRequested" type="boolean" alwaysNotify="true" />
+        <field id="continueRequested" type="boolean" alwaysNotify="true" />
         <field id="favoriteToggled" type="assocarray" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/MovieDetailScreen.brs" />
@@ -24,6 +26,7 @@
         <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" />
         <Group id="buttonsGroup">
             <Label id="watchButton" text="▶ ASSISTIR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="continueButton" text="▶ CONTINUAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             <Label id="favoriteButton" text="★ FAVORITAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         </Group>
