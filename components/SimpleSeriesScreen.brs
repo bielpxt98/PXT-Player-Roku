@@ -47,7 +47,7 @@ sub Init()
 end sub
 
 sub configureLayout()
-    resolution = getDisplayResolution()
+    resolution = getSeriesDisplayResolution()
     width = resolution.width
     height = resolution.height
 
@@ -158,6 +158,15 @@ sub configureLayout()
     m.helpLabel.width = m.panelWidth - 84
     m.helpLabel.height = m.footerHeight - 20
 end sub
+
+function getSeriesDisplayResolution() as Object
+    deviceInfo = CreateObject("roDeviceInfo")
+    displaySize = deviceInfo.GetDisplaySize()
+    return {
+        width: displaySize.w,
+        height: displaySize.h
+    }
+end function
 
 sub show()
     configureLayout()
