@@ -558,8 +558,19 @@ end sub
 
 
 function getMoviesForSearch() as Object
-    if m.allMoviesCache <> invalid then return m.allMoviesCache
+    if m.allMoviesCache <> invalid then return limitMovieSearchItems(m.allMoviesCache)
+    if m.cachedMovies <> invalid then return limitMovieSearchItems(m.cachedMovies)
     return []
+end function
+
+function limitMovieSearchItems(items as Dynamic) as Object
+    limited = []
+    if items = invalid or Type(items) <> "roArray" then return limited
+    for each item in items
+        if limited.Count() >= 100 then exit for
+        limited.Push(item)
+    end for
+    return limited
 end function
 
 function getSeriesForSearch() as Object
@@ -1012,11 +1023,6 @@ end sub
 sub onMoviePlayerBack()
     if m.isReturningFromPlayer = true then return
     m.isReturningFromPlayer = true
-
-    PRINT "MOVIE_PLAYER_BACK"
-    PRINT "return category valid="; m.lastMovieCategory <> invalid
-    PRINT "return list valid="; m.lastMovieList <> invalid
-    PRINT "return index="; m.lastMovieIndex
 
     position = 0
     duration = 0
@@ -1817,7 +1823,7 @@ function handleSearchIndexResult(result as Object) as Boolean
             m.searchIndexCache.movies = m.allMoviesCache
             m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
             m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
-            if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.allMoviesCache)
+            if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
         else if kind = "series" then
             m.allSeriesCache = normalizeSeries(result.data)
             m.cachedSeries = m.allSeriesCache
@@ -2120,7 +2126,7 @@ sub onMoviesResult(result as Object)
         SaveSearchIndexCache(m.searchIndexCache)
         m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
-        if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", m.allMoviesCache)
+        if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
     else if m.movieListScreen.visible = true then
         m.movieListScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
         m.movieListScreen.callFunc("focusCategories")

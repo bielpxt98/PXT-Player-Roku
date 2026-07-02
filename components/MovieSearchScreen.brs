@@ -8,10 +8,15 @@ sub Init()
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.keyboardGroup = m.top.FindNode("keyboardGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
-    m.allMovies = [] : m.results = [] : m.query = ""
+    m.allMovies = [] : m.results = [] : m.query = "" : m.pendingQuery = ""
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
+    m.maxMovies = 100 : m.maxResults = 40
+    m.debounceTimer = CreateObject("roSGNode", "Timer")
+    m.debounceTimer.duration = 0.4
+    m.debounceTimer.repeat = false
+    m.debounceTimer.ObserveField("fire", "onDebounceTimerFire")
     configureLayout()
 end sub
 
@@ -41,7 +46,7 @@ end sub
 sub show()
     configureLayout()
     m.top.visible = true : m.top.SetFocus(true)
-    m.query = "" : m.queryLabel.text = "Buscar: "
+    m.query = "" : m.pendingQuery = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
     renderKeyboard()
     applyFilter()
@@ -52,7 +57,12 @@ sub hide()
 end sub
 
 sub setMovies(items as Object)
-    m.allMovies = normalizeArray(items)
+    source = normalizeArray(items)
+    m.allMovies = []
+    for each movie in source
+        if m.allMovies.Count() >= m.maxMovies then exit for
+        m.allMovies.Push(movie)
+    end for
     applyFilter()
 end sub
 
@@ -95,7 +105,7 @@ end sub
 
 sub appendLimitedResults(items as Object)
     for each item in items
-        if m.results.Count() >= 5 then exit for
+        if m.results.Count() >= m.maxResults then exit for
         m.results.Push(item)
     end for
 end sub
@@ -106,7 +116,7 @@ sub renderPosters()
         movie = m.results[i]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
-        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getMovieImage(movie)
+        poster = CreateObject("roSGNode", "Poster") : poster.width = 120 : poster.height = 180 : poster.translation = [Int((m.posterW - 120) / 2), 6] : poster.loadDisplayMode = "scaleToFit" : poster.uri = getMovieImage(movie)
         label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getMovieName(movie)
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
         m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, label: label })
@@ -224,6 +234,17 @@ sub activate()
         m.query = m.query + key
     end if
     m.queryLabel.text = "Buscar: " + m.query
+    scheduleFilter()
+end sub
+
+sub scheduleFilter()
+    m.pendingQuery = m.query
+    m.debounceTimer.control = "stop"
+    m.debounceTimer.control = "start"
+end sub
+
+sub onDebounceTimerFire()
+    m.query = m.pendingQuery
     applyFilter()
 end sub
 
