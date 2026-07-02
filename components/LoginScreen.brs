@@ -129,6 +129,7 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
+    key = normalizeKey(key)
     if key = "up" then
         moveFocus(-1)
         return true
