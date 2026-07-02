@@ -6,6 +6,7 @@
         <function name="setResumePosition" />
         <function name="getPlaybackPosition" />
         <function name="hide" />
+        <function name="closeMoviePlayer" />
         <function name="showError" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="movieName" type="string" />
