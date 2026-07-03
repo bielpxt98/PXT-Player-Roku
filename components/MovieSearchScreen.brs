@@ -17,7 +17,7 @@ sub Init()
     m.posterLoadTimer.duration = 0.05
     m.posterLoadTimer.repeat = false
     m.posterLoadTimer.ObserveField("fire", "onPosterLoadTimerFire")
-    m.maxMovies = 100 : m.maxResults = 5
+    m.maxMovies = 60 : m.maxResults = 40
     m.debounceTimer = CreateObject("roSGNode", "Timer")
     m.debounceTimer.duration = 0.4
     m.debounceTimer.repeat = false
@@ -117,7 +117,9 @@ end sub
 
 sub renderPosters()
     clearPosters()
-    for i = 0 to m.results.Count() - 1
+    maxRender = m.results.Count()
+    if maxRender > 40 then maxRender = 40
+    for i = 0 to maxRender - 1
         movie = m.results[i]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
@@ -334,9 +336,9 @@ function normalizeMovieCardImageUri(uri as Dynamic) as String
     if uri = invalid then return ""
     value = uri.ToStr().Trim()
     if value = "" then return ""
-    value = value.Replace("/w780/", "/w342/")
-    value = value.Replace("/w500/", "/w342/")
-    value = value.Replace("/original/", "/w342/")
+    value = value.Replace("/w780/", "/w185/")
+    value = value.Replace("/w500/", "/w185/")
+    value = value.Replace("/original/", "/w185/")
     return value
 end function
 
