@@ -32,7 +32,6 @@ sub Init()
     m.resumeDialog = invalid
 
     configureLayout()
-    m.video.showPlaybackInfo = false
     m.video.ObserveField("state", "onVideoStateChanged")
     m.progressUpdateTimer.ObserveField("fire", "onProgressUpdateTimerFire")
     m.seekHoldTimer.ObserveField("fire", "onSeekHoldTick")
