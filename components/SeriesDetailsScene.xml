@@ -17,14 +17,11 @@
     <script type="text/brightscript" uri="pkg:/components/SeriesDetailsScene.brs" />
     <children>
         <Poster id="background" uri="pkg:/images/background.jpeg" loadDisplayMode="scaleToFill" translation="[0,0]" />
-        <Rectangle id="backgroundTint" color="#020611" opacity="0.68" translation="[0,0]" />
-        <Rectangle id="heroOverlay" color="#0B1220" opacity="0.84" />
         <Poster id="poster" loadDisplayMode="scaleToFit" />
-        <Rectangle id="posterBorder" color="#FFFFFF" opacity="0.12" />
         <Label id="titleLabel" color="#FFFFFF" wrap="true" />
+        <Label id="ratingGenreLabel" color="#FFD166" wrap="true" />
         <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
         <Label id="synopsisLabel" color="#D8DEE9" wrap="true" />
-        <Label id="genreLabel" color="#B8C3D6" wrap="true" />
         <Group id="actionsGroup">
             <Group id="playButtonGroup">
                 <Rectangle id="playButtonBg" color="#1F2937" />
@@ -41,6 +38,7 @@
         <Group id="seasonsGroup" />
         <Group id="episodesGroup" />
         <Label id="episodesMessageLabel" text="Nenhum episódio disponível." color="#B8C3D6" wrap="true" horizAlign="center" />
+        <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
         <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" horizAlign="center" />
     </children>
 </component>
