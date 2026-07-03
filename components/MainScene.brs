@@ -1840,8 +1840,6 @@ sub startSearchIndexRefresh()
     if m.liveCategories = invalid or m.liveCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveCategories", kind: "liveCategories", categoryId: "" })
     if m.allLiveCache = invalid or m.allLiveCache.Count() = 0 then m.searchIndexQueue.Push({ action: "getLiveStreams", kind: "live", categoryId: "" })
     if m.movieCategories = invalid or m.movieCategories.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovieCategories", kind: "movieCategories", categoryId: "" })
-    if m.allMoviesCache = invalid or m.allMoviesCache.Count() = 0 then m.searchIndexQueue.Push({ action: "getMovies", kind: "movies", categoryId: "" })
-    if m.allSeriesCache = invalid or m.allSeriesCache.Count() = 0 then m.searchIndexQueue.Push({ action: "getSeries", kind: "series", categoryId: "" })
     m.searchIndexUpdating = true
     m.searchIndexTimer.control = "stop"
     m.searchIndexTimer.control = "start"
