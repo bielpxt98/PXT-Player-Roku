@@ -312,26 +312,36 @@ function normalizeCategories(categories as Dynamic) as Object
 end function
 
 sub renderCategories()
-    clearCategoryNodes()
+    ensureCategoryPool()
     totalRows = m.categories.Count()
-    if totalRows = 0 then return
 
-    lastIndex = m.categoryFirstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= totalRows then lastIndex = totalRows - 1
-
-    for visualIndex = 0 to lastIndex - m.categoryFirstVisibleIndex
+    for visualIndex = 0 to m.categoryNodes.Count() - 1
         realIndex = m.categoryFirstVisibleIndex + visualIndex
-        item = createCategoryItem(m.categories[realIndex], visualIndex, realIndex)
-        m.categoriesGroup.AppendChild(item)
-        m.categoryNodes.Push(item)
-        m.categoryRefs.Push(m.lastCategoryRefs)
+        item = m.categoryNodes[visualIndex]
+        if realIndex < totalRows then
+            item.visible = true
+            updateCategoryItem(visualIndex, realIndex)
+        else
+            item.visible = false
+        end if
     end for
 end sub
 
-function createCategoryItem(category as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
+sub ensureCategoryPool()
+    while m.categoryNodes.Count() < m.visibleItemCount
+        visualIndex = m.categoryNodes.Count()
+        item = createCategoryItem(visualIndex)
+        m.categoriesGroup.AppendChild(item)
+        m.categoryNodes.Push(item)
+        m.categoryRefs.Push(m.lastCategoryRefs)
+    end while
+end sub
+
+function createCategoryItem(visibleIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
     item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "liveCategoryItem" + absoluteIndex.ToStr()
+    item.id = "liveCategoryItem" + visibleIndex.ToStr()
+    item.visible = false
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
@@ -355,7 +365,7 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     label.font = "font:SmallSystemFont"
     label.color = "#F8FAFC"
     label.vertAlign = "center"
-    label.text = getCategoryName(category)
+    label.text = ""
 
     item.AppendChild(background)
     item.AppendChild(accent)
@@ -364,26 +374,55 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
     return item
 end function
 
+sub updateCategoryItem(visualIndex as Integer, realIndex as Integer)
+    item = m.categoryNodes[visualIndex]
+    refs = m.categoryRefs[visualIndex]
+    item.translation = [0, visualIndex * m.itemHeight]
+    item.id = "liveCategoryItem" + realIndex.ToStr()
+    if refs.background <> invalid then
+        refs.background.width = m.leftPanelWidth - 28
+        refs.background.height = m.cardHeight
+    end if
+    if refs.accent <> invalid then refs.accent.height = m.cardHeight
+    if refs.label <> invalid then
+        refs.label.width = m.leftPanelWidth - 54
+        refs.label.height = m.cardHeight
+        refs.label.text = getCategoryName(m.categories[realIndex])
+    end if
+    applyCategoryFocusState(visualIndex)
+end sub
+
 sub renderList()
-    clearChannelNodes()
-    if m.channels.Count() = 0 then return
+    ensureChannelPool()
+    totalRows = m.channels.Count()
 
-    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.channels.Count() then lastIndex = m.channels.Count() - 1
-
-    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
+    for visualIndex = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + visualIndex
-        item = createChannelItem(m.channels[realIndex], visualIndex, realIndex)
-        m.channelsGroup.AppendChild(item)
-        m.itemNodes.Push(item)
-        m.itemRefs.Push(m.lastItemRefs)
+        item = m.itemNodes[visualIndex]
+        if realIndex < totalRows then
+            item.visible = true
+            updateChannelItem(visualIndex, realIndex)
+        else
+            item.visible = false
+        end if
     end for
 end sub
 
-function createChannelItem(channel as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
+sub ensureChannelPool()
+    while m.itemNodes.Count() < m.visibleItemCount
+        visualIndex = m.itemNodes.Count()
+        item = createChannelItem(visualIndex)
+        m.channelsGroup.AppendChild(item)
+        m.itemNodes.Push(item)
+        m.itemRefs.Push(m.lastItemRefs)
+    end while
+end sub
+
+function createChannelItem(visibleIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
     item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "liveChannelItem" + absoluteIndex.ToStr()
+    item.id = "liveChannelItem" + visibleIndex.ToStr()
+    item.visible = false
 
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
@@ -415,7 +454,7 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     label.font = "font:SmallSystemFont"
     label.color = "#F8FAFC"
     label.vertAlign = "center"
-    label.text = getChannelName(channel)
+    label.text = ""
 
     item.AppendChild(background)
     item.AppendChild(accent)
@@ -425,12 +464,34 @@ function createChannelItem(channel as Object, visibleIndex as Integer, absoluteI
     return item
 end function
 
+sub updateChannelItem(visualIndex as Integer, realIndex as Integer)
+    item = m.itemNodes[visualIndex]
+    refs = m.itemRefs[visualIndex]
+    item.translation = [0, visualIndex * m.itemHeight]
+    item.id = "liveChannelItem" + realIndex.ToStr()
+    if refs.background <> invalid then
+        refs.background.width = m.middlePanelWidth - 28
+        refs.background.height = m.cardHeight
+    end if
+    if refs.accent <> invalid then refs.accent.height = m.cardHeight
+    if refs.logoBackground <> invalid then
+        refs.logoBackground.translation = [14, m.logoInset]
+        refs.logoBackground.width = m.logoSize
+        refs.logoBackground.height = m.logoSize
+    end if
+    if refs.label <> invalid then
+        refs.label.translation = [m.logoSize + 28, 0]
+        refs.label.width = m.middlePanelWidth - m.logoSize - 64
+        refs.label.height = m.cardHeight
+        refs.label.text = getChannelName(m.channels[realIndex])
+    end if
+    applyChannelFocusState(visualIndex)
+end sub
+
 sub clearChannelNodes()
-    while m.channelsGroup.GetChildCount() > 0
-        m.channelsGroup.RemoveChildIndex(0)
-    end while
-    m.itemNodes = []
-    m.itemRefs = []
+    for each item in m.itemNodes
+        item.visible = false
+    end for
 end sub
 
 
@@ -438,11 +499,9 @@ end sub
 
 
 sub clearCategoryNodes()
-    while m.categoriesGroup.GetChildCount() > 0
-        m.categoriesGroup.RemoveChildIndex(0)
-    end while
-    m.categoryNodes = []
-    m.categoryRefs = []
+    for each item in m.categoryNodes
+        item.visible = false
+    end for
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -514,11 +573,12 @@ sub handleCategoryUpDown(direction as Integer)
 
     updateCategoryVisibleWindow()
 
-    if oldSelected <> m.categorySelectedIndex or oldFirst <> m.categoryFirstVisibleIndex then
+    if oldFirst <> m.categoryFirstVisibleIndex then
         renderCategories()
+    else if oldSelected <> m.categorySelectedIndex then
+        updateCategoryFocusForRealIndex(oldSelected)
+        updateCategoryFocusForRealIndex(m.categorySelectedIndex)
     end if
-
-    updateFocus()
 end sub
 
 sub updateCategoryVisibleWindow()
@@ -556,11 +616,12 @@ sub handleUpDown(direction as Integer)
 
     updateVisibleWindow()
 
-    if oldSelected <> m.selectedIndex or oldFirst <> m.firstVisibleIndex then
+    if oldFirst <> m.firstVisibleIndex then
         renderList()
+    else if oldSelected <> m.selectedIndex then
+        updateChannelFocusForRealIndex(oldSelected)
+        updateChannelFocusForRealIndex(m.selectedIndex)
     end if
-
-    updateFocus()
 end sub
 
 sub updateVisibleWindow()
@@ -588,27 +649,42 @@ sub updateVisibleWindow()
 end sub
 
 sub updateFocus()
-    selectedIndex = -1
-    selectedCategoryIndex = -1
-
     for i = 0 to m.categoryNodes.Count() - 1
-        realIndex = m.categoryFirstVisibleIndex + i
-        refs = m.categoryRefs[i]
-
-        m.categoryNodes[i].scale = [1.0, 1.0]
-        if refs.background <> invalid then
-            refs.background.color = "#111827"
-            refs.background.opacity = 0.86
-        end if
-        if refs.accent <> invalid then refs.accent.opacity = 0.0
-        if refs.label <> invalid then refs.label.color = "#F8FAFC"
-
-        if realIndex = m.categorySelectedIndex then selectedCategoryIndex = i
+        applyCategoryFocusState(i)
     end for
 
-    if selectedCategoryIndex >= 0 then
-        refs = m.categoryRefs[selectedCategoryIndex]
-        m.categoryNodes[selectedCategoryIndex].scale = [1.02, 1.02]
+    for i = 0 to m.itemNodes.Count() - 1
+        applyChannelFocusState(i)
+    end for
+end sub
+
+sub updateCategoryFocusForRealIndex(realIndex as Integer)
+    visualIndex = realIndex - m.categoryFirstVisibleIndex
+    if visualIndex >= 0 and visualIndex < m.categoryNodes.Count() then applyCategoryFocusState(visualIndex)
+end sub
+
+sub updateChannelFocusForRealIndex(realIndex as Integer)
+    visualIndex = realIndex - m.firstVisibleIndex
+    if visualIndex >= 0 and visualIndex < m.itemNodes.Count() then applyChannelFocusState(visualIndex)
+end sub
+
+sub applyCategoryFocusState(visualIndex as Integer)
+    if visualIndex < 0 or visualIndex >= m.categoryNodes.Count() then return
+    item = m.categoryNodes[visualIndex]
+    refs = m.categoryRefs[visualIndex]
+    realIndex = m.categoryFirstVisibleIndex + visualIndex
+    isSelected = item.visible and realIndex = m.categorySelectedIndex
+
+    item.scale = [1.0, 1.0]
+    if refs.background <> invalid then
+        refs.background.color = "#111827"
+        refs.background.opacity = 0.86
+    end if
+    if refs.accent <> invalid then refs.accent.opacity = 0.0
+    if refs.label <> invalid then refs.label.color = "#F8FAFC"
+
+    if isSelected then
+        item.scale = [1.02, 1.02]
         if refs.background <> invalid then
             if m.focusColumn = "categories" then
                 refs.background.color = "#061F36"
@@ -626,28 +702,26 @@ sub updateFocus()
         end if
         if refs.accent <> invalid then refs.accent.opacity = 1.0
     end if
+end sub
 
-    ' Keep a single manual highlight: reset every visible item before
-    ' applying the selectedIndex state to exactly one realIndex.
-    for i = 0 to m.itemNodes.Count() - 1
-        realIndex = m.firstVisibleIndex + i
-        refs = m.itemRefs[i]
+sub applyChannelFocusState(visualIndex as Integer)
+    if visualIndex < 0 or visualIndex >= m.itemNodes.Count() then return
+    item = m.itemNodes[visualIndex]
+    refs = m.itemRefs[visualIndex]
+    realIndex = m.firstVisibleIndex + visualIndex
+    isSelected = item.visible and realIndex = m.selectedIndex
 
-        m.itemNodes[i].scale = [1.0, 1.0]
-        if refs.background <> invalid then
-            refs.background.color = "#111827"
-            refs.background.opacity = 0.86
-        end if
-        if refs.accent <> invalid then refs.accent.opacity = 0.0
-        if refs.label <> invalid then refs.label.color = "#F8FAFC"
-        if refs.logoBackground <> invalid then refs.logoBackground.color = "#1F2937"
+    item.scale = [1.0, 1.0]
+    if refs.background <> invalid then
+        refs.background.color = "#111827"
+        refs.background.opacity = 0.86
+    end if
+    if refs.accent <> invalid then refs.accent.opacity = 0.0
+    if refs.label <> invalid then refs.label.color = "#F8FAFC"
+    if refs.logoBackground <> invalid then refs.logoBackground.color = "#1F2937"
 
-        if realIndex = m.selectedIndex then selectedIndex = i
-    end for
-
-    if selectedIndex >= 0 then
-        refs = m.itemRefs[selectedIndex]
-        m.itemNodes[selectedIndex].scale = [1.02, 1.02]
+    if isSelected then
+        item.scale = [1.02, 1.02]
         if refs.background <> invalid then
             if m.focusColumn = "channels" then
                 refs.background.color = "#061F36"
@@ -666,7 +740,6 @@ sub updateFocus()
         end if
         if refs.logoBackground <> invalid then refs.logoBackground.color = "#063B66"
     end if
-
 end sub
 
 
