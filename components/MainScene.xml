@@ -13,6 +13,7 @@
         <HomeScreen id="homeScreen" visible="false" />
         <SplashScreen id="splashScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
+        <PlaylistAccountsScreen id="playlistAccountsScreen" visible="false" />
         <FavoritesScreen id="favoritesScreen" visible="false" />
         <RecentScreen id="recentScreen" visible="false" />
         <SearchScreen id="searchScreen" visible="false" />

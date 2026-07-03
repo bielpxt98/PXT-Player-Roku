@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PlaylistAccountsScreen" extends="Group">
+    <interface>
+        <function name="show" />
+        <function name="hide" />
+        <function name="setPlaylists" />
+        <field id="backRequested" type="boolean" alwaysNotify="true" />
+        <field id="playlistSelected" type="assocarray" alwaysNotify="true" />
+        <field id="newPlaylistRequested" type="boolean" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/PlaylistAccountsScreen.brs" />
+    <children>
+        <Rectangle id="background" color="#000000" opacity="0.58" translation="[0, 0]" />
+        <Label id="title" text="LISTAS DE REPRODUÇÃO" color="#FFFFFF" horizAlign="center" />
+        <Group id="listGroup" />
+        <Label id="hintLabel" text="Use ↑/↓ para navegar • OK para selecionar • Voltar para Home" color="#7D8CA3" horizAlign="center" />
+    </children>
+</component>

@@ -7,6 +7,7 @@ sub Init()
     m.homeScreen = m.top.FindNode("homeScreen")
     m.splashScreen = m.top.FindNode("splashScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
+    m.playlistAccountsScreen = m.top.FindNode("playlistAccountsScreen")
     m.favoritesScreen = m.top.FindNode("favoritesScreen")
     m.recentScreen = m.top.FindNode("recentScreen")
     m.searchScreen = m.top.FindNode("searchScreen")
@@ -32,6 +33,7 @@ sub Init()
     m.pendingDetailRequest = ""
     m.pendingRequest = ""
     m.isLoadingRequest = false
+    m.savedPlaylists = LoadSavedPlaylists()
     m.account = LoadSavedPlaylist()
     m.pendingAccount = invalid
     m.loginFormAccount = invalid
@@ -144,6 +146,9 @@ sub Init()
     m.recentScreen.ObserveField("historySelected", "onHistorySelected")
     m.favoritesScreen.ObserveField("backRequested", "onFavoritesBack")
     m.favoritesScreen.ObserveField("favoriteSelected", "onFavoriteSelected")
+    m.playlistAccountsScreen.ObserveField("backRequested", "onPlaylistAccountsBack")
+    m.playlistAccountsScreen.ObserveField("playlistSelected", "onPlaylistAccountSelected")
+    m.playlistAccountsScreen.ObserveField("newPlaylistRequested", "onNewPlaylistRequested")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.loginScreen.ObserveField("demoRequested", "onDemoRequested")
@@ -207,7 +212,7 @@ sub startInitialFlow()
         m.account = invalid
         setBootState("error")
         updateConnectionStatus(false, "Nenhuma playlist conectada")
-        showLogin()
+        showPlaylistAccounts()
     end if
 end sub
 
@@ -229,7 +234,7 @@ sub onAutoConnectTimerFire()
         m.account = invalid
         DeleteSavedPlaylist()
         updateConnectionStatus(false, "Nenhuma playlist conectada")
-        showLogin()
+        showPlaylistAccounts()
         return
     end if
 
@@ -367,7 +372,7 @@ function closeActivePlayerScreen() as Boolean
 end function
 
 sub focusActiveScreen()
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.seriesSearchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
+    screens = [m.homeScreen, m.loginScreen, m.playlistAccountsScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.seriesSearchScreen, m.liveChannelsScreen, m.movieListScreen, m.movieDetailScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
     for each screen in screens
         if screen <> invalid and screen.visible = true then
             screen.SetFocus(true)
@@ -405,7 +410,7 @@ end function
 sub hideAllScreensExcept(visibleScreen as Object)
     visibleId = ""
     if visibleScreen <> invalid then visibleId = visibleScreen.id
-    screens = [m.homeScreen, m.loginScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.seriesSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
+    screens = [m.homeScreen, m.loginScreen, m.playlistAccountsScreen, m.favoritesScreen, m.recentScreen, m.searchScreen, m.movieSearchScreen, m.seriesSearchScreen, m.liveCategoriesScreen, m.liveChannelsScreen, m.livePlayerScreen, m.movieCategoriesScreen, m.movieListScreen, m.movieDetailScreen, m.moviePlayerScreen, m.simpleSeriesScreen, m.seriesDetailsScreen]
     for each screen in screens
         if screen <> invalid and screen.id <> visibleId then screen.callFunc("hide")
     end for
@@ -443,6 +448,7 @@ end sub
 sub showHome()
     if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
@@ -464,6 +470,7 @@ end sub
 
 sub showLogin()
     m.homeScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
@@ -489,6 +496,7 @@ end sub
 sub openSearch(mode as String, backTarget as String)
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.liveCategoriesScreen.callFunc("hide")
@@ -930,6 +938,7 @@ end sub
 
 sub onOpenFavoritesRequested()
     m.homeScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.favoritesScreen.callFunc("show")
     m.favoritesScreen.callFunc("setFavorites", LoadFavorites())
@@ -937,6 +946,7 @@ end sub
 
 sub onOpenRecentRequested()
     m.homeScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("show")
     m.recentScreen.callFunc("setHistory", LoadViewingHistory())
@@ -949,13 +959,54 @@ sub onOpenPlaylistRequested()
         resetAccountLoadedData()
         updateConnectionStatus(false, "Nenhuma playlist conectada")
     end if
+    showPlaylistAccounts()
+end sub
+
+sub showPlaylistAccounts()
+    m.savedPlaylists = LoadSavedPlaylists()
+    hideAllScreensExcept(m.playlistAccountsScreen)
+    activeUsername = ""
+    if hasAccount(m.account) then activeUsername = safeText(m.account.username)
+    m.playlistAccountsScreen.callFunc("setPlaylists", { playlists: m.savedPlaylists, activeUsername: activeUsername })
+    m.playlistAccountsScreen.callFunc("show")
+    m.currentScreen = "playlistAccounts"
+end sub
+
+sub onPlaylistAccountsBack()
+    showHome()
+end sub
+
+sub onNewPlaylistRequested()
     showLogin()
+end sub
+
+sub onPlaylistAccountSelected()
+    selected = m.playlistAccountsScreen.playlistSelected
+    if not hasAccount(selected) then return
+    stopLoginTimeout()
+    cancelXtreamRequest()
+    m.account = selected
+    SavePlaylist(m.account)
+    m.savedPlaylists = LoadSavedPlaylists()
+    m.pendingAccount = m.account
+    m.loginFormAccount = invalid
+    m.loginConnecting = false
+    m.loginErrorActive = false
+    m.connectionMode = "manual"
+    m.isDemoMode = false
+    resetAccountLoadedData()
+    loadLocalSearchIndexCache()
+    updateConnectionStatus(false, "Conectando...")
+    showHome()
+    startLoginTimeout()
+    connectXtream(m.account)
 end sub
 
 sub onOpenLiveCategoriesRequested()
     cancelSearchIndexRefresh()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
@@ -1001,6 +1052,7 @@ end sub
 sub onOpenMovieCategoriesRequested()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
     m.favoritesScreen.callFunc("hide")
     m.recentScreen.callFunc("hide")
     m.searchScreen.callFunc("hide")
@@ -1787,6 +1839,7 @@ sub handleLoginConnectionResult(result as Object)
         m.account = m.pendingAccount
         m.loginFormAccount = invalid
         SavePlaylist(m.account)
+        m.savedPlaylists = LoadSavedPlaylists()
         SavePlaylistConnectionStatus("Conectado")
         setBootState("ready")
         updateConnectionStatus(true, "Conectado")
