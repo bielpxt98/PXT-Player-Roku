@@ -12,7 +12,7 @@
     <children>
         <Video id="video" translation="[0, 0]" />
         <Group id="loadingGroup" visible="false">
-            <BusySpinner id="loadingSpinner" width="60" height="60" />
+            <BusySpinner id="loadingSpinner" />
             <Label id="loadingLabel" text="Carregando canal..." color="#FFFFFF" horizAlign="center" />
         </Group>
         <Group id="errorGroup" visible="false">
