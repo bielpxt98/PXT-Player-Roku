@@ -562,7 +562,7 @@ function escapeSeriesPathValue(value as Dynamic) as String
             result = result + ch
         else
             code = ch.ToInt()
-            hex = decToHex(code)
+            hex = intToHex(code)
             if Len(hex) = 1 then hex = "0" + hex
             result = result + "%" + UCase(hex)
         end if
@@ -570,7 +570,7 @@ function escapeSeriesPathValue(value as Dynamic) as String
     return result
 end function
 
-function decToHex(n as Integer) as String
+function intToHex(n as Integer) as String
     if n = 0 then return "0"
     digits = "0123456789ABCDEF"
     result = ""
