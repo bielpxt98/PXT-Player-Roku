@@ -102,6 +102,8 @@ sub Init()
     m.returnFromMoviePlayer = false
     m.entryPoint = ""
     m.isReturningFromPlayer = false
+    m.bootState = "booting"
+    m.currentScreen = ""
     if m.cachedMovies = invalid then m.cachedMovies = []
     if m.cachedSeries = invalid then m.cachedSeries = []
     if m.allMoviesCache = invalid then m.allMoviesCache = []
@@ -181,11 +183,14 @@ sub startInitialFlow()
 
     if hasAccount(m.account) then
         m.isDemoMode = false
+        setBootState("reconnecting")
         updateConnectionStatus(false, "Conectando...")
-        startSplashBootstrap()
+        showHome()
+        startAutoConnectTimer()
     else
         if m.account <> invalid then DeleteSavedPlaylist()
         m.account = invalid
+        setBootState("error")
         updateConnectionStatus(false, "Nenhuma playlist conectada")
         showLogin()
     end if
@@ -398,6 +403,28 @@ end function
 sub runXtreamRequest(action as String, categoryId as String)
 end sub
 
+sub setBootState(state as String)
+    m.bootState = state
+end sub
+
+function isAccountBootLoading() as Boolean
+    return m.bootState = "booting" or m.bootState = "reconnecting"
+end function
+
+function canStartCatalogDuringBoot(kind as String) as Boolean
+    if not isAccountBootLoading() then return true
+    if kind = "live" then return (m.liveCategories <> invalid and m.liveCategories.Count() > 0) or (m.cachedLiveChannels <> invalid and m.cachedLiveChannels.Count() > 0) or (m.allLiveCache <> invalid and m.allLiveCache.Count() > 0)
+    if kind = "movies" then return (m.movieCategories <> invalid and m.movieCategories.Count() > 0) or (m.cachedMovies <> invalid and m.cachedMovies.Count() > 0) or (m.allMoviesCache <> invalid and m.allMoviesCache.Count() > 0)
+    if kind = "series" then return (m.seriesCategories <> invalid and m.seriesCategories.Count() > 0) or (m.cachedSeries <> invalid and m.cachedSeries.Count() > 0) or (m.allSeriesCache <> invalid and m.allSeriesCache.Count() > 0)
+    return false
+end function
+
+sub showBootLoadingMessage(screen as Object)
+    if screen = invalid then return
+    screen.callFunc("setLoading", true)
+    screen.callFunc("showMessage", "Carregando conta/lista...")
+end sub
+
 sub showHome()
     if m.splashScreen <> invalid then m.splashScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
@@ -416,7 +443,8 @@ sub showHome()
     m.simpleSeriesScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("hide")
     m.homeScreen.callFunc("show")
-    startBackgroundCatalogCache()
+    m.currentScreen = "home"
+    if m.bootState = "ready" then startBackgroundCatalogCache()
 end sub
 
 sub showLogin()
@@ -438,6 +466,7 @@ sub showLogin()
     account = m.account
     if m.loginFormAccount <> invalid then account = m.loginFormAccount
     m.loginScreen.callFunc("show", account)
+    m.currentScreen = "login"
 end sub
 
 
@@ -766,8 +795,12 @@ sub onOpenLiveCategoriesRequested()
     m.liveChannelsScreen.callFunc("setAccount", m.account)
     m.liveChannelsScreen.callFunc("show", invalid)
     m.liveChannelsScreen.callFunc("focusCategories")
+    m.currentScreen = "live"
 
-    if m.isDemoMode = true then
+    if isAccountBootLoading() and not canStartCatalogDuringBoot("live") then
+        showBootLoadingMessage(m.liveChannelsScreen)
+        return
+    else if m.isDemoMode = true then
         m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
         m.liveChannelsScreen.callFunc("showMessage", "Escolha uma categoria demo para carregar os canais.")
         m.liveChannelsScreen.callFunc("focusCategories")
@@ -806,8 +839,12 @@ sub onOpenMovieCategoriesRequested()
     m.movieListScreen.callFunc("resetSelection")
     m.movieListScreen.callFunc("show", invalid)
     m.movieListScreen.callFunc("focusCategories")
+    m.currentScreen = "movies"
 
-    if m.isDemoMode = true then
+    if isAccountBootLoading() and not canStartCatalogDuringBoot("movies") then
+        showBootLoadingMessage(m.movieListScreen)
+        return
+    else if m.isDemoMode = true then
         m.movieListScreen.callFunc("setCategories", m.movieCategories)
         m.movieListScreen.callFunc("showMessage", "Escolha uma categoria demo para carregar os filmes.")
         m.movieListScreen.callFunc("focusCategories")
@@ -1560,6 +1597,7 @@ sub handleLoginConnectionResult(result as Object)
         m.loginFormAccount = invalid
         SavePlaylist(m.account)
         SavePlaylistConnectionStatus("Conectado")
+        setBootState("ready")
         updateConnectionStatus(true, "Conectado")
         m.pendingAccount = invalid
         m.loginErrorActive = false
@@ -1567,7 +1605,8 @@ sub handleLoginConnectionResult(result as Object)
         resetAccountLoadedData()
         loadLocalSearchIndexCache()
         m.loginScreen.callFunc("showMessage", "Login confirmado. Carregando...")
-        showHome()
+        if m.currentScreen = "home" or m.currentScreen = "login" or m.currentScreen = "" then showHome()
+        refreshCurrentCatalogScreenAfterBoot()
         startInitialCategoryPreviewCache()
     else
         SavePlaylistConnectionStatus("Desconectado")
@@ -1576,13 +1615,17 @@ sub handleLoginConnectionResult(result as Object)
             m.loginErrorActive = false
             m.connectionMode = ""
             if hasValidLocalCatalogData() then
+                setBootState("ready")
                 clearAccountReconnectError()
+                refreshCurrentCatalogScreenAfterBoot()
             else
+                setBootState("error")
                 resetAccountLoadedData()
                 updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
+                if m.currentScreen = "" then showHome()
             end if
-            showHome()
         else
+            setBootState("error")
             resetAccountLoadedData()
             m.loginErrorActive = true
             updateConnectionStatus(false, "Não foi possível conectar. Verifique os dados.")
@@ -1864,24 +1907,64 @@ end sub
 
 sub onOpenSeriesRequested()
     hideAllScreensExcept(m.simpleSeriesScreen)
+    m.currentScreen = "series"
     m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
     m.simpleSeriesScreen.callFunc("setPreviewCache", m.seriesCategoryPreviewCache)
     m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
-    if hasAccount(m.account) and (m.seriesCategories = invalid or m.seriesCategories.Count() = 0) and m.isLoadingRequest <> true then
+    if isAccountBootLoading() and not canStartCatalogDuringBoot("series") then
+        showBootLoadingMessage(m.simpleSeriesScreen)
+    else if hasAccount(m.account) and (m.seriesCategories = invalid or m.seriesCategories.Count() = 0) and m.isLoadingRequest <> true then
         m.simpleSeriesScreen.callFunc("setLoading", true)
-        if beginXtreamRequest("getSeriesCategories") then
-            m.xtreamService.control = "STOP"
-            m.xtreamService.action = "getSeriesCategories"
-            m.xtreamService.cacheEnabled = true
-            m.xtreamService.categoryId = ""
-            m.xtreamService.dns = m.account.dns
-            m.xtreamService.username = m.account.username
-            m.xtreamService.password = m.account.password
-            m.xtreamService.control = "RUN"
-        end if
+        loadSeriesCategoriesForCurrentScreen()
     end if
     m.simpleSeriesScreen.callFunc("show")
     m.simpleSeriesScreen.SetFocus(true)
+end sub
+
+sub refreshCurrentCatalogScreenAfterBoot()
+    if m.currentScreen = "live" then
+        if m.liveChannelsScreen <> invalid then
+            m.liveChannelsScreen.callFunc("setLoading", false)
+            if m.liveCategories <> invalid and m.liveCategories.Count() > 0 then
+                m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
+                m.liveChannelsScreen.callFunc("showMessage", "Escolha uma categoria para carregar os canais.")
+            else
+                loadLiveCategories(m.account)
+            end if
+        end if
+    else if m.currentScreen = "movies" then
+        if m.movieListScreen <> invalid then
+            m.movieListScreen.callFunc("setLoading", false)
+            if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
+                m.movieListScreen.callFunc("setCategories", m.movieCategories)
+                m.movieListScreen.callFunc("showMessage", "Escolha uma categoria para carregar os filmes.")
+            else
+                loadMovieCategories(m.account)
+            end if
+        end if
+    else if m.currentScreen = "series" then
+        if m.simpleSeriesScreen <> invalid then
+            m.simpleSeriesScreen.callFunc("setLoading", false)
+            if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
+            m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
+            if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then loadSeriesCategoriesForCurrentScreen()
+        end if
+    end if
+end sub
+
+sub loadSeriesCategoriesForCurrentScreen()
+    if not hasAccount(m.account) then return
+    if beginXtreamRequest("getSeriesCategories") then
+        m.seriesCategoriesLoading = true
+        m.xtreamService.control = "STOP"
+        m.xtreamService.action = "getSeriesCategories"
+        m.xtreamService.cacheEnabled = true
+        m.xtreamService.categoryId = ""
+        m.xtreamService.dns = m.account.dns
+        m.xtreamService.username = m.account.username
+        m.xtreamService.password = m.account.password
+        m.xtreamService.control = "RUN"
+    end if
 end sub
 
 sub onSeriesCategoriesResult(result as Object)
