@@ -16,30 +16,39 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesDetailsScene.brs" />
     <children>
-        <Poster id="background" uri="pkg:/images/background.jpeg" loadDisplayMode="scaleToFill" translation="[0,0]" />
-        <Poster id="poster" loadDisplayMode="scaleToFit" />
+        <Rectangle id="screenBg" color="#06101F" translation="[0,0]" />
+        <Poster id="background" uri="pkg:/images/background.jpeg" loadDisplayMode="scaleToFill" translation="[0,0]" opacity="0.12" />
+        <Rectangle id="headerPanel" color="#0B1424" />
+        <Rectangle id="posterShadow" color="#000000" opacity="0.38" />
+        <Rectangle id="posterBackplate" color="#172033" />
+        <Poster id="poster" loadDisplayMode="scaleToZoom" />
         <Label id="titleLabel" color="#FFFFFF" wrap="true" />
-        <Label id="ratingGenreLabel" color="#FFD166" wrap="true" />
-        <Label id="synopsisTitle" text="SINOPSE" color="#FFFFFF" />
+        <Label id="ratingGenreLabel" color="#B8C3D6" wrap="true" />
+        <Label id="synopsisTitle" text="Sinopse" color="#FFFFFF" />
         <Label id="synopsisLabel" color="#D8DEE9" wrap="true" />
         <Group id="actionsGroup">
             <Group id="playButtonGroup">
+                <Rectangle id="playButtonFocus" color="#2F80ED" opacity="0" />
                 <Rectangle id="playButtonBg" color="#1F2937" />
-                <Rectangle id="playButtonFocus" color="#5CE08A" opacity="0" />
-                <Label id="playButtonLabel" text="JOGAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+                <Label id="playButtonLabel" text="▶  JOGAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             </Group>
             <Group id="continueButtonGroup">
+                <Rectangle id="continueButtonFocus" color="#2F80ED" opacity="0" />
                 <Rectangle id="continueButtonBg" color="#1F2937" />
-                <Rectangle id="continueButtonFocus" color="#5CE08A" opacity="0" />
                 <Label id="continueButtonLabel" text="CONTINUAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             </Group>
         </Group>
         <Label id="seasonTitle" text="TEMPORADAS" color="#FFFFFF" horizAlign="left" />
         <Group id="seasonsGroup" />
-        <Label id="episodesTitle" text="EPISÓDIOS" color="#FFFFFF" horizAlign="left" />
+        <Rectangle id="episodesDivider" color="#23314A" opacity="0.9" />
+        <Label id="episodesTitle" text="Episódios" color="#FFFFFF" horizAlign="left" />
+        <Label id="episodesMoreLabel" text=">" color="#B8C3D6" horizAlign="right" />
         <Group id="episodesGroup" />
         <Label id="episodesMessageLabel" text="Nenhum episódio disponível." color="#B8C3D6" wrap="true" horizAlign="center" />
-        <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+        <Rectangle id="footerDivider" color="#23314A" opacity="0.9" />
+        <Rectangle id="footerActionDot" color="#2F80ED" />
+        <Label id="footerActionsLabel" text="Ações" color="#D8DEE9" horizAlign="left" vertAlign="center" />
+        <Label id="backButton" text="←  VOLTAR" color="#FFFFFF" horizAlign="right" vertAlign="center" />
         <Label id="loadingLabel" text="Carregando detalhes..." color="#B8C3D6" horizAlign="center" />
     </children>
 </component>
