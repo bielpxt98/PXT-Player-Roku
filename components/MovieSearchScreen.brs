@@ -12,7 +12,7 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
-    m.posterPlaceholderUri = "" : m.posterUriCache = {}
+    m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
     m.posterLoadTimer.repeat = false
@@ -50,6 +50,7 @@ end sub
 
 sub show()
     configureLayout()
+    PRINT "SEARCH_OPEN"
     m.top.visible = true : m.top.SetFocus(true)
     m.query = "" : m.pendingQuery = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
@@ -62,12 +63,8 @@ sub hide()
 end sub
 
 sub setMovies(items as Object)
-    source = normalizeArray(items)
-    m.allMovies = []
-    for each movie in source
-        if m.allMovies.Count() >= m.maxMovies then exit for
-        m.allMovies.Push(movie)
-    end for
+    m.allMovies = normalizeArray(items)
+    PRINT "SEARCH_CACHE_HIT"
     applyFilter()
 end sub
 
@@ -84,28 +81,33 @@ sub applyFilter()
         return
     end if
     needle = normalizeText(m.query)
-    startsWithMatches = []
-    containsMatches = []
+    firstWordMatches = []
+    secondWordMatches = []
+    otherWordMatches = []
     for each movie in m.allMovies
-        name = getMovieName(movie)
-        hay = normalizeText(name)
-        if needle = "" or Left(hay, Len(needle)) = needle then
-            startsWithMatches.Push(movie)
-        else if Instr(1, hay, needle) > 0 then
-            containsMatches.Push(movie)
+        rank = prefixMatchRank(getMovieName(movie), needle)
+        if rank = 1 then
+            firstWordMatches.Push(movie)
+        else if rank = 2 then
+            secondWordMatches.Push(movie)
+        else if rank = 3 then
+            otherWordMatches.Push(movie)
         end if
     end for
-    appendLimitedResults(startsWithMatches)
-    appendLimitedResults(containsMatches)
+    appendLimitedResults(firstWordMatches)
+    appendLimitedResults(secondWordMatches)
+    appendLimitedResults(otherWordMatches)
     if m.results.Count() = 0 then
         showMessage("Nenhum filme encontrado.")
+        PRINT "SEARCH_RESULTS_UPDATED"
         if m.focusArea = "posters" then m.focusArea = "keyboard"
     else
-        m.messageLabel.text = ""
+        updateSearchLoadingMessage()
         if m.selectedResultIndex >= m.results.Count() then m.selectedResultIndex = m.results.Count() - 1
         m.posterIndex = m.selectedResultIndex
         syncResultOffset()
         renderPosters()
+        PRINT "SEARCH_RESULTS_UPDATED"
     end if
     updateFocus()
 end sub
@@ -338,6 +340,33 @@ function normalizeText(value as Dynamic) as String
     while Instr(1, text, "  ") > 0 : text = text.Replace("  ", " ") : end while
     return text.Trim()
 end function
+
+function prefixMatchRank(title as Dynamic, needle as String) as Integer
+    if needle = "" then return 1
+    words = normalizeText(title).Tokenize(" ")
+    for i = 0 to words.Count() - 1
+        word = words[i]
+        if Len(word) >= Len(needle) and Left(word, Len(needle)) = needle then
+            if i = 0 then return 1
+            if i = 1 then return 2
+            return 3
+        end if
+    end for
+    return 0
+end function
+
+sub setCatalogLoading(isLoading as Boolean)
+    m.catalogLoading = isLoading
+    updateSearchLoadingMessage()
+end sub
+
+sub updateSearchLoadingMessage()
+    if m.catalogLoading = true then
+        m.messageLabel.text = "Buscando mais resultados..."
+    else
+        m.messageLabel.text = ""
+    end if
+end sub
 
 function getMovieName(movie as Dynamic) as String
     if movie = invalid then return "Sem nome"

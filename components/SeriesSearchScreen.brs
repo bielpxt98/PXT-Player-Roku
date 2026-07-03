@@ -15,7 +15,7 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
-    m.posterPlaceholderUri = "https://placehold.co/300x450/111827/FFFFFF?text=Serie" : m.posterUriCache = {}
+    m.posterPlaceholderUri = "https://placehold.co/300x450/111827/FFFFFF?text=Serie" : m.posterUriCache = {} : m.catalogLoading = false
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
     m.posterLoadTimer.repeat = false
@@ -48,6 +48,7 @@ end sub
 
 sub show()
     configureLayout()
+    PRINT "SEARCH_OPEN"
     m.top.visible = true : m.top.SetFocus(true)
     m.query = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
@@ -61,7 +62,8 @@ end sub
 
 sub setSeries(items as Object)
     m.allSeries = normalizeArray(items)
-    if m.query = "" then showInitialResults() else scheduleFilter()
+    PRINT "SEARCH_CACHE_HIT"
+    if m.query = "" then showInitialResults() else applyFilter()
 end sub
 
 sub setInitialSeries(items as Object)
@@ -88,6 +90,7 @@ sub showInitialResults()
     else
         m.messageLabel.text = ""
         renderPosters()
+        PRINT "SEARCH_RESULTS_UPDATED"
     end if
     updateFocus()
 end sub
@@ -118,28 +121,33 @@ sub applyFilter()
         return
     end if
     needle = normalizeText(m.query)
-    startsWithMatches = []
-    containsMatches = []
+    firstWordMatches = []
+    secondWordMatches = []
+    otherWordMatches = []
     for each series in m.allSeries
-        name = getSeriesName(series)
-        hay = normalizeText(name)
-        if needle = "" or Left(hay, Len(needle)) = needle then
-            startsWithMatches.Push(series)
-        else if Instr(1, hay, needle) > 0 then
-            containsMatches.Push(series)
+        rank = prefixMatchRank(getSeriesName(series), needle)
+        if rank = 1 then
+            firstWordMatches.Push(series)
+        else if rank = 2 then
+            secondWordMatches.Push(series)
+        else if rank = 3 then
+            otherWordMatches.Push(series)
         end if
     end for
-    appendLimitedResults(startsWithMatches)
-    appendLimitedResults(containsMatches)
+    appendLimitedResults(firstWordMatches)
+    appendLimitedResults(secondWordMatches)
+    appendLimitedResults(otherWordMatches)
     if m.results.Count() = 0 then
         showMessage("Nenhuma série encontrada.")
+        PRINT "SEARCH_RESULTS_UPDATED"
         if m.focusArea = "posters" then m.focusArea = "keyboard"
     else
-        m.messageLabel.text = ""
+        updateSearchLoadingMessage()
         if m.selectedResultIndex >= m.results.Count() then m.selectedResultIndex = m.results.Count() - 1
         m.posterIndex = m.selectedResultIndex
         syncResultOffset()
         renderPosters()
+        PRINT "SEARCH_RESULTS_UPDATED"
     end if
     updateFocus()
 end sub
@@ -361,6 +369,33 @@ function normalizeText(value as Dynamic) as String
     while Instr(1, text, "  ") > 0 : text = text.Replace("  ", " ") : end while
     return text.Trim()
 end function
+
+function prefixMatchRank(title as Dynamic, needle as String) as Integer
+    if needle = "" then return 1
+    words = normalizeText(title).Tokenize(" ")
+    for i = 0 to words.Count() - 1
+        word = words[i]
+        if Len(word) >= Len(needle) and Left(word, Len(needle)) = needle then
+            if i = 0 then return 1
+            if i = 1 then return 2
+            return 3
+        end if
+    end for
+    return 0
+end function
+
+sub setCatalogLoading(isLoading as Boolean)
+    m.catalogLoading = isLoading
+    updateSearchLoadingMessage()
+end sub
+
+sub updateSearchLoadingMessage()
+    if m.catalogLoading = true then
+        m.messageLabel.text = "Buscando mais resultados..."
+    else
+        m.messageLabel.text = ""
+    end if
+end sub
 
 function getSeriesName(series as Dynamic) as String
     if series = invalid then return "Sem nome"
