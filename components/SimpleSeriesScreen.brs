@@ -8,6 +8,7 @@ sub Init()
     m.firstVisibleSeriesIndex = 0
     m.seriesNodes = []
     m.seriesNodeRefs = []
+    m.preloadPosters = []
     m.seriesItems = []
     m.allSeriesItems = []
     m.categories = []
@@ -186,6 +187,7 @@ sub show()
     m.firstVisibleSeriesIndex = 0
     m.seriesNodes = []
     m.seriesNodeRefs = []
+    m.preloadPosters = []
     m.activePanel = "categories"
     m.statusLabel.text = ""
     renderSeriesGrid()
@@ -483,6 +485,32 @@ sub updateSeriesCards()
             refs.poster.uri = "" : refs.title.text = ""
         end if
     end for
+    updateSeriesPreloadPosters()
+end sub
+
+sub ensureSeriesPreloadPosters(maxCount as Integer)
+    if m.preloadPosters = invalid then m.preloadPosters = []
+    while m.preloadPosters.Count() < maxCount
+        poster = CreateObject("roSGNode", "Poster")
+        poster.width = 1 : poster.height = 1
+        poster.opacity = 0.0 : poster.visible = false
+        poster.uri = ""
+        m.seriesGridGroup.AppendChild(poster)
+        m.preloadPosters.Push(poster)
+    end while
+end sub
+
+sub updateSeriesPreloadPosters()
+    maxPreload = 10
+    ensureSeriesPreloadPosters(maxPreload)
+    visibleCount = m.seriesColumns * m.seriesRows
+    startIndex = m.firstVisibleSeriesIndex + visibleCount
+    for i = 0 to m.preloadPosters.Count() - 1
+        uri = ""
+        itemIndex = startIndex + i
+        if i < maxPreload and itemIndex < m.seriesItems.Count() then uri = resizeTmdbSeriesPoster(getSeriesPoster(m.seriesItems[itemIndex]))
+        m.preloadPosters[i].uri = uri
+    end for
 end sub
 
 function createSeriesItem(series as Dynamic, visualIndex as Integer, itemIndex as Integer) as Object
@@ -582,11 +610,15 @@ sub updateSeriesFocus()
 end sub
 
 sub clearSeriesNodes()
+    for each poster in m.preloadPosters
+        if poster <> invalid then poster.uri = ""
+    end for
     while m.seriesGridGroup.GetChildCount() > 0
         m.seriesGridGroup.RemoveChildIndex(0)
     end while
     m.seriesNodes = []
     m.seriesNodeRefs = []
+    m.preloadPosters = []
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean

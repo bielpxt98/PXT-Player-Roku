@@ -24,7 +24,7 @@ sub Init()
     m.searchNumbers = ["0","1","2","3","4","5","6","7","8","9"]
     m.searchActions = ["ESPAÇO","APAGAR","LIMPAR","FECHAR"]
     m.keyRows = [m.searchLetters[0], m.searchLetters[1], m.searchNumbers, m.searchActions]
-    m.keyNodes = [] : m.keyRefs = [] : m.itemNodes = [] : m.itemRefs = []
+    m.keyNodes = [] : m.keyRefs = [] : m.itemNodes = [] : m.itemRefs = [] : m.preloadPosters = []
     m.searchFocusArea = "keyboardLetters" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.searchResultOffset = 0
     configureLayout()
 end sub
@@ -295,6 +295,33 @@ sub updateCards()
             refs.poster.uri = "" : refs.label.text = "" : refs.meta.text = ""
         end if
     end for
+    updatePreloadPosters()
+end sub
+
+sub ensurePreloadPosters(maxCount as Integer)
+    if m.preloadPosters = invalid then m.preloadPosters = []
+    while m.preloadPosters.Count() < maxCount
+        poster = CreateObject("roSGNode", "Poster")
+        poster.width = 1 : poster.height = 1
+        poster.opacity = 0.0 : poster.visible = false
+        poster.loadDisplayMode = "scaleToFill"
+        poster.uri = ""
+        m.resultsGroup.AppendChild(poster)
+        m.preloadPosters.Push(poster)
+    end while
+end sub
+
+sub updatePreloadPosters()
+    maxPreload = 5
+    ensurePreloadPosters(maxPreload)
+    startIndex = m.searchResultOffset + m.visibleItemCount
+    maxLoadedIndex = getLoadedResultCount() - 1
+    for i = 0 to m.preloadPosters.Count() - 1
+        uri = ""
+        itemIndex = startIndex + i
+        if i < maxPreload and itemIndex <= maxLoadedIndex and itemIndex < m.results.Count() then uri = getItemImage(m.results[itemIndex].item)
+        m.preloadPosters[i].uri = uri
+    end for
 end sub
 
 function createCardResultNode(result as Object, visualIndex as Integer) as Object
@@ -545,9 +572,13 @@ sub openSelected()
 end sub
 
 sub clearResultNodes()
+    for each poster in m.preloadPosters
+        if poster <> invalid then poster.uri = ""
+    end for
     while m.resultsGroup.GetChildCount() > 0 : m.resultsGroup.RemoveChildIndex(0) : end while
     m.itemNodes = []
     m.itemRefs = []
+    m.preloadPosters = []
 end sub
 
 function normalizeArray(value as Dynamic) as Object
