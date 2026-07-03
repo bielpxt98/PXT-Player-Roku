@@ -10,6 +10,9 @@
         <function name="setContinueEpisode" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="episodeSelected" type="assocarray" alwaysNotify="true" />
+        <field id="dns" type="string" />
+        <field id="username" type="string" />
+        <field id="password" type="string" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SeriesDetailsScene.brs" />
     <children>

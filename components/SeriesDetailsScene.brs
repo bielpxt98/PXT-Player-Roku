@@ -314,11 +314,18 @@ function firstText(item as Dynamic, keys as Object) as String
     if item = invalid or Type(item) <> "roAssociativeArray" then return ""
     for each k in keys
         if item.DoesExist(k) and isScalarTextValue(item[k]) then
-            text = item[k].ToStr().Trim()
+            text = safeText(item[k])
             if text <> "" then return text
         end if
     end for
     return ""
+end function
+
+function safeText(value as Dynamic) as String
+    if value = invalid then return ""
+    valueType = Type(value)
+    if valueType = "roAssociativeArray" or valueType = "roArray" then return ""
+    return value.ToStr().Trim()
 end function
 
 function isScalarTextValue(value as Dynamic) as Boolean
@@ -481,7 +488,81 @@ function getEpisodeTitle(episode as Dynamic, index as Integer) as String
 end function
 
 function getEpisodeUrl(episode as Dynamic) as String
-    return firstText(episode, ["streamUrl", "stream_url", "url", "direct_url", "direct_source", "playbackUrl", "movie_url"])
+    streamUrl = firstText(episode, ["stream_url", "streamUrl", "url", "direct_source", "episode_url", "playUrl", "direct_url", "directUrl", "playbackUrl", "movie_url"])
+    if streamUrl <> "" then return streamUrl
+    return buildXtreamEpisodeUrl(episode)
+end function
+
+function buildXtreamEpisodeUrl(episode as Dynamic) as String
+    episodeId = firstText(episode, ["id", "episode_id"])
+    if episodeId = "" then return ""
+    dns = normalizeSeriesDns(m.top.dns)
+    username = safeText(m.top.username)
+    password = safeText(m.top.password)
+    if dns = "" or username = "" or password = "" then return ""
+    extension = getEpisodeExtension(episode)
+    if extension = "" then extension = "mp4"
+    if Left(extension, 1) = "." then extension = Mid(extension, 2)
+    return dns + "/series/" + escapeSeriesPathValue(username) + "/" + escapeSeriesPathValue(password) + "/" + escapeSeriesPathValue(episodeId) + "." + escapeSeriesPathValue(extension)
+end function
+
+function getEpisodeExtension(episode as Dynamic) as String
+    extension = firstText(episode, ["container_extension", "containerExtension", "extension", "stream_extension", "streamExtension"])
+    if extension <> "" then return extension
+    for each field in ["stream_url", "streamUrl", "url", "direct_source", "episode_url", "playUrl"]
+        candidate = firstText(episode, [field])
+        extension = extensionFromUrl(candidate)
+        if extension <> "" then return extension
+    end for
+    return ""
+end function
+
+function extensionFromUrl(url as String) as String
+    if url = "" then return ""
+    cleanUrl = url
+    queryPos = Instr(1, cleanUrl, "?")
+    if queryPos > 0 then cleanUrl = Left(cleanUrl, queryPos - 1)
+    slashPos = 0
+    for i = Len(cleanUrl) to 1 step -1
+        if Mid(cleanUrl, i, 1) = "/" then
+            slashPos = i
+            exit for
+        end if
+    end for
+    dotPos = 0
+    for i = Len(cleanUrl) to slashPos + 1 step -1
+        if Mid(cleanUrl, i, 1) = "." then
+            dotPos = i
+            exit for
+        end if
+    end for
+    if dotPos <= 0 or dotPos = Len(cleanUrl) then return ""
+    return Mid(cleanUrl, dotPos + 1)
+end function
+
+function normalizeSeriesDns(dns as Dynamic) as String
+    normalized = safeText(dns)
+    if normalized = "" then return ""
+    lowerDns = LCase(normalized)
+    if Left(lowerDns, 7) <> "http://" and Left(lowerDns, 8) <> "https://" then normalized = "http://" + normalized
+    while Right(normalized, 1) = "/"
+        normalized = Left(normalized, Len(normalized) - 1)
+    end while
+    return normalized
+end function
+
+function escapeSeriesPathValue(value as Dynamic) as String
+    transfer = CreateObject("roUrlTransfer")
+    return transfer.Escape(safeText(value))
+end function
+
+function maskSeriesUrl(url as String) as String
+    username = safeText(m.top.username)
+    password = safeText(m.top.password)
+    masked = url
+    if username <> "" then masked = masked.Replace("/" + username + "/", "/****/")
+    if password <> "" then masked = masked.Replace("/" + password + "/", "/****/")
+    return masked
 end function
 
 function getSelectedSeason() as Dynamic
@@ -509,7 +590,6 @@ sub updateSelectedEpisodeFromIndex()
         if episode <> invalid and Type(episode) = "roAssociativeArray" and (not episode.DoesExist("episodes") or episode.episodes = invalid) then m.selectedEpisode = episode
     end if
     print "SERIES_DETAILS selectedEpisode="; getEpisodeTitle(m.selectedEpisode, m.selectedEpisodeIndex)
-    print "SERIES_DETAILS episode.url/streamUrl="; getEpisodeUrl(m.selectedEpisode)
 end sub
 
 function getEpisodeImage(episode as Dynamic) as String
@@ -742,11 +822,11 @@ end sub
 
 sub emitEpisodeSelected(episode as Dynamic, index as Integer)
     streamUrl = getEpisodeUrl(episode)
-    print "SERIES_DETAILS openSeriesPlayer chamado selectedEpisode="; getEpisodeTitle(episode, index); " episode.url/streamUrl="; streamUrl
-    if not isPlayableEpisode(episode) then
+    if streamUrl = "" or not isPlayableEpisode(episode) then
         showMessage("Episódio sem link disponível.")
         return
     end if
+    print "SERIES_PLAYER_URL="; maskSeriesUrl(streamUrl)
     title = getEpisodeTitle(episode, index)
     selected = {}
     if episode <> invalid and Type(episode) = "roAssociativeArray" then
