@@ -552,8 +552,33 @@ function normalizeSeriesDns(dns as Dynamic) as String
 end function
 
 function escapeSeriesPathValue(value as Dynamic) as String
-    transfer = CreateObject("roUrlTransfer")
-    return transfer.Escape(safeText(value))
+    text = safeText(value)
+    if text = "" then return ""
+    result = ""
+    safeChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~"
+    for i = 1 to Len(text)
+        ch = Mid(text, i, 1)
+        if Instr(1, safeChars, ch) > 0 then
+            result = result + ch
+        else
+            code = ch.ToInt()
+            hex = decToHex(code)
+            if Len(hex) = 1 then hex = "0" + hex
+            result = result + "%" + UCase(hex)
+        end if
+    end for
+    return result
+end function
+
+function decToHex(n as Integer) as String
+    if n = 0 then return "0"
+    digits = "0123456789ABCDEF"
+    result = ""
+    while n > 0
+        result = Mid(digits, (n mod 16) + 1, 1) + result
+        n = Int(n / 16)
+    end while
+    return result
 end function
 
 function maskSeriesUrl(url as String) as String
