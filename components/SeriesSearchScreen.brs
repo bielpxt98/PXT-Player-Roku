@@ -15,6 +15,11 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
+    m.posterPlaceholderUri = "https://placehold.co/300x450/111827/FFFFFF?text=Serie" : m.posterUriCache = {}
+    m.posterLoadTimer = CreateObject("roSGNode", "Timer")
+    m.posterLoadTimer.duration = 0.05
+    m.posterLoadTimer.repeat = false
+    m.posterLoadTimer.ObserveField("fire", "onPosterLoadTimerFire")
     configureLayout()
 end sub
 
@@ -155,11 +160,12 @@ sub renderPosters()
         series = m.results[resultIndex]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
-        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getSeriesImage(series)
+        poster = CreateObject("roSGNode", "Poster") : poster.width = 120 : poster.height = 180 : poster.translation = [Int((m.posterW - 120) / 2), 6] : poster.loadDisplayMode = "scaleToFit" : poster.uri = m.posterPlaceholderUri
         label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getSeriesName(series)
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
         m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, poster: poster, label: label, series: series, resultIndex: resultIndex })
     end for
+    scheduleVisiblePosterLoads()
 end sub
 
 sub refreshVisiblePosters()
@@ -176,8 +182,9 @@ sub refreshVisiblePosters()
         node.series = series
         node.resultIndex = resultIndex
         node.label.text = getSeriesName(series)
-        if node.poster <> invalid then node.poster.uri = getSeriesImage(series)
+        if node.poster <> invalid then node.poster.uri = m.posterPlaceholderUri
     end for
+    scheduleVisiblePosterLoads()
 end sub
 
 sub syncResultOffset()
@@ -201,6 +208,10 @@ function getVisibleResultCount() as Integer
 end function
 
 sub clearPosters()
+    if m.posterLoadTimer <> invalid then m.posterLoadTimer.control = "stop"
+    for each node in m.posterNodes
+        if node.poster <> invalid then node.poster.uri = m.posterPlaceholderUri
+    end for
     while m.resultsGroup.GetChildCount() > 0 : m.resultsGroup.RemoveChildIndex(0) : end while
     m.posterNodes = []
 end sub
@@ -359,13 +370,39 @@ function getSeriesName(series as Dynamic) as String
 end function
 
 function getSeriesImage(series as Dynamic) as String
+    if series = invalid then return m.posterPlaceholderUri
+    key = getSeriesCacheKey(series)
+    if key <> "" and m.posterUriCache[key] <> invalid then return m.posterUriCache[key]
+
+    uri = ""
+    if series.cover <> invalid and series.cover.ToStr().Trim() <> "" then uri = series.cover.ToStr()
+    if uri = "" and series.stream_icon <> invalid and series.stream_icon.ToStr().Trim() <> "" then uri = series.stream_icon.ToStr()
+    if uri = "" and series.poster <> invalid and series.poster.ToStr().Trim() <> "" then uri = series.poster.ToStr()
+    if uri = "" and series.cover_big <> invalid and series.cover_big.ToStr().Trim() <> "" then uri = series.cover_big.ToStr()
+    if uri = "" and series.series_image <> invalid and series.series_image.ToStr().Trim() <> "" then uri = series.series_image.ToStr()
+    uri = resizeTmdbPoster(uri)
+    if uri = "" then uri = m.posterPlaceholderUri
+    if key <> "" then m.posterUriCache[key] = uri
+    return uri
+end function
+
+sub scheduleVisiblePosterLoads()
+    if m.posterLoadTimer = invalid then return
+    m.posterLoadTimer.control = "stop"
+    m.posterLoadTimer.control = "start"
+end sub
+
+sub onPosterLoadTimerFire()
+    for each node in m.posterNodes
+        if node.poster <> invalid and node.series <> invalid then node.poster.uri = getSeriesImage(node.series)
+    end for
+end sub
+
+function getSeriesCacheKey(series as Dynamic) as String
     if series = invalid then return ""
-    if series.stream_icon <> invalid and series.stream_icon.ToStr().Trim() <> "" then return resizeTmdbPoster(series.stream_icon)
-    if series.cover <> invalid and series.cover.ToStr().Trim() <> "" then return resizeTmdbPoster(series.cover)
-    if series.poster <> invalid and series.poster.ToStr().Trim() <> "" then return resizeTmdbPoster(series.poster)
-    if series.cover_big <> invalid and series.cover_big.ToStr().Trim() <> "" then return resizeTmdbPoster(series.cover_big)
-    if series.series_image <> invalid and series.series_image.ToStr().Trim() <> "" then return resizeTmdbPoster(series.series_image)
-    return ""
+    if series.series_id <> invalid then return "series_" + series.series_id.ToStr()
+    if series.id <> invalid then return "id_" + series.id.ToStr()
+    return getSeriesName(series)
 end function
 
 
