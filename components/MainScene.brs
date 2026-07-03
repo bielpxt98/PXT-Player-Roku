@@ -83,6 +83,8 @@ sub Init()
     m.allCatalogLoadingMovies = false
     m.allCatalogLoadingSeries = false
     m.allCatalogLoadingLive = false
+    m.movieCategoryIndex = {}
+    m.seriesCategoryIndex = {}
     m.searchMode = "all"
     m.searchBackTarget = "home"
     m.splashMinimumElapsed = false
@@ -185,8 +187,15 @@ sub startInitialFlow()
         m.isDemoMode = false
         setBootState("reconnecting")
         updateConnectionStatus(false, "Conectando...")
-        showHome()
-        startAutoConnectTimer()
+        m.homeScreen.callFunc("hide")
+        m.loginScreen.callFunc("hide")
+        m.splashScreen.callFunc("show")
+        loadLocalSearchIndexCache()
+        if hasValidLocalCatalogData() then
+            showHome()
+            updateConnectionStatus(false, "Atualizando lista...")
+        end if
+        onAutoConnectTimerFire()
     else
         if m.account <> invalid then DeleteSavedPlaylist()
         m.account = invalid
@@ -597,15 +606,15 @@ function limitMovieSearchItems(items as Dynamic) as Object
     limited = []
     if items = invalid or Type(items) <> "roArray" then return limited
     for each item in items
-        if limited.Count() >= 100 then exit for
+        if limited.Count() >= 60 then exit for
         limited.Push(item)
     end for
     return limited
 end function
 
 function getSeriesForSearch() as Object
-    if m.allSeriesCache <> invalid and m.allSeriesCache.Count() > 0 then return m.allSeriesCache
-    if m.cachedSeries <> invalid then return m.cachedSeries
+    if m.allSeriesCache <> invalid and m.allSeriesCache.Count() > 0 then return limitArrayForUiBatch(m.allSeriesCache, 60)
+    if m.cachedSeries <> invalid then return limitArrayForUiBatch(m.cachedSeries, 60)
     return []
 end function
 
@@ -1473,7 +1482,8 @@ end function
 
 sub showMoviesFromCacheOrLoad(category as Object)
     categoryId = getCategoryId(category)
-    cached = filterItemsByCategory(m.cachedMovies, categoryId)
+    cached = []
+    if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[categoryId] <> invalid then cached = m.movieCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedMovies, categoryId)
     if cached.Count() > 0 then
         m.movies = cached
         m.moviesLoading = false
@@ -1782,6 +1792,22 @@ sub loadLocalSearchIndexCache()
     if m.searchIndexCache.movieCategoryPreviewCache <> invalid then m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
     if m.searchIndexCache.seriesCategoryPreviewCache <> invalid then m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
     m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
+    m.movieCategoryIndex = {}
+    if m.cachedMovies <> invalid and Type(m.cachedMovies) = "roArray" then
+        for each item in m.cachedMovies
+            cid = getItemCategoryId(item)
+            if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
+            m.movieCategoryIndex[cid].Push(item)
+        end for
+    end if
+    m.seriesCategoryIndex = {}
+    if m.cachedSeries <> invalid and Type(m.cachedSeries) = "roArray" then
+        for each item in m.cachedSeries
+            cid = getItemCategoryId(item)
+            if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
+            m.seriesCategoryIndex[cid].Push(item)
+        end for
+    end if
 end sub
 
 sub startBackgroundCatalogCache()
@@ -1881,12 +1907,24 @@ function handleSearchIndexResult(result as Object) as Boolean
             m.searchIndexCache.movies = m.allMoviesCache
             m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
             m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
+            m.movieCategoryIndex = {}
+            for each item in m.cachedMovies
+                cid = getItemCategoryId(item)
+                if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
+                m.movieCategoryIndex[cid].Push(item)
+            end for
             if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
         else if kind = "series" then
             m.allSeriesCache = normalizeSeries(result.data)
             m.cachedSeries = m.allSeriesCache
             m.searchIndexCache.series = m.allSeriesCache
-            if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", m.allSeriesCache)
+            m.seriesCategoryIndex = {}
+            for each item in m.cachedSeries
+                cid = getItemCategoryId(item)
+                if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
+                m.seriesCategoryIndex[cid].Push(item)
+            end for
+            if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
         end if
         SaveSearchIndexCache(m.searchIndexCache)
     end if
@@ -1995,8 +2033,16 @@ sub onSeriesResult(result as Object)
         else
             m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, fresh, resultCategoryId)
         end if
+        m.seriesCategoryIndex = {}
+        if m.cachedSeries <> invalid and Type(m.cachedSeries) = "roArray" then
+            for each item in m.cachedSeries
+                cid = getItemCategoryId(item)
+                if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
+                m.seriesCategoryIndex[cid].Push(item)
+            end for
+        end if
         if m.simpleSeriesScreen.visible = true then m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
-        if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", m.allSeriesCache)
+        if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
     end if
 end sub
 
@@ -2012,6 +2058,7 @@ sub onSeriesCategorySelected()
     category = m.simpleSeriesScreen.categorySelected
     if category = invalid then return
     categoryId = getCategoryId(category)
+    if m.seriesCategoryIndex <> invalid and m.seriesCategoryIndex[categoryId] <> invalid and m.seriesCategoryIndex[categoryId].Count() > 0 then return
     if filterItemsByCategory(m.cachedSeries, categoryId).Count() > 0 then return
     if not hasAccount(m.account) or m.isLoadingRequest = true then return
     if beginXtreamRequest("getSeries") then
@@ -2248,7 +2295,15 @@ sub onMoviesResult(result as Object)
         m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
         m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
         SaveSearchIndexCache(m.searchIndexCache)
-        m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
+        m.movieCategoryIndex = {}
+        if m.cachedMovies <> invalid and Type(m.cachedMovies) = "roArray" then
+            for each item in m.cachedMovies
+                cid = getItemCategoryId(item)
+                if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
+                m.movieCategoryIndex[cid].Push(item)
+            end for
+        end if
+        if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[m.selectedMovieCategoryId] <> invalid then m.movies = m.movieCategoryIndex[m.selectedMovieCategoryId] else m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
         if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
     else if m.movieListScreen.visible = true then

@@ -15,7 +15,7 @@ sub Init()
     m.categories = [m.searchEntry, m.favoritesEntry] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.categoryRefs = []
     m.movieNodes = [] : m.movieRefs = []
-    m.batchSize = 30 : m.loadedMovieCount = 0
+    m.batchSize = 60 : m.loadedMovieCount = 0
     m.posterPlaceholderUri = "" : m.posterUriCache = {}
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
@@ -527,9 +527,9 @@ function normalizeMovieCardImageUri(uri as Dynamic) as String
     if uri = invalid then return ""
     value = uri.ToStr().Trim()
     if value = "" then return ""
-    value = value.Replace("/w780/", "/w342/")
-    value = value.Replace("/w500/", "/w342/")
-    value = value.Replace("/original/", "/w342/")
+    value = value.Replace("/w780/", "/w185/")
+    value = value.Replace("/w500/", "/w185/")
+    value = value.Replace("/original/", "/w185/")
     return value
 end function
 

@@ -11,7 +11,7 @@ sub Init()
     m.filterDebounceTimer = m.top.FindNode("filterDebounceTimer")
     if m.filterDebounceTimer <> invalid then m.filterDebounceTimer.ObserveField("fire", "onFilterDebounce")
     m.allSeries = [] : m.initialSeries = [] : m.results = [] : m.query = ""
-    m.initialLimit = 60 : m.resultLimit = 5
+    m.initialLimit = 60 : m.resultLimit = 40
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
@@ -146,11 +146,13 @@ end sub
 
 sub renderPosters()
     clearPosters()
-    for i = 0 to m.results.Count() - 1
+    maxRender = m.results.Count()
+    if maxRender > 40 then maxRender = 40
+    for i = 0 to maxRender - 1
         series = m.results[i]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
-        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = resizeTmdbPoster(getSeriesImage(series))
+        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = ""
         label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getSeriesName(series)
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
         m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, label: label })
@@ -333,7 +335,7 @@ function resizeTmdbPoster(uri as Dynamic) as String
     if uri = invalid then return ""
     text = uri.ToStr().Trim()
     if text = "" then return ""
-    text = text.Replace("/w780/", "/w342/")
-    text = text.Replace("/original/", "/w342/")
+    text = text.Replace("/w780/", "/w185/")
+    text = text.Replace("/original/", "/w185/")
     return text
 end function
