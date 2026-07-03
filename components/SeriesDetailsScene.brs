@@ -16,6 +16,7 @@ sub Init()
     m.continueButtonLabel = m.top.FindNode("continueButtonLabel")
     m.seasonTitle = m.top.FindNode("seasonTitle")
     m.seasonsGroup = m.top.FindNode("seasonsGroup")
+    m.episodesTitle = m.top.FindNode("episodesTitle")
     m.episodesGroup = m.top.FindNode("episodesGroup")
     m.episodesMessageLabel = m.top.FindNode("episodesMessageLabel")
     m.backButton = m.top.FindNode("backButton")
@@ -51,9 +52,9 @@ sub configureLayout()
     posterH = 450
     buttonW = 138
     buttonH = 56
-    episodeW = 202
-    episodeH = 176
-    episodeGap = 22
+    episodeW = 190
+    episodeH = 120
+    episodeGap = 20
     if h <= 720 then
         marginX = 50
         topY = 38
@@ -61,9 +62,9 @@ sub configureLayout()
         posterH = 315
         buttonW = 116
         buttonH = 50
-        episodeW = 158
-        episodeH = 138
-        episodeGap = 18
+        episodeW = 148
+        episodeH = 96
+        episodeGap = 16
     end if
 
     m.marginX = marginX
@@ -94,23 +95,28 @@ sub configureLayout()
     m.synopsisTitle.font = "font:MediumBoldSystemFont"
     m.synopsisLabel.translation = [contentX, topY + 166]
     m.synopsisLabel.width = contentW
-    m.synopsisLabel.height = 138
+    m.synopsisLabel.height = 122
     m.synopsisLabel.font = "font:MediumSystemFont"
 
     m.actionsGroup.translation = [marginX, topY + posterH + 28]
     setupActionButton(m.playButtonGroup, m.playButtonBg, m.playButtonFocus, m.playButtonLabel, 0, buttonW, buttonH)
     setupActionButton(m.continueButtonGroup, m.continueButtonBg, m.continueButtonFocus, m.continueButtonLabel, buttonW + 18, buttonW + 48, buttonH)
 
-    seasonY = topY + 325
-    if h <= 720 then seasonY = topY + 236
+    seasonY = topY + 342
+    if h <= 720 then seasonY = topY + 252
     m.seasonTitle.translation = [contentX, seasonY]
     m.seasonTitle.width = contentW
     m.seasonTitle.horizAlign = "left"
     m.seasonTitle.font = "font:MediumBoldSystemFont"
     m.seasonsGroup.translation = [contentX, seasonY + 38]
 
-    episodesY = seasonY + 104
-    if h <= 720 then episodesY = seasonY + 82
+    episodesTitleY = seasonY + 98
+    if h <= 720 then episodesTitleY = seasonY + 74
+    m.episodesTitle.translation = [contentX, episodesTitleY]
+    m.episodesTitle.width = contentW
+    m.episodesTitle.font = "font:MediumBoldSystemFont"
+    episodesY = episodesTitleY + 42
+    if h <= 720 then episodesY = episodesTitleY + 34
     m.episodesGroup.translation = [contentX, episodesY]
     m.maxEpisodeCards = Int((contentW + episodeGap) / (episodeW + episodeGap))
     if m.maxEpisodeCards < 1 then m.maxEpisodeCards = 1
@@ -387,19 +393,19 @@ sub renderSeasonButtons()
         group = CreateObject("roSGNode", "Group")
         group.translation = [x, 0]
         bg = CreateObject("roSGNode", "Rectangle")
-        bg.width = 172
-        bg.height = 44
+        bg.width = 150
+        bg.height = 42
         bg.color = "#1F2937"
         border = CreateObject("roSGNode", "Rectangle")
         border.translation = [-3, -3]
-        border.width = 178
-        border.height = 50
+        border.width = 156
+        border.height = 48
         border.color = "#5CE08A"
         border.opacity = 0
         label = CreateObject("roSGNode", "Label")
         label.text = m.seasons[i]
-        label.width = 172
-        label.height = 44
+        label.width = 150
+        label.height = 42
         label.horizAlign = "center"
         label.vertAlign = "center"
         label.font = "font:MediumBoldSystemFont"
@@ -408,7 +414,7 @@ sub renderSeasonButtons()
         group.AppendChild(label)
         m.seasonsGroup.AppendChild(group)
         m.seasonNodes.Push({ group: group, bg: bg, border: border, label: label })
-        x = x + 190
+        x = x + 166
     end for
     if m.seasons.Count() > 0 then m.seasonTitle.text = "TEMPORADAS"
 end sub
@@ -470,22 +476,30 @@ sub renderEpisodes(episodes as Object)
         bg.width = m.episodeW
         bg.height = m.episodeH
         bg.color = "#111827"
-        poster = CreateObject("roSGNode", "Poster")
-        poster.width = m.episodeW
-        poster.height = m.episodeH - 48
-        poster.loadDisplayMode = "scaleToZoom"
-        poster.uri = getEpisodeImage(episode)
+        imageUri = getEpisodeImage(episode)
         label = CreateObject("roSGNode", "Label")
-        label.translation = [10, m.episodeH - 44]
         label.width = m.episodeW - 20
-        label.height = 38
         label.font = "font:SmallBoldSystemFont"
         label.color = "#FFFFFF"
         label.wrap = true
         label.text = getEpisodeTitle(episode, i)
         group.AppendChild(border)
         group.AppendChild(bg)
-        group.AppendChild(poster)
+        if imageUri <> "" then
+            poster = CreateObject("roSGNode", "Poster")
+            poster.width = m.episodeW
+            poster.height = m.episodeH - 42
+            poster.loadDisplayMode = "scaleToZoom"
+            poster.uri = imageUri
+            label.translation = [10, m.episodeH - 38]
+            label.height = 34
+            group.AppendChild(poster)
+        else
+            label.translation = [10, 0]
+            label.height = m.episodeH
+            label.vertAlign = "center"
+            label.horizAlign = "center"
+        end if
         group.AppendChild(label)
         m.episodesGroup.AppendChild(group)
         m.episodeNodes.Push({ group: group, border: border, bg: bg, label: label })
@@ -629,9 +643,7 @@ sub updateSelectedEpisodeFromIndex()
 end sub
 
 function getEpisodeImage(episode as Dynamic) as String
-    image = firstText(episode, ["cover", "image", "info", "movie_image", "stream_icon"])
-    if image = "" then image = m.poster.uri
-    return image
+    return firstText(episode, ["cover", "image", "movie_image", "stream_icon"] )
 end function
 
 sub updateContinueButton()
