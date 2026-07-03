@@ -62,11 +62,12 @@ sub configureLayout()
     headerH = 454
     posterW = 232
     posterH = 348
-    buttonW = 148
+    buttonW = 156
+    continueButtonW = 188
     buttonH = 50
     episodeW = 178
     thumbH = 100
-    episodeH = 164
+    episodeH = 186
     episodeGap = 20
     if h <= 720 then
         marginX = 48
@@ -74,11 +75,12 @@ sub configureLayout()
         headerH = 336
         posterW = 164
         posterH = 246
-        buttonW = 124
+        buttonW = 128
+        continueButtonW = 168
         buttonH = 42
         episodeW = 138
         thumbH = 78
-        episodeH = 132
+        episodeH = 154
         episodeGap = 14
     end if
 
@@ -135,8 +137,9 @@ sub configureLayout()
 
     m.actionsGroup.translation = [contentX, seasonY + 94]
     if h <= 720 then m.actionsGroup.translation = [contentX, seasonY + 78]
+    actionGap = 28
     setupActionButton(m.playButtonGroup, m.playButtonBg, m.playButtonFocus, m.playButtonLabel, 0, buttonW, buttonH)
-    setupActionButton(m.continueButtonGroup, m.continueButtonBg, m.continueButtonFocus, m.continueButtonLabel, buttonW + 18, buttonW + 68, buttonH)
+    setupActionButton(m.continueButtonGroup, m.continueButtonBg, m.continueButtonFocus, m.continueButtonLabel, buttonW + actionGap, continueButtonW, buttonH)
 
     episodesTitleY = topY + headerH + 24
     m.episodesDivider.translation = [marginX, episodesTitleY - 16]
@@ -425,9 +428,10 @@ function getSeasonLabels(item as Dynamic) as Object
                 label = firstText(season, ["name", "title", "season", "season_number"])
                 if label <> "" then
                     n = Val(label)
-                    if n > 0 then label = "TEMPORADA " + n.ToStr()
-                    if LCase(Left(label, 6)) = "season" then label = "TEMPORADA" + Mid(label, 7)
-                    labels.Push(UCase(label))
+                    if n > 0 then label = "Temporada " + n.ToStr()
+                    if LCase(Left(label, 6)) = "season" then label = "Temporada" + Mid(label, 7)
+                    if LCase(Left(label, 9)) = "temporada" then label = "Temporada" + Mid(label, 10)
+                    labels.Push(label)
                 end if
             end for
         end if
@@ -445,18 +449,18 @@ sub renderSeasonButtons()
         group = CreateObject("roSGNode", "Group")
         group.translation = [x, 0]
         bg = CreateObject("roSGNode", "Rectangle")
-        bg.width = 156
+        bg.width = 188
         bg.height = 42
         bg.color = "#0B1424"
         border = CreateObject("roSGNode", "Rectangle")
         border.translation = [-3, -3]
-        border.width = 162
+        border.width = 194
         border.height = 48
         border.color = "#2F80ED"
         border.opacity = 0.65
         label = CreateObject("roSGNode", "Label")
         label.text = m.seasons[i]
-        label.width = 156
+        label.width = 188
         label.height = 42
         label.horizAlign = "center"
         label.vertAlign = "center"
@@ -466,7 +470,7 @@ sub renderSeasonButtons()
         group.AppendChild(label)
         m.seasonsGroup.AppendChild(group)
         m.seasonNodes.Push({ group: group, bg: bg, border: border, label: label })
-        x = x + 174
+        x = x + 204
     end for
     if m.seasons.Count() > 0 then m.seasonTitle.text = "TEMPORADAS"
 end sub
@@ -534,16 +538,16 @@ sub renderEpisodes(episodes as Object)
         thumbBg.height = m.thumbH
         thumbBg.color = "#2B3446"
         titleLabel = CreateObject("roSGNode", "Label")
-        titleLabel.translation = [0, m.thumbH + 10]
-        titleLabel.width = m.episodeW
-        titleLabel.height = 30
+        titleLabel.translation = [10, m.thumbH + 10]
+        titleLabel.width = m.episodeW - 20
+        titleLabel.height = 52
         titleLabel.font = "font:SmallBoldSystemFont"
         titleLabel.color = "#FFFFFF"
         titleLabel.wrap = true
         titleLabel.text = getEpisodeTitle(episode, i)
         durationLabel = CreateObject("roSGNode", "Label")
-        durationLabel.translation = [0, m.thumbH + 42]
-        durationLabel.width = m.episodeW
+        durationLabel.translation = [10, m.thumbH + 66]
+        durationLabel.width = m.episodeW - 20
         durationLabel.height = 24
         durationLabel.font = "font:SmallSystemFont"
         durationLabel.color = "#B8C3D6"
@@ -718,9 +722,7 @@ end function
 
 sub updateContinueButton()
     if m.continueEpisode <> invalid then
-        epNum = firstText(m.continueEpisode, ["episode_num", "episode", "episode_number"])
-        if epNum = "" then epNum = "?"
-        m.continueButtonLabel.text = "CONTINUAR EP " + epNum
+        m.continueButtonLabel.text = "Continuar"
         m.continueButtonGroup.visible = true
     else
         m.continueButtonGroup.visible = false

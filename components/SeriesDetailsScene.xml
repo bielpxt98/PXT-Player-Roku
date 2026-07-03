@@ -30,12 +30,12 @@
             <Group id="playButtonGroup">
                 <Rectangle id="playButtonFocus" color="#2F80ED" opacity="0" />
                 <Rectangle id="playButtonBg" color="#1F2937" />
-                <Label id="playButtonLabel" text="▶  JOGAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+                <Label id="playButtonLabel" text="Jogar" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             </Group>
             <Group id="continueButtonGroup">
                 <Rectangle id="continueButtonFocus" color="#2F80ED" opacity="0" />
                 <Rectangle id="continueButtonBg" color="#1F2937" />
-                <Label id="continueButtonLabel" text="CONTINUAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+                <Label id="continueButtonLabel" text="Continuar" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             </Group>
         </Group>
         <Label id="seasonTitle" text="TEMPORADAS" color="#FFFFFF" horizAlign="left" />
