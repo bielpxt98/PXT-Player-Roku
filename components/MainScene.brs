@@ -191,11 +191,8 @@ sub startInitialFlow()
         m.loginScreen.callFunc("hide")
         m.splashScreen.callFunc("show")
         loadLocalSearchIndexCache()
-        if hasValidLocalCatalogData() then
-            showHome()
-            updateConnectionStatus(false, "Atualizando lista...")
-        end if
-        onAutoConnectTimerFire()
+        if hasValidLocalCatalogData() then updateConnectionStatus(false, "Atualizando lista...")
+        startSplashBootstrap()
     else
         if m.account <> invalid then DeleteSavedPlaylist()
         m.account = invalid
@@ -252,7 +249,7 @@ sub startSplashBootstrap()
     m.splashMaximumTimer.control = "start"
 
     if hasAccount(m.account) then
-        m.bootstrapQueue = ["getLiveCategories", "getMovieCategories"]
+        m.bootstrapQueue = ["getLiveCategories", "getMovieCategories", "getSeriesCategories"]
         processNextBootstrapRequest()
     else
         m.bootstrapActive = false
@@ -1329,8 +1326,18 @@ end sub
 
 
 sub loadMovies(category as Object)
+    categoryId = getCategoryId(category)
+    cached = []
+    if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[categoryId] <> invalid then cached = m.movieCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedMovies, categoryId)
+    if cached.Count() > 0 then
+        m.movies = cached
+        m.moviesLoading = false
+        m.movieListScreen.callFunc("setLoading", false)
+        m.movieListScreen.callFunc("setMovies", m.movies)
+        return
+    end if
     if m.isDemoMode = true then
-        m.movies = filterItemsByCategory(m.cachedMovies, getCategoryId(category))
+        m.movies = cached
         m.moviesLoading = false
         m.movieListScreen.callFunc("setLoading", false)
         m.movieListScreen.callFunc("setMovies", m.movies)
@@ -1348,7 +1355,7 @@ sub loadMovies(category as Object)
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = getCategoryId(category)
+    m.xtreamService.categoryId = categoryId
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -1815,7 +1822,7 @@ sub startBackgroundCatalogCache()
     if not hasAccount(m.account) then return
     if m.searchIndexUpdating = true then return
     if m.previewUpdating = true then return
-    if (m.allMoviesCache = invalid or m.allMoviesCache.Count() = 0) or (m.allSeriesCache = invalid or m.allSeriesCache.Count() = 0) or (m.allLiveCache = invalid or m.allLiveCache.Count() = 0) then
+    if (m.liveCategories = invalid or m.liveCategories.Count() = 0) or (m.allLiveCache = invalid or m.allLiveCache.Count() = 0) or (m.movieCategories = invalid or m.movieCategories.Count() = 0) then
         startSearchIndexRefresh()
     end if
 end sub
