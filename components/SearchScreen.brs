@@ -259,18 +259,41 @@ sub appendSearchEntries(entries as Object)
 end sub
 
 sub renderResults()
+    ensureResultCards()
+    updateCards()
+end sub
+
+sub ensureResultCards()
+    if m.itemNodes.Count() = m.visibleItemCount then return
     clearResultNodes()
+    for visualIndex = 0 to m.visibleItemCount - 1
+        node = createCardResultNode({ type: "", title: "", meta: "", item: invalid }, visualIndex)
+        node.visible = false
+        m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node) : m.itemRefs.Push(m.lastItemRefs)
+    end for
+end sub
+
+sub updateCards()
     if m.results.Count() = 0 then
+        for each node in m.itemNodes
+            node.visible = false
+        end for
         return
     end if
     updateResultWindow()
-    lastIndex = m.searchResultOffset + m.visibleItemCount - 1
     maxLoadedIndex = getLoadedResultCount() - 1
-    if lastIndex > maxLoadedIndex then lastIndex = maxLoadedIndex
-    if lastIndex >= m.results.Count() then lastIndex = m.results.Count() - 1
-    for i = m.searchResultOffset to lastIndex
-        node = createCardResultNode(m.results[i], i - m.searchResultOffset)
-        m.resultsGroup.AppendChild(node) : m.itemNodes.Push(node) : m.itemRefs.Push(m.lastItemRefs)
+    for visualIndex = 0 to m.itemNodes.Count() - 1
+        realIndex = m.searchResultOffset + visualIndex
+        node = m.itemNodes[visualIndex]
+        refs = m.itemRefs[visualIndex]
+        if realIndex <= maxLoadedIndex and realIndex < m.results.Count() then
+            node.visible = true
+            updateCardResultNode(node, refs, m.results[realIndex], visualIndex)
+        else
+            node.visible = false
+            refs.resultKey = ""
+            refs.poster.uri = "" : refs.label.text = "" : refs.meta.text = ""
+        end if
     end for
 end sub
 
@@ -377,7 +400,7 @@ sub moveSearchFocus(key as String)
         if key = "down" then m.searchFocusArea = "keyboardLetters"
         maybeLoadMoreResults()
         updateResultWindow()
-        if oldSelected <> m.searchResultIndex or oldFirst <> m.searchResultOffset or oldLimit <> m.renderedResultLimit then renderResults()
+        if oldFirst <> m.searchResultOffset or oldLimit <> m.renderedResultLimit then updateCards()
     end if
 end sub
 

@@ -11,7 +11,7 @@ sub Init()
     m.allMovies = [] : m.results = [] : m.query = "" : m.pendingQuery = ""
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
-    m.keyNodes = [] : m.posterNodes = []
+    m.keyNodes = [] : m.posterNodes = [] : m.posterPoolSize = 5
     m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
@@ -120,39 +120,47 @@ sub appendLimitedResults(items as Object)
 end sub
 
 sub renderPosters()
+    ensurePosterCards()
+    updateCards()
+end sub
+
+sub ensurePosterCards()
+    if m.posterNodes.Count() = m.posterPoolSize then return
     clearPosters()
-    syncResultOffset()
-    maxRender = getVisibleResultCount()
-    for i = 0 to maxRender - 1
-        resultIndex = m.resultOffset + i
-        movie = m.results[resultIndex]
+    for i = 0 to m.posterPoolSize - 1
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
         poster = CreateObject("roSGNode", "Poster") : poster.width = 120 : poster.height = 180 : poster.translation = [Int((m.posterW - 120) / 2), 6] : poster.loadDisplayMode = "scaleToFit" : poster.uri = m.posterPlaceholderUri
-        label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getMovieName(movie)
+        label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont"
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
-        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, poster: poster, label: label, movie: movie, resultIndex: resultIndex })
+        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, poster: poster, label: label, movie: invalid, resultIndex: -1 })
+    end for
+end sub
+
+sub updateCards()
+    syncResultOffset()
+    for i = 0 to m.posterNodes.Count() - 1
+        resultIndex = m.resultOffset + i
+        node = m.posterNodes[i]
+        node.group.translation = [i * (m.posterW + m.posterGap), 0]
+        node.bg.width = m.posterW : node.bg.height = m.posterH
+        node.label.width = m.posterW - 10 : node.label.translation = [5, m.posterH - 42]
+        node.poster.translation = [Int((m.posterW - 120) / 2), 6]
+        if resultIndex < m.results.Count() then
+            movie = m.results[resultIndex]
+            node.group.visible = true : node.movie = movie : node.resultIndex = resultIndex
+            node.label.text = getMovieName(movie)
+            node.poster.uri = m.posterPlaceholderUri
+        else
+            node.group.visible = false : node.movie = invalid : node.resultIndex = -1
+            node.label.text = "" : node.poster.uri = m.posterPlaceholderUri
+        end if
     end for
     scheduleVisiblePosterLoads()
 end sub
 
 sub refreshVisiblePosters()
-    syncResultOffset()
-    visibleCount = getVisibleResultCount()
-    if m.posterNodes.Count() <> visibleCount then
-        renderPosters()
-        return
-    end if
-    for i = 0 to visibleCount - 1
-        resultIndex = m.resultOffset + i
-        movie = m.results[resultIndex]
-        node = m.posterNodes[i]
-        node.movie = movie
-        node.resultIndex = resultIndex
-        node.label.text = getMovieName(movie)
-        if node.poster <> invalid then node.poster.uri = m.posterPlaceholderUri
-    end for
-    scheduleVisiblePosterLoads()
+    updateCards()
 end sub
 
 sub syncResultOffset()

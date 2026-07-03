@@ -155,26 +155,51 @@ function createCategoryItem(category as Object, visibleIndex as Integer, absolut
 end function
 
 sub renderGrid()
+    ensureGridCards()
+    updateGridCards()
+end sub
+
+sub ensureGridCards()
+    if m.movieNodes.Count() = m.visibleItemCount then return
     clearGridNodes()
-    if m.movies.Count() = 0 then return
-
-    updateGridWindow()
-    lastIndex = m.firstVisibleMovieIndex + m.visibleItemCount - 1
-    if lastIndex >= m.movies.Count() then lastIndex = m.movies.Count() - 1
-
-    for visualIndex = 0 to lastIndex - m.firstVisibleMovieIndex
-        realIndex = m.firstVisibleMovieIndex + visualIndex
-        node = createPosterItem(m.movies[realIndex], visualIndex, realIndex)
+    for visualIndex = 0 to m.visibleItemCount - 1
+        node = createPosterItem(invalid, visualIndex, -1)
         m.moviesGrid.AppendChild(node)
         m.movieNodes.Push(node)
         m.movieRefs.Push(m.lastMovieRefs)
     end for
+end sub
 
+sub updateGridCards()
+    if m.movies.Count() = 0 then
+        for each node in m.movieNodes
+            node.visible = false
+        end for
+        m.moviesGrid.visible = false
+        return
+    end if
+    updateGridWindow()
+    for visualIndex = 0 to m.movieNodes.Count() - 1
+        realIndex = m.firstVisibleMovieIndex + visualIndex
+        refs = m.movieRefs[visualIndex]
+        node = m.movieNodes[visualIndex]
+        if realIndex < m.movies.Count() then
+            itemData = m.movies[realIndex]
+            node.visible = true
+            refs.itemData = itemData : refs.absoluteIndex = realIndex
+            refs.label.text = getMovieName(itemData)
+            refs.poster.uri = m.posterPlaceholderUri
+        else
+            node.visible = false
+            refs.itemData = invalid : refs.absoluteIndex = -1
+            refs.label.text = "" : refs.poster.uri = m.posterPlaceholderUri
+        end if
+    end for
     m.moviesGrid.visible = true
     scheduleVisiblePosterLoads()
 end sub
 
-function createPosterItem(itemData as Object, visualIndex as Integer, absoluteIndex as Integer) as Object
+function createPosterItem(itemData as Dynamic, visualIndex as Integer, absoluteIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group") : col = visualIndex mod m.columns : row = Int(visualIndex / m.columns)
     item.translation = [col * (m.posterW + m.posterGapX), row * m.itemH]
     bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterFocus" : bg.translation = [-6, -6] : bg.width = m.posterW + 12 : bg.height = m.posterH + 12 : bg.color = "#063B66" : bg.opacity = 0.0
@@ -275,7 +300,7 @@ sub moveGrid(dx as Integer, dy as Integer)
     m.selectedMovieIndex = targetIndex
     updateGridWindow()
     appendMovieBatchIfNeeded()
-    if oldSelected <> m.selectedMovieIndex or oldFirst <> m.firstVisibleMovieIndex then renderGrid()
+    if oldFirst <> m.firstVisibleMovieIndex then updateGridCards()
     updateFocus()
 end sub
 
