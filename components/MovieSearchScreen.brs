@@ -11,7 +11,7 @@ sub Init()
     m.allMovies = [] : m.results = [] : m.query = "" : m.pendingQuery = ""
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
-    m.keyNodes = [] : m.posterNodes = [] : m.posterPoolSize = 5
+    m.keyNodes = [] : m.posterNodes = [] : m.preloadPosters = [] : m.posterPoolSize = 5
     m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
@@ -159,6 +159,31 @@ sub updateCards()
     scheduleVisiblePosterLoads()
 end sub
 
+sub ensurePreloadPosters(maxCount as Integer)
+    if m.preloadPosters = invalid then m.preloadPosters = []
+    while m.preloadPosters.Count() < maxCount
+        poster = CreateObject("roSGNode", "Poster")
+        poster.width = 1 : poster.height = 1
+        poster.opacity = 0.0 : poster.visible = false
+        poster.loadDisplayMode = "scaleToFit"
+        poster.uri = m.posterPlaceholderUri
+        m.resultsGroup.AppendChild(poster)
+        m.preloadPosters.Push(poster)
+    end while
+end sub
+
+sub updatePreloadPosters()
+    maxPreload = 5
+    ensurePreloadPosters(maxPreload)
+    startIndex = m.resultOffset + m.posterPoolSize
+    for i = 0 to m.preloadPosters.Count() - 1
+        uri = ""
+        itemIndex = startIndex + i
+        if i < maxPreload and itemIndex < m.results.Count() then uri = getMovieImage(m.results[itemIndex])
+        if uri <> "" then m.preloadPosters[i].uri = uri else m.preloadPosters[i].uri = m.posterPlaceholderUri
+    end for
+end sub
+
 sub refreshVisiblePosters()
     updateCards()
 end sub
@@ -188,8 +213,12 @@ sub clearPosters()
     for each node in m.posterNodes
         if node.poster <> invalid then node.poster.uri = m.posterPlaceholderUri
     end for
+    for each poster in m.preloadPosters
+        if poster <> invalid then poster.uri = m.posterPlaceholderUri
+    end for
     while m.resultsGroup.GetChildCount() > 0 : m.resultsGroup.RemoveChildIndex(0) : end while
     m.posterNodes = []
+    m.preloadPosters = []
 end sub
 
 sub renderKeyboard()
@@ -407,6 +436,7 @@ sub onPosterLoadTimerFire()
     for each node in m.posterNodes
         if node.poster <> invalid and node.movie <> invalid then node.poster.uri = getMovieImage(node.movie)
     end for
+    updatePreloadPosters()
 end sub
 
 function getMovieCacheKey(movie as Dynamic) as String

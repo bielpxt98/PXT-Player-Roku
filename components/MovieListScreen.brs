@@ -14,7 +14,7 @@ sub Init()
     m.favoritesEntry = { isFavorites: true, category_name: "FAVORITOS", name: "FAVORITOS" }
     m.categories = [m.searchEntry, m.favoritesEntry] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.categoryRefs = []
-    m.movieNodes = [] : m.movieRefs = []
+    m.movieNodes = [] : m.movieRefs = [] : m.preloadPosters = []
     m.batchSize = 60 : m.loadedMovieCount = 0
     m.posterPlaceholderUri = "" : m.posterUriCache = {}
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
@@ -197,6 +197,31 @@ sub updateGridCards()
     end for
     m.moviesGrid.visible = true
     scheduleVisiblePosterLoads()
+end sub
+
+sub ensurePreloadPosters(maxCount as Integer)
+    if m.preloadPosters = invalid then m.preloadPosters = []
+    while m.preloadPosters.Count() < maxCount
+        poster = CreateObject("roSGNode", "Poster")
+        poster.width = 1 : poster.height = 1
+        poster.opacity = 0.0 : poster.visible = false
+        poster.loadDisplayMode = "scaleToFill"
+        poster.uri = m.posterPlaceholderUri
+        m.moviesGrid.AppendChild(poster)
+        m.preloadPosters.Push(poster)
+    end while
+end sub
+
+sub updatePreloadPosters()
+    maxPreload = 10
+    ensurePreloadPosters(maxPreload)
+    startIndex = m.firstVisibleMovieIndex + m.visibleItemCount
+    for i = 0 to m.preloadPosters.Count() - 1
+        uri = ""
+        itemIndex = startIndex + i
+        if i < maxPreload and itemIndex < m.movies.Count() then uri = getMovieCover(m.movies[itemIndex])
+        if uri <> "" then m.preloadPosters[i].uri = uri else m.preloadPosters[i].uri = m.posterPlaceholderUri
+    end for
 end sub
 
 function createPosterItem(itemData as Dynamic, visualIndex as Integer, absoluteIndex as Integer) as Object
@@ -463,12 +488,16 @@ sub clearGridNodes()
     for each refs in m.movieRefs
         if refs.poster <> invalid then refs.poster.uri = m.posterPlaceholderUri
     end for
+    for each poster in m.preloadPosters
+        if poster <> invalid then poster.uri = m.posterPlaceholderUri
+    end for
     while m.moviesGrid.GetChildCount() > 0
         m.moviesGrid.RemoveChildIndex(0)
     end while
     m.moviesGrid.visible = false
     m.movieNodes = []
     m.movieRefs = []
+    m.preloadPosters = []
 end sub
 
 function getCategoryId(category as Dynamic) as String
@@ -539,6 +568,7 @@ sub onPosterLoadTimerFire()
             refs.poster.uri = getMovieCover(refs.itemData)
         end if
     end for
+    updatePreloadPosters()
 end sub
 
 function getMovieCacheKey(item as Dynamic) as String
