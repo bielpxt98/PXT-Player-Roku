@@ -2400,6 +2400,14 @@ function getCategoryId(category as Dynamic) as String
     return ""
 end function
 
+function getCategoryName(category as Dynamic) as String
+    if category = invalid then return ""
+    if category.category_name <> invalid and category.category_name.ToStr().Trim() <> "" then return category.category_name.ToStr().Trim()
+    if category.name <> invalid and category.name.ToStr().Trim() <> "" then return category.name.ToStr().Trim()
+    if category.title <> invalid and category.title.ToStr().Trim() <> "" then return category.title.ToStr().Trim()
+    return ""
+end function
+
 function normalizeLiveCategories(data as Dynamic) as Object
     if data = invalid then return []
     if Type(data) = "roArray" then return data
