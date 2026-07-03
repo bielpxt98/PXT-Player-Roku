@@ -437,8 +437,27 @@ sub configureSeriesGridMetrics()
 end sub
 
 sub renderSeriesGrid()
+    ensureSeriesCards()
+    updateSeriesCards()
+end sub
+
+sub ensureSeriesCards()
+    visibleCount = m.seriesColumns * m.seriesRows
+    if m.seriesNodes.Count() = visibleCount then return
     clearSeriesNodes()
+    for visualIndex = 0 to visibleCount - 1
+        node = createSeriesItem(invalid, visualIndex, -1)
+        m.seriesGridGroup.AppendChild(node)
+        m.seriesNodes.Push(node)
+        m.seriesNodeRefs.Push(m.lastSeriesRefs)
+    end for
+end sub
+
+sub updateSeriesCards()
     if m.seriesItems.Count() = 0 then
+        for each node in m.seriesNodes
+            node.visible = false
+        end for
         m.emptyMessageLabel.visible = true
         if m.isLoading = true then
             m.emptyMessageLabel.text = "Carregando séries..."
@@ -448,19 +467,25 @@ sub renderSeriesGrid()
         return
     end if
     m.emptyMessageLabel.visible = false
-    visibleCount = m.seriesColumns * m.seriesRows
-    lastIndex = m.firstVisibleSeriesIndex + visibleCount - 1
-    if lastIndex >= m.seriesItems.Count() then lastIndex = m.seriesItems.Count() - 1
-    for visualIndex = 0 to lastIndex - m.firstVisibleSeriesIndex
+    for visualIndex = 0 to m.seriesNodes.Count() - 1
         itemIndex = m.firstVisibleSeriesIndex + visualIndex
-        node = createSeriesItem(m.seriesItems[itemIndex], visualIndex, itemIndex)
-        m.seriesGridGroup.AppendChild(node)
-        m.seriesNodes.Push(node)
-        m.seriesNodeRefs.Push(m.lastSeriesRefs)
+        refs = m.seriesNodeRefs[visualIndex]
+        node = m.seriesNodes[visualIndex]
+        if itemIndex < m.seriesItems.Count() then
+            series = m.seriesItems[itemIndex]
+            node.visible = true
+            refs.series = series : refs.itemIndex = itemIndex
+            refs.poster.uri = resizeTmdbSeriesPoster(getSeriesPoster(series))
+            refs.title.text = getSeriesName(series)
+        else
+            node.visible = false
+            refs.series = invalid : refs.itemIndex = -1
+            refs.poster.uri = "" : refs.title.text = ""
+        end if
     end for
 end sub
 
-function createSeriesItem(series as Object, visualIndex as Integer, itemIndex as Integer) as Object
+function createSeriesItem(series as Dynamic, visualIndex as Integer, itemIndex as Integer) as Object
     row = Int(visualIndex / m.seriesColumns)
     col = visualIndex - (row * m.seriesColumns)
     item = CreateObject("roSGNode", "Group")
@@ -495,7 +520,7 @@ function createSeriesItem(series as Object, visualIndex as Integer, itemIndex as
     item.AppendChild(background)
     item.AppendChild(poster)
     item.AppendChild(title)
-    m.lastSeriesRefs = { background: background, poster: poster, title: title }
+    m.lastSeriesRefs = { background: background, poster: poster, title: title, series: series, itemIndex: itemIndex }
     return item
 end function
 
@@ -524,7 +549,7 @@ sub moveSeriesFocus(delta as Integer)
     oldFirst = m.firstVisibleSeriesIndex
     m.selectedSeriesIndex = nextIndex
     updateSeriesWindow()
-    if oldFirst <> m.firstVisibleSeriesIndex then renderSeriesGrid()
+    if oldFirst <> m.firstVisibleSeriesIndex then updateSeriesCards()
 end sub
 
 sub updateSeriesWindow()
