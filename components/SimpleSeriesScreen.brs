@@ -312,7 +312,9 @@ sub filterSeriesByCategory(category as Dynamic)
     if fullMatches.Count() > 0 then
         filtered = fullMatches
     else
-        filtered = getSeriesPreviewItems(categoryId)
+        preview = getSeriesPreviewItems(categoryId)
+        if preview.Count() > 0 then filtered = preview
+        if category <> invalid then m.top.categoryLoadRequested = category
     end if
     m.seriesItems = filtered
     m.selectedSeriesIndex = 0
