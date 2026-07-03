@@ -36,6 +36,7 @@
         </Group>
         <Label id="seasonTitle" text="TEMPORADAS" color="#FFFFFF" horizAlign="left" />
         <Group id="seasonsGroup" />
+        <Label id="episodesTitle" text="EPISÓDIOS" color="#FFFFFF" horizAlign="left" />
         <Group id="episodesGroup" />
         <Label id="episodesMessageLabel" text="Nenhum episódio disponível." color="#B8C3D6" wrap="true" horizAlign="center" />
         <Label id="backButton" text="← VOLTAR" color="#FFFFFF" horizAlign="center" vertAlign="center" />
