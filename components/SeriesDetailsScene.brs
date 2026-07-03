@@ -1,13 +1,10 @@
 sub Init()
     m.background = m.top.FindNode("background")
-    m.backgroundTint = m.top.FindNode("backgroundTint")
-    m.heroOverlay = m.top.FindNode("heroOverlay")
     m.poster = m.top.FindNode("poster")
-    m.posterBorder = m.top.FindNode("posterBorder")
     m.titleLabel = m.top.FindNode("titleLabel")
+    m.ratingGenreLabel = m.top.FindNode("ratingGenreLabel")
     m.synopsisTitle = m.top.FindNode("synopsisTitle")
     m.synopsisLabel = m.top.FindNode("synopsisLabel")
-    m.genreLabel = m.top.FindNode("genreLabel")
     m.actionsGroup = m.top.FindNode("actionsGroup")
     m.playButtonGroup = m.top.FindNode("playButtonGroup")
     m.playButtonBg = m.top.FindNode("playButtonBg")
@@ -21,8 +18,9 @@ sub Init()
     m.seasonsGroup = m.top.FindNode("seasonsGroup")
     m.episodesGroup = m.top.FindNode("episodesGroup")
     m.episodesMessageLabel = m.top.FindNode("episodesMessageLabel")
+    m.backButton = m.top.FindNode("backButton")
     m.loadingLabel = m.top.FindNode("loadingLabel")
-    m.selectedArea = 0 ' 0 jogar, 1 continuar, 2 temporada, 3 episódios
+    m.selectedArea = 0 ' 0 jogar, 1 continuar, 2 temporada, 3 episódios, 4 voltar
     m.focusArea = "posterButton"
     m.selectedSeasonIndex = 0
     m.selectedEpisodeIndex = 0
@@ -46,31 +44,25 @@ sub configureLayout()
     h = size.h
     m.background.width = w
     m.background.height = h
-    if m.backgroundTint <> invalid then
-        m.backgroundTint.width = w
-        m.backgroundTint.height = h
-    end if
 
-    marginX = 76
-    topY = 54
-    posterW = 270
-    posterH = 405
-    heroH = 535
-    buttonW = 132
-    buttonH = 58
-    episodeW = 154
-    episodeH = 206
-    episodeGap = 24
+    marginX = 80
+    topY = 62
+    posterW = 300
+    posterH = 450
+    buttonW = 138
+    buttonH = 56
+    episodeW = 202
+    episodeH = 176
+    episodeGap = 22
     if h <= 720 then
-        marginX = 48
-        topY = 34
-        posterW = 205
-        posterH = 308
-        heroH = 438
+        marginX = 50
+        topY = 38
+        posterW = 210
+        posterH = 315
         buttonW = 116
         buttonH = 50
-        episodeW = 124
-        episodeH = 166
+        episodeW = 158
+        episodeH = 138
         episodeGap = 18
     end if
 
@@ -81,50 +73,47 @@ sub configureLayout()
     m.episodeH = episodeH
     m.episodeGap = episodeGap
 
-    m.heroOverlay.translation = [marginX - 24, topY - 24]
-    m.heroOverlay.width = w - (marginX * 2) + 48
-    m.heroOverlay.height = heroH
-
     m.poster.translation = [marginX, topY]
     m.poster.width = posterW
     m.poster.height = posterH
-    m.posterBorder.translation = [marginX - 3, topY - 3]
-    m.posterBorder.width = posterW + 6
-    m.posterBorder.height = posterH + 6
 
     contentX = marginX + posterW + 58
     contentW = w - contentX - marginX
     m.titleLabel.translation = [contentX, topY + 4]
     m.titleLabel.width = contentW
-    m.titleLabel.height = 70
+    m.titleLabel.height = 66
     m.titleLabel.font = "font:LargeBoldSystemFont"
 
-    m.synopsisTitle.translation = [contentX, topY + 95]
+    m.ratingGenreLabel.translation = [contentX, topY + 76]
+    m.ratingGenreLabel.width = contentW
+    m.ratingGenreLabel.height = 42
+    m.ratingGenreLabel.font = "font:MediumBoldSystemFont"
+
+    m.synopsisTitle.translation = [contentX, topY + 128]
     m.synopsisTitle.width = contentW
     m.synopsisTitle.font = "font:MediumBoldSystemFont"
-    m.synopsisLabel.translation = [contentX, topY + 132]
+    m.synopsisLabel.translation = [contentX, topY + 166]
     m.synopsisLabel.width = contentW
-    m.synopsisLabel.height = 158
+    m.synopsisLabel.height = 138
     m.synopsisLabel.font = "font:MediumSystemFont"
-    m.genreLabel.translation = [contentX, topY + 310]
-    m.genreLabel.width = contentW
-    m.genreLabel.height = 54
-    m.genreLabel.font = "font:MediumBoldSystemFont"
 
-    m.actionsGroup.translation = [marginX, topY + posterH + 30]
+    m.actionsGroup.translation = [marginX, topY + posterH + 28]
     setupActionButton(m.playButtonGroup, m.playButtonBg, m.playButtonFocus, m.playButtonLabel, 0, buttonW, buttonH)
-    setupActionButton(m.continueButtonGroup, m.continueButtonBg, m.continueButtonFocus, m.continueButtonLabel, buttonW + 18, buttonW + 42, buttonH)
+    setupActionButton(m.continueButtonGroup, m.continueButtonBg, m.continueButtonFocus, m.continueButtonLabel, buttonW + 18, buttonW + 48, buttonH)
 
-    seasonY = topY + 430
-    if h <= 720 then seasonY = topY + 360
+    seasonY = topY + 325
+    if h <= 720 then seasonY = topY + 236
     m.seasonTitle.translation = [contentX, seasonY]
     m.seasonTitle.width = contentW
     m.seasonTitle.horizAlign = "left"
     m.seasonTitle.font = "font:MediumBoldSystemFont"
-    m.seasonsGroup.translation = [contentX, seasonY + 42]
+    m.seasonsGroup.translation = [contentX, seasonY + 38]
 
-    episodesY = seasonY + 88
+    episodesY = seasonY + 104
+    if h <= 720 then episodesY = seasonY + 82
     m.episodesGroup.translation = [contentX, episodesY]
+    m.maxEpisodeCards = Int((contentW + episodeGap) / (episodeW + episodeGap))
+    if m.maxEpisodeCards < 1 then m.maxEpisodeCards = 1
     m.episodesMessageLabel.translation = [contentX, episodesY + 38]
     m.episodesMessageLabel.width = contentW
     m.episodesMessageLabel.height = 80
@@ -132,6 +121,10 @@ sub configureLayout()
     m.loadingLabel.translation = [contentX, episodesY + 38]
     m.loadingLabel.width = contentW
     m.loadingLabel.font = "font:MediumSystemFont"
+    m.backButton.translation = [w - marginX - 170, h - 76]
+    m.backButton.width = 170
+    m.backButton.height = 54
+    m.backButton.font = "font:MediumBoldSystemFont"
 end sub
 
 sub setupActionButton(group as Object, bg as Object, focusRect as Object, label as Object, x as Integer, width as Integer, height as Integer)
@@ -213,8 +206,10 @@ sub populate(item as Dynamic)
     if Len(desc) > 330 then desc = Left(desc, 327) + "..."
     m.synopsisLabel.text = desc
     genres = firstText(item, ["genre", "genres"])
-    if genres = "" then genres = "Não informado"
-    m.genreLabel.text = "Gêneros: " + genres
+    rating = firstText(item, ["rating", "rating_5based", "vote_average"])
+    meta = joinText([ratingText(rating), genres], " • ")
+    m.ratingGenreLabel.text = meta
+    m.ratingGenreLabel.visible = meta <> ""
     if item <> invalid and Type(item) = "roAssociativeArray" then m.item = normalizeSeriesDetailsForPlayback(item)
     setupSeasons(m.item)
     setupEpisodes(m.item)
@@ -328,6 +323,29 @@ function safeText(value as Dynamic) as String
     return value.ToStr().Trim()
 end function
 
+function joinText(parts as Object, sep as String) as String
+    out = ""
+    for each part in parts
+        if part <> "" then
+            if out <> "" then out = out + sep
+            out = out + part
+        end if
+    end for
+    return out
+end function
+
+function ratingText(value as String) as String
+    if value = "" then return ""
+    n = Val(value)
+    if n > 5 then n = n / 2
+    if n <= 0 then return ""
+    stars = ""
+    for i = 1 to 5
+        if i <= Int(n + 0.5) then stars = stars + "★" else stars = stars + "☆"
+    end for
+    return stars
+end function
+
 function isScalarTextValue(value as Dynamic) as Boolean
     if value = invalid then return false
     valueType = Type(value)
@@ -371,7 +389,7 @@ sub renderSeasonButtons()
         bg = CreateObject("roSGNode", "Rectangle")
         bg.width = 172
         bg.height = 44
-        bg.color = "#172033"
+        bg.color = "#1F2937"
         border = CreateObject("roSGNode", "Rectangle")
         border.translation = [-3, -3]
         border.width = 178
@@ -454,17 +472,17 @@ sub renderEpisodes(episodes as Object)
         bg.color = "#111827"
         poster = CreateObject("roSGNode", "Poster")
         poster.width = m.episodeW
-        poster.height = m.episodeH - 54
+        poster.height = m.episodeH - 48
         poster.loadDisplayMode = "scaleToZoom"
         poster.uri = getEpisodeImage(episode)
         label = CreateObject("roSGNode", "Label")
-        label.translation = [8, m.episodeH - 50]
-        label.width = m.episodeW - 16
-        label.height = 44
+        label.translation = [10, m.episodeH - 44]
+        label.width = m.episodeW - 20
+        label.height = 38
         label.font = "font:SmallBoldSystemFont"
         label.color = "#FFFFFF"
         label.wrap = true
-        label.text = getEpisodeCardTitle(episode, i)
+        label.text = getEpisodeTitle(episode, i)
         group.AppendChild(border)
         group.AppendChild(bg)
         group.AppendChild(poster)
@@ -473,13 +491,6 @@ sub renderEpisodes(episodes as Object)
         m.episodeNodes.Push({ group: group, border: border, bg: bg, label: label })
     end for
 end sub
-
-function getEpisodeCardTitle(episode as Dynamic, index as Integer) as String
-    season = m.selectedSeasonIndex + 1
-    epNum = firstText(episode, ["episode_num", "episode", "episode_number"])
-    if epNum = "" then epNum = (index + 1).ToStr()
-    return "S" + season.ToStr() + " E" + epNum
-end function
 
 function getEpisodeTitle(episode as Dynamic, index as Integer) as String
     title = firstText(episode, ["title", "name"])
@@ -649,6 +660,7 @@ sub updateFocus()
     m.continueButtonFocus.opacity = 0
     m.playButtonBg.color = "#1F2937"
     m.continueButtonBg.color = "#1F2937"
+    m.backButton.color = "#FFFFFF"
     if m.selectedArea = 0 then
         m.playButtonFocus.opacity = 0.95
         m.playButtonBg.color = "#256D3F"
@@ -659,7 +671,7 @@ sub updateFocus()
 
     for i = 0 to m.seasonNodes.Count() - 1
         m.seasonNodes[i].border.opacity = 0
-        m.seasonNodes[i].bg.color = "#172033"
+        m.seasonNodes[i].bg.color = "#1F2937"
         if m.selectedArea = 2 and i = m.selectedSeasonIndex then
             m.seasonNodes[i].border.opacity = 0.95
             m.seasonNodes[i].bg.color = "#263A5E"
@@ -674,6 +686,7 @@ sub updateFocus()
             m.episodeNodes[i].bg.color = "#203454"
         end if
     end for
+    if m.selectedArea = 4 then m.backButton.color = "#5CE08A"
     if m.seasons.Count() > 0 then m.seasonTitle.text = "TEMPORADAS"
 end sub
 
@@ -713,7 +726,15 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateFocus()
         return true
     else if key = "up" then
-        if m.focusArea = "episodes" then
+        if m.focusArea = "back" then
+            if hasEpisodes() then
+                m.selectedArea = 3
+            else if hasSeasons() then
+                m.selectedArea = 2
+            else
+                m.selectedArea = 0
+            end if
+        else if m.focusArea = "episodes" then
             m.selectedArea = 2
         else if m.focusArea = "seasons" then
             m.selectedArea = 0
@@ -725,6 +746,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             moveFocusToFirstSeason()
         else if m.focusArea = "seasons" then
             moveFocusToEpisodes()
+        else if m.focusArea = "episodes" then
+            m.selectedArea = 4
         end if
         updateFocus()
         return true
@@ -740,6 +763,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             updateFocus()
         else if m.selectedArea = 3 then
             openSelectedEpisode()
+        else if m.selectedArea = 4 then
+            m.top.backRequested = true
         end if
         return true
     else if key = "back" then
@@ -804,6 +829,8 @@ sub clampFocusState()
         m.focusArea = "seasons"
     else if m.selectedArea = 3 then
         m.focusArea = "episodes"
+    else if m.selectedArea = 4 then
+        m.focusArea = "back"
     else
         m.selectedArea = 0
         m.focusArea = "posterButton"
