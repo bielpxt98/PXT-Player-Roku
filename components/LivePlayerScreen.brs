@@ -14,14 +14,23 @@ sub Init()
     m.isPlaying = false
     m.isClosing = false
     m.isLoading = false
+    m.currentStreamUrl = ""
+    m.lastObservedPosition = -1
+    m.stalledTicks = 0
+    m.resyncAttempts = 0
     m.loadingTimer = CreateObject("roSGNode", "Timer")
     m.loadingTimer.duration = 15
     m.loadingTimer.repeat = false
     m.top.AppendChild(m.loadingTimer)
+    m.resyncTimer = CreateObject("roSGNode", "Timer")
+    m.resyncTimer.duration = 6
+    m.resyncTimer.repeat = true
+    m.top.AppendChild(m.resyncTimer)
 
     configureLayout()
     m.video.ObserveField("state", "onVideoStateChanged")
     m.loadingTimer.ObserveField("fire", "onLoadingTimeout")
+    m.resyncTimer.ObserveField("fire", "onResyncTick")
     hide()
 end sub
 
@@ -70,24 +79,13 @@ sub play(streamUrl as String)
     end if
     if m.channelName.Trim() = "" then m.channelName = "Canal ao vivo"
 
-    content = CreateObject("roSGNode", "ContentNode")
-    content.url = cleanUrl
-    content.title = m.channelName
-    content.streamFormat = getStreamFormat(cleanUrl)
-    content.live = true
-
     if m.video = invalid or m.isClosing = true then return
-    if m.channelName <> content.title then return
 
-    print "LIVE PLAYER URL: "; cleanUrl
-    m.video.content = invalid
-    m.video.control = "stop"
-    m.video.visible = false
-    m.video.content = content
-    m.video.control = "play"
-    m.isPlaying = true
-    showLoading("Carregando " + m.channelName + "...")
-    startLoadingTimeout()
+    m.currentStreamUrl = cleanUrl
+    m.lastObservedPosition = -1
+    m.stalledTicks = 0
+    m.resyncAttempts = 0
+    startLiveEdgePlayback(cleanUrl, m.channelName)
 end sub
 
 sub hide()
@@ -98,16 +96,86 @@ end sub
 sub stopPlayback()
     m.isClosing = true
     if m.video <> invalid then
-        m.video.control = "stop"
-        m.video.visible = false
-        m.video.content = invalid
+        clearVideoForLiveEdge()
     end if
+    m.currentStreamUrl = ""
+    m.lastObservedPosition = -1
+    m.stalledTicks = 0
+    m.resyncAttempts = 0
     m.isPlaying = false
     m.isLoading = false
     if m.loadingTimer <> invalid then m.loadingTimer.control = "stop"
+    if m.resyncTimer <> invalid then m.resyncTimer.control = "stop"
     m.loadingSpinner.control = "stop"
 end sub
 
+
+sub clearVideoForLiveEdge()
+    ' Reuse the Video node, but remove every reference to the previous live stream
+    ' so channel changes never resume from an old live buffer.
+    if m.video = invalid then return
+    m.video.control = "stop"
+    m.video.visible = false
+    m.video.content = invalid
+end sub
+
+sub startLiveEdgePlayback(streamUrl as String, title as String)
+    if m.video = invalid or m.isClosing = true then return
+
+    content = CreateObject("roSGNode", "ContentNode")
+    content.url = streamUrl
+    content.title = title
+    content.streamFormat = getStreamFormat(streamUrl)
+    content.live = true
+
+    print "LIVE PLAYER URL: "; streamUrl
+    clearVideoForLiveEdge()
+    m.video.content = content
+    m.video.control = "play"
+    m.isPlaying = true
+    showLoading("Carregando " + m.channelName + "...")
+    startLoadingTimeout()
+end sub
+
+sub restartCurrentLiveStream(reason as String)
+    if m.currentStreamUrl = "" or m.top.visible <> true or m.isClosing = true then return
+    m.resyncAttempts = m.resyncAttempts + 1
+    print "LIVE PLAYER RESYNC ("; reason; ") attempt "; m.resyncAttempts
+    m.lastObservedPosition = -1
+    m.stalledTicks = 0
+    startLiveEdgePlayback(m.currentStreamUrl, m.channelName)
+end sub
+
+sub onResyncTick()
+    if m.top.visible <> true or m.isClosing = true or m.video = invalid or m.currentStreamUrl = "" then return
+    state = LCase(m.video.state)
+    if state = "error" then return
+
+    if state = "buffering" or state = "loading" then
+        m.stalledTicks = m.stalledTicks + 1
+        if m.stalledTicks >= 2 then
+            if m.resyncAttempts < 1 then
+                restartCurrentLiveStream("stalled " + state)
+            else
+                showError("Não foi possível reproduzir o canal")
+            end if
+        end if
+        return
+    end if
+
+    if state = "playing" then
+        currentPosition = -1
+        if m.video.position <> invalid then currentPosition = Int(m.video.position)
+        if currentPosition >= 0 and currentPosition = m.lastObservedPosition then
+            m.stalledTicks = m.stalledTicks + 1
+        else
+            m.stalledTicks = 0
+            m.resyncAttempts = 0
+        end if
+        m.lastObservedPosition = currentPosition
+        if m.stalledTicks >= 3 then restartCurrentLiveStream("unchanged playback position")
+    end if
+end sub
 sub showLoading(message as String)
     m.errorGroup.visible = false
     m.loadingLabel.text = message
@@ -135,7 +203,10 @@ sub onVideoStateChanged()
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
     else if state = "buffering" or state = "loading" then
-        if m.isPlaying = true then showLoading("Carregando " + m.channelName + "...")
+        if m.isPlaying = true then
+            showLoading("Carregando " + m.channelName + "...")
+            if m.isLoading <> true then startLoadingTimeout()
+        end if
     else if state = "error" then
         if m.top.visible = true and m.isClosing <> true then
             showError("Não foi possível reproduzir este canal.")
@@ -179,6 +250,10 @@ sub startLoadingTimeout()
     if m.loadingTimer <> invalid then
         m.loadingTimer.control = "stop"
         m.loadingTimer.control = "start"
+    end if
+    if m.resyncTimer <> invalid then
+        m.resyncTimer.control = "stop"
+        m.resyncTimer.control = "start"
     end if
 end sub
 
