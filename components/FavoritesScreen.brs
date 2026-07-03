@@ -109,23 +109,36 @@ sub appendSection(items as Object, title as String, entries as Dynamic)
 end sub
 
 sub renderList()
-    clearFavoriteNodes()
-    if m.items.Count() = 0 then return
-    lastIndex = m.firstVisibleIndex + m.visibleItemCount - 1
-    if lastIndex >= m.items.Count() then lastIndex = m.items.Count() - 1
-    for visualIndex = 0 to lastIndex - m.firstVisibleIndex
+    ensureFavoritePool()
+    totalRows = m.items.Count()
+
+    for visualIndex = 0 to m.itemNodes.Count() - 1
         realIndex = m.firstVisibleIndex + visualIndex
-        node = createFavoriteItem(m.items[realIndex], visualIndex, realIndex)
-        m.favoritesGroup.AppendChild(node)
-        m.itemNodes.Push(node)
-        m.itemRefs.Push(m.lastItemRefs)
+        node = m.itemNodes[visualIndex]
+        if realIndex < totalRows then
+            node.visible = true
+            updateFavoriteItem(visualIndex, realIndex)
+        else
+            node.visible = false
+        end if
     end for
 end sub
 
-function createFavoriteItem(favorite as Object, visibleIndex as Integer, absoluteIndex as Integer) as Object
+sub ensureFavoritePool()
+    while m.itemNodes.Count() < m.visibleItemCount
+        visualIndex = m.itemNodes.Count()
+        node = createFavoriteItem(visualIndex)
+        m.favoritesGroup.AppendChild(node)
+        m.itemNodes.Push(node)
+        m.itemRefs.Push(m.lastItemRefs)
+    end while
+end sub
+
+function createFavoriteItem(visibleIndex as Integer) as Object
     item = CreateObject("roSGNode", "Group")
     item.translation = [0, visibleIndex * m.itemHeight]
-    item.id = "favoriteItem" + absoluteIndex.ToStr()
+    item.id = "favoriteItem" + visibleIndex.ToStr()
+    item.visible = false
     background = CreateObject("roSGNode", "Rectangle")
     background.id = "itemBackground"
     background.width = m.contentWidth
@@ -140,18 +153,30 @@ function createFavoriteItem(favorite as Object, visibleIndex as Integer, absolut
     label.vertAlign = "center"
     label.color = "#F8FAFC"
     label.font = "font:MediumSystemFont"
-    if favorite.isHeader = true then
-        background.opacity = 0.0
-        label.color = "#FFCC66"
-        label.text = favorite.title
-    else
-        label.text = favorite.title
-    end if
+    label.text = ""
     item.AppendChild(background)
     item.AppendChild(label)
     m.lastItemRefs = { background: background, label: label }
     return item
 end function
+
+sub updateFavoriteItem(visualIndex as Integer, realIndex as Integer)
+    item = m.itemNodes[visualIndex]
+    refs = m.itemRefs[visualIndex]
+    favorite = m.items[realIndex]
+    item.translation = [0, visualIndex * m.itemHeight]
+    item.id = "favoriteItem" + realIndex.ToStr()
+    if refs.background <> invalid then
+        refs.background.width = m.contentWidth
+        refs.background.height = m.cardHeight
+    end if
+    if refs.label <> invalid then
+        refs.label.width = m.contentWidth - 48
+        refs.label.height = m.cardHeight
+        refs.label.text = favorite.title
+    end if
+    applyFavoriteFocusState(visualIndex)
+end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
@@ -187,8 +212,12 @@ sub moveFocus(direction as Integer)
     oldFirst = m.firstVisibleIndex
     m.selectedIndex = nextIndex
     updateVisibleWindow()
-    if oldSelected <> m.selectedIndex or oldFirst <> m.firstVisibleIndex then renderList()
-    updateFocus()
+    if oldFirst <> m.firstVisibleIndex then
+        renderList()
+    else if oldSelected <> m.selectedIndex then
+        updateFavoriteFocusForRealIndex(oldSelected)
+        updateFavoriteFocusForRealIndex(m.selectedIndex)
+    end if
 end sub
 
 function canSelectIndex(index as Integer) as Boolean
@@ -215,32 +244,43 @@ end sub
 
 sub updateFocus()
     for i = 0 to m.itemNodes.Count() - 1
-        realIndex = m.firstVisibleIndex + i
-        refs = m.itemRefs[i]
-        bg = refs.background
-        label = refs.label
-        if m.items[realIndex].isHeader = true then
-            bg.opacity = 0.0
-            label.color = "#FFCC66"
-        else
-            bg.color = "#111827"
-            bg.opacity = 0.86
-            label.color = "#F8FAFC"
-        end if
-        if realIndex = m.selectedIndex then
-            bg.color = "#0B3A5E"
-            bg.opacity = 1.0
-            label.color = "#FFFFFF"
-        end if
+        applyFavoriteFocusState(i)
     end for
 end sub
 
+sub updateFavoriteFocusForRealIndex(realIndex as Integer)
+    visualIndex = realIndex - m.firstVisibleIndex
+    if visualIndex >= 0 and visualIndex < m.itemNodes.Count() then applyFavoriteFocusState(visualIndex)
+end sub
+
+sub applyFavoriteFocusState(visualIndex as Integer)
+    if visualIndex < 0 or visualIndex >= m.itemNodes.Count() then return
+    item = m.itemNodes[visualIndex]
+    refs = m.itemRefs[visualIndex]
+    realIndex = m.firstVisibleIndex + visualIndex
+    if not item.visible or realIndex < 0 or realIndex >= m.items.Count() then return
+
+    bg = refs.background
+    label = refs.label
+    if m.items[realIndex].isHeader = true then
+        bg.opacity = 0.0
+        label.color = "#FFCC66"
+    else
+        bg.color = "#111827"
+        bg.opacity = 0.86
+        label.color = "#F8FAFC"
+    end if
+    if realIndex = m.selectedIndex then
+        bg.color = "#0B3A5E"
+        bg.opacity = 1.0
+        label.color = "#FFFFFF"
+    end if
+end sub
+
 sub clearFavoriteNodes()
-    while m.favoritesGroup.GetChildCount() > 0
-        m.favoritesGroup.RemoveChildIndex(0)
-    end while
-    m.itemNodes = []
-    m.itemRefs = []
+    for each item in m.itemNodes
+        item.visible = false
+    end for
 end sub
 
 function getDisplayResolution() as Object
