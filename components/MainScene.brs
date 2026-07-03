@@ -579,6 +579,7 @@ sub onSeriesSearchSeriesSelected()
     m.selectedSeries = series
     m.openedFromSearch = true
     m.seriesSearchScreen.callFunc("hide")
+    setSeriesDetailsCredentials()
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
     m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
@@ -653,6 +654,7 @@ sub onSearchSeriesSelected()
     m.selectedSeries = series
     m.openedFromSearch = true
     m.searchScreen.callFunc("hide")
+    setSeriesDetailsCredentials()
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
     m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
@@ -2044,6 +2046,7 @@ sub onSeriesSelected()
     end if
     m.selectedSeries = series
     m.simpleSeriesScreen.callFunc("hide")
+    setSeriesDetailsCredentials()
     m.seriesDetailsScreen.callFunc("show", series)
     m.seriesDetailsScreen.callFunc("setDetails", series)
     m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
@@ -2151,6 +2154,7 @@ sub onSeriesPlayerBack()
     end if
     UpsertSeriesHistory(m.selectedSeries, invalid, m.selectedEpisode, position, duration)
     m.seriesPlayerScreen.callFunc("hide")
+    setSeriesDetailsCredentials()
     m.seriesDetailsScreen.callFunc("show", m.selectedSeries)
     m.seriesDetailsScreen.callFunc("setDetails", m.selectedSeries)
     m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(m.selectedSeries))
@@ -2459,6 +2463,19 @@ function hasAccount(account as Dynamic) as Boolean
     if account = invalid then return false
     return safeText(account.dns) <> "" and safeText(account.username) <> "" and safeText(account.password) <> ""
 end function
+
+sub setSeriesDetailsCredentials()
+    if m.seriesDetailsScreen = invalid then return
+    if not hasAccount(m.account) then
+        m.seriesDetailsScreen.dns = ""
+        m.seriesDetailsScreen.username = ""
+        m.seriesDetailsScreen.password = ""
+        return
+    end if
+    m.seriesDetailsScreen.dns = safeText(m.account.dns)
+    m.seriesDetailsScreen.username = safeText(m.account.username)
+    m.seriesDetailsScreen.password = safeText(m.account.password)
+end sub
 
 
 
