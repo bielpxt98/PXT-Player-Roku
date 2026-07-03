@@ -12,7 +12,7 @@ sub Init()
     if m.filterDebounceTimer <> invalid then m.filterDebounceTimer.ObserveField("fire", "onFilterDebounce")
     m.allSeries = [] : m.initialSeries = [] : m.results = [] : m.query = ""
     m.initialLimit = 60 : m.resultLimit = 40
-    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
+    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
     configureLayout()
@@ -45,7 +45,7 @@ sub show()
     configureLayout()
     m.top.visible = true : m.top.SetFocus(true)
     m.query = "" : m.queryLabel.text = "Buscar: "
-    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
+    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     renderKeyboard()
     showInitialResults()
 end sub
@@ -71,7 +71,7 @@ end sub
 
 sub showInitialResults()
     m.results = []
-    m.posterIndex = 0
+    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     source = m.initialSeries
     if source = invalid or source.Count() = 0 then source = limitArray(m.allSeries, m.initialLimit)
     for each series in source
@@ -107,7 +107,7 @@ sub applyFilter()
         return
     end if
     m.results = []
-    m.posterIndex = 0
+    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     if m.allSeries.Count() = 0 then
         showMessage("Nenhuma série carregada ainda.")
         return
@@ -131,7 +131,9 @@ sub applyFilter()
         if m.focusArea = "posters" then m.focusArea = "keyboard"
     else
         m.messageLabel.text = ""
-        if m.posterIndex >= m.results.Count() then m.posterIndex = m.results.Count() - 1
+        if m.selectedResultIndex >= m.results.Count() then m.selectedResultIndex = m.results.Count() - 1
+        m.posterIndex = m.selectedResultIndex
+        syncResultOffset()
         renderPosters()
     end if
     updateFocus()
@@ -146,18 +148,57 @@ end sub
 
 sub renderPosters()
     clearPosters()
-    maxRender = m.results.Count()
-    if maxRender > 40 then maxRender = 40
+    syncResultOffset()
+    maxRender = getVisibleResultCount()
     for i = 0 to maxRender - 1
-        series = m.results[i]
+        resultIndex = m.resultOffset + i
+        series = m.results[resultIndex]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
-        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = ""
+        poster = CreateObject("roSGNode", "Poster") : poster.width = m.posterW - 12 : poster.height = m.posterH - 52 : poster.translation = [6, 6] : poster.loadDisplayMode = "scaleToFill" : poster.uri = getSeriesImage(series)
         label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getSeriesName(series)
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
-        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, label: label })
+        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, poster: poster, label: label, series: series, resultIndex: resultIndex })
     end for
 end sub
+
+sub refreshVisiblePosters()
+    syncResultOffset()
+    visibleCount = getVisibleResultCount()
+    if m.posterNodes.Count() <> visibleCount then
+        renderPosters()
+        return
+    end if
+    for i = 0 to visibleCount - 1
+        resultIndex = m.resultOffset + i
+        series = m.results[resultIndex]
+        node = m.posterNodes[i]
+        node.series = series
+        node.resultIndex = resultIndex
+        node.label.text = getSeriesName(series)
+        if node.poster <> invalid then node.poster.uri = getSeriesImage(series)
+    end for
+end sub
+
+sub syncResultOffset()
+    if m.results.Count() <= 0 then m.selectedResultIndex = 0 : m.posterIndex = 0 : m.resultOffset = 0 : return
+    if m.selectedResultIndex < 0 then m.selectedResultIndex = 0
+    if m.selectedResultIndex > m.results.Count() - 1 then m.selectedResultIndex = m.results.Count() - 1
+    if m.selectedResultIndex > m.resultOffset + 4 then m.resultOffset = m.selectedResultIndex - 4
+    if m.selectedResultIndex < m.resultOffset then m.resultOffset = m.selectedResultIndex
+    if m.resultOffset < 0 then m.resultOffset = 0
+    maxOffset = m.results.Count() - 5
+    if maxOffset < 0 then maxOffset = 0
+    if m.resultOffset > maxOffset then m.resultOffset = maxOffset
+    m.posterIndex = m.selectedResultIndex
+end sub
+
+function getVisibleResultCount() as Integer
+    count = m.results.Count() - m.resultOffset
+    if count > 5 then count = 5
+    if count < 0 then count = 0
+    return count
+end function
 
 sub clearPosters()
     while m.resultsGroup.GetChildCount() > 0 : m.resultsGroup.RemoveChildIndex(0) : end while
@@ -195,11 +236,14 @@ end function
 sub moveFocus(key as String)
     if m.focusArea = "posters" then
         if key = "down" then m.focusArea = "keyboard" : return
-        if key = "left" and m.posterIndex > 0 then m.posterIndex = m.posterIndex - 1
-        if key = "right" and m.posterIndex < m.results.Count() - 1 then m.posterIndex = m.posterIndex + 1
+        oldOffset = m.resultOffset
+        if key = "left" and m.selectedResultIndex > 0 then m.selectedResultIndex = m.selectedResultIndex - 1
+        if key = "right" and m.selectedResultIndex < m.results.Count() - 1 then m.selectedResultIndex = m.selectedResultIndex + 1
+        syncResultOffset()
+        if oldOffset <> m.resultOffset then refreshVisiblePosters()
         return
     end if
-    if key = "up" and m.keyRow = 0 and m.results.Count() > 0 then m.focusArea = "posters" : m.posterIndex = nearestPosterIndexForKeyCol(m.keyCol) : return
+    if key = "up" and m.keyRow = 0 and m.results.Count() > 0 then m.focusArea = "posters" : m.selectedResultIndex = nearestPosterIndexForKeyCol(m.keyCol) : syncResultOffset() : refreshVisiblePosters() : return
     if key = "left" and m.keyCol > 0 then m.keyCol = m.keyCol - 1
     if key = "right" and m.keyCol < m.rows[m.keyRow].Count() - 1 then m.keyCol = m.keyCol + 1
     if key = "up" and m.keyRow > 0 then moveKeyboardVertical(-1)
@@ -235,13 +279,14 @@ end function
 function nearestPosterIndexForKeyCol(col as Integer) as Integer
     if m.results.Count() <= 0 then return 0
     targetX = keyCenterX(0, col)
-    bestIndex = 0
+    bestIndex = m.resultOffset
     bestDistance = Abs(posterCenterX(0) - targetX)
-    for i = 1 to m.results.Count() - 1
+    visibleCount = getVisibleResultCount()
+    for i = 1 to visibleCount - 1
         distance = Abs(posterCenterX(i) - targetX)
         if distance < bestDistance then
             bestDistance = distance
-            bestIndex = i
+            bestIndex = m.resultOffset + i
         end if
     end for
     return bestIndex
@@ -253,7 +298,7 @@ end function
 
 sub activate()
     if m.focusArea = "posters" and m.results.Count() > 0 then
-        m.top.seriesSelected = m.results[m.posterIndex]
+        m.top.seriesSelected = m.results[m.selectedResultIndex]
         return
     end if
 
@@ -287,7 +332,8 @@ sub updateFocus()
         end for
     end for
     for i = 0 to m.posterNodes.Count() - 1
-        focused = m.focusArea = "posters" and i = m.posterIndex
+        visibleIndex = m.selectedResultIndex - m.resultOffset
+        focused = m.focusArea = "posters" and i = visibleIndex
         if focused then m.posterNodes[i].bg.color = "#2F80ED" else m.posterNodes[i].bg.color = "#101827"
     end for
 end sub
@@ -314,9 +360,11 @@ end function
 
 function getSeriesImage(series as Dynamic) as String
     if series = invalid then return ""
-    if series.stream_icon <> invalid and series.stream_icon.ToStr().Trim() <> "" then return series.stream_icon.ToStr()
-    if series.cover <> invalid and series.cover.ToStr().Trim() <> "" then return series.cover.ToStr()
-    if series.poster <> invalid and series.poster.ToStr().Trim() <> "" then return series.poster.ToStr()
+    if series.stream_icon <> invalid and series.stream_icon.ToStr().Trim() <> "" then return resizeTmdbPoster(series.stream_icon)
+    if series.cover <> invalid and series.cover.ToStr().Trim() <> "" then return resizeTmdbPoster(series.cover)
+    if series.poster <> invalid and series.poster.ToStr().Trim() <> "" then return resizeTmdbPoster(series.poster)
+    if series.cover_big <> invalid and series.cover_big.ToStr().Trim() <> "" then return resizeTmdbPoster(series.cover_big)
+    if series.series_image <> invalid and series.series_image.ToStr().Trim() <> "" then return resizeTmdbPoster(series.series_image)
     return ""
 end function
 

@@ -9,7 +9,7 @@ sub Init()
     m.keyboardGroup = m.top.FindNode("keyboardGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
     m.allMovies = [] : m.results = [] : m.query = "" : m.pendingQuery = ""
-    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
+    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
     m.posterPlaceholderUri = "" : m.posterUriCache = {}
@@ -52,7 +52,7 @@ sub show()
     configureLayout()
     m.top.visible = true : m.top.SetFocus(true)
     m.query = "" : m.pendingQuery = "" : m.queryLabel.text = "Buscar: "
-    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0
+    m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     renderKeyboard()
     applyFilter()
 end sub
@@ -78,7 +78,7 @@ end sub
 
 sub applyFilter()
     m.results = []
-    m.posterIndex = 0
+    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     if m.allMovies.Count() = 0 then
         showMessage("Nenhum filme carregado ainda.")
         return
@@ -102,7 +102,9 @@ sub applyFilter()
         if m.focusArea = "posters" then m.focusArea = "keyboard"
     else
         m.messageLabel.text = ""
-        if m.posterIndex >= m.results.Count() then m.posterIndex = m.results.Count() - 1
+        if m.selectedResultIndex >= m.results.Count() then m.selectedResultIndex = m.results.Count() - 1
+        m.posterIndex = m.selectedResultIndex
+        syncResultOffset()
         renderPosters()
     end if
     updateFocus()
@@ -117,19 +119,59 @@ end sub
 
 sub renderPosters()
     clearPosters()
-    maxRender = m.results.Count()
-    if maxRender > 40 then maxRender = 40
+    syncResultOffset()
+    maxRender = getVisibleResultCount()
     for i = 0 to maxRender - 1
-        movie = m.results[i]
+        resultIndex = m.resultOffset + i
+        movie = m.results[resultIndex]
         group = CreateObject("roSGNode", "Group") : group.translation = [i * (m.posterW + m.posterGap), 0]
         bg = CreateObject("roSGNode", "Rectangle") : bg.id = "posterBg" : bg.width = m.posterW : bg.height = m.posterH : bg.color = "#101827" : bg.opacity = 0.92
         poster = CreateObject("roSGNode", "Poster") : poster.width = 120 : poster.height = 180 : poster.translation = [Int((m.posterW - 120) / 2), 6] : poster.loadDisplayMode = "scaleToFit" : poster.uri = m.posterPlaceholderUri
         label = CreateObject("roSGNode", "Label") : label.id = "posterLabel" : label.width = m.posterW - 10 : label.height = 36 : label.translation = [5, m.posterH - 42] : label.horizAlign = "center" : label.vertAlign = "center" : label.color = "#FFFFFF" : label.font = "font:SmallBoldSystemFont" : label.text = getMovieName(movie)
         group.AppendChild(bg) : group.AppendChild(poster) : group.AppendChild(label)
-        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, poster: poster, label: label, movie: movie })
+        m.resultsGroup.AppendChild(group) : m.posterNodes.Push({ group: group, bg: bg, poster: poster, label: label, movie: movie, resultIndex: resultIndex })
     end for
     scheduleVisiblePosterLoads()
 end sub
+
+sub refreshVisiblePosters()
+    syncResultOffset()
+    visibleCount = getVisibleResultCount()
+    if m.posterNodes.Count() <> visibleCount then
+        renderPosters()
+        return
+    end if
+    for i = 0 to visibleCount - 1
+        resultIndex = m.resultOffset + i
+        movie = m.results[resultIndex]
+        node = m.posterNodes[i]
+        node.movie = movie
+        node.resultIndex = resultIndex
+        node.label.text = getMovieName(movie)
+        if node.poster <> invalid then node.poster.uri = m.posterPlaceholderUri
+    end for
+    scheduleVisiblePosterLoads()
+end sub
+
+sub syncResultOffset()
+    if m.results.Count() <= 0 then m.selectedResultIndex = 0 : m.posterIndex = 0 : m.resultOffset = 0 : return
+    if m.selectedResultIndex < 0 then m.selectedResultIndex = 0
+    if m.selectedResultIndex > m.results.Count() - 1 then m.selectedResultIndex = m.results.Count() - 1
+    if m.selectedResultIndex > m.resultOffset + 4 then m.resultOffset = m.selectedResultIndex - 4
+    if m.selectedResultIndex < m.resultOffset then m.resultOffset = m.selectedResultIndex
+    if m.resultOffset < 0 then m.resultOffset = 0
+    maxOffset = m.results.Count() - 5
+    if maxOffset < 0 then maxOffset = 0
+    if m.resultOffset > maxOffset then m.resultOffset = maxOffset
+    m.posterIndex = m.selectedResultIndex
+end sub
+
+function getVisibleResultCount() as Integer
+    count = m.results.Count() - m.resultOffset
+    if count > 5 then count = 5
+    if count < 0 then count = 0
+    return count
+end function
 
 sub clearPosters()
     if m.posterLoadTimer <> invalid then m.posterLoadTimer.control = "stop"
@@ -171,11 +213,14 @@ end function
 sub moveFocus(key as String)
     if m.focusArea = "posters" then
         if key = "down" then m.focusArea = "keyboard" : return
-        if key = "left" and m.posterIndex > 0 then m.posterIndex = m.posterIndex - 1
-        if key = "right" and m.posterIndex < m.results.Count() - 1 then m.posterIndex = m.posterIndex + 1
+        oldOffset = m.resultOffset
+        if key = "left" and m.selectedResultIndex > 0 then m.selectedResultIndex = m.selectedResultIndex - 1
+        if key = "right" and m.selectedResultIndex < m.results.Count() - 1 then m.selectedResultIndex = m.selectedResultIndex + 1
+        syncResultOffset()
+        if oldOffset <> m.resultOffset then refreshVisiblePosters()
         return
     end if
-    if key = "up" and m.keyRow = 0 and m.results.Count() > 0 then m.focusArea = "posters" : m.posterIndex = nearestPosterIndexForKeyCol(m.keyCol) : return
+    if key = "up" and m.keyRow = 0 and m.results.Count() > 0 then m.focusArea = "posters" : m.selectedResultIndex = nearestPosterIndexForKeyCol(m.keyCol) : syncResultOffset() : refreshVisiblePosters() : return
     if key = "left" and m.keyCol > 0 then m.keyCol = m.keyCol - 1
     if key = "right" and m.keyCol < m.rows[m.keyRow].Count() - 1 then m.keyCol = m.keyCol + 1
     if key = "up" and m.keyRow > 0 then moveKeyboardVertical(-1)
@@ -211,13 +256,14 @@ end function
 function nearestPosterIndexForKeyCol(col as Integer) as Integer
     if m.results.Count() <= 0 then return 0
     targetX = keyCenterX(0, col)
-    bestIndex = 0
+    bestIndex = m.resultOffset
     bestDistance = Abs(posterCenterX(0) - targetX)
-    for i = 1 to m.results.Count() - 1
+    visibleCount = getVisibleResultCount()
+    for i = 1 to visibleCount - 1
         distance = Abs(posterCenterX(i) - targetX)
         if distance < bestDistance then
             bestDistance = distance
-            bestIndex = i
+            bestIndex = m.resultOffset + i
         end if
     end for
     return bestIndex
@@ -229,7 +275,7 @@ end function
 
 sub activate()
     if m.focusArea = "posters" and m.results.Count() > 0 then
-        m.top.movieSelected = m.results[m.posterIndex]
+        m.top.movieSelected = m.results[m.selectedResultIndex]
         return
     end if
 
@@ -274,7 +320,8 @@ sub updateFocus()
         end for
     end for
     for i = 0 to m.posterNodes.Count() - 1
-        focused = m.focusArea = "posters" and i = m.posterIndex
+        visibleIndex = m.selectedResultIndex - m.resultOffset
+        focused = m.focusArea = "posters" and i = visibleIndex
         if focused then m.posterNodes[i].bg.color = "#2F80ED" else m.posterNodes[i].bg.color = "#101827"
     end for
 end sub
