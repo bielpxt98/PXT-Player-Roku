@@ -106,9 +106,6 @@ sub setLoading(isLoading as Boolean)
         m.loadingSpinner.control = "stop"
     end if
     m.loadingLabel.visible = isLoading
-    m.enterButton.enabled = not isLoading
-    m.backButton.enabled = not isLoading
-    m.demoButton.enabled = not isLoading
 end sub
 
 sub showError(message as String)

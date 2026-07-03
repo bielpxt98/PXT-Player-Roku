@@ -54,6 +54,8 @@ sub Init()
     m.moviesLoading = true
     m.selectedMovieCategory = invalid
     m.selectedMovieCategoryId = ""
+    m.selectedSeriesCategory = invalid
+    m.selectedSeriesCategoryId = ""
     m.selectedMovie = invalid
     m.openedFromFavorites = false
     m.openedFromSearch = false
@@ -164,6 +166,7 @@ sub Init()
     m.simpleSeriesScreen.ObserveField("backRequested", "onSimpleSeriesBack")
     m.simpleSeriesScreen.ObserveField("seriesSelected", "onSeriesSelected")
     m.simpleSeriesScreen.ObserveField("categorySelected", "onSeriesCategorySelected")
+    m.simpleSeriesScreen.ObserveField("categoryLoadRequested", "onSeriesCategoryLoadRequested")
     m.simpleSeriesScreen.ObserveField("searchRequested", "onSeriesSearchRequested")
     m.seriesDetailsScreen.ObserveField("backRequested", "onSeriesDetailsBack")
     m.seriesDetailsScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
@@ -2046,8 +2049,19 @@ sub onSeriesResult(result as Object)
                 m.seriesCategoryIndex[cid].Push(item)
             end for
         end if
-        if m.simpleSeriesScreen.visible = true then m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
+        if m.simpleSeriesScreen.visible = true then
+            if resultCategoryId <> "" then
+                if resultCategoryId = m.selectedSeriesCategoryId then
+                    m.simpleSeriesScreen.callFunc("setLoading", false)
+                    m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(fresh, 60))
+                end if
+            else
+                m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
+            end if
+        end if
         if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
+    else if m.simpleSeriesScreen.visible = true then
+        m.simpleSeriesScreen.callFunc("setLoading", false)
     end if
 end sub
 
@@ -2062,9 +2076,44 @@ end function
 sub onSeriesCategorySelected()
     category = m.simpleSeriesScreen.categorySelected
     if category = invalid then return
+    showSeriesFromCacheOrLoad(category)
+end sub
+
+sub onSeriesCategoryLoadRequested()
+    category = m.simpleSeriesScreen.categoryLoadRequested
+    if category = invalid then return
+    showSeriesFromCacheOrLoad(category)
+end sub
+
+sub showSeriesFromCacheOrLoad(category as Object)
     categoryId = getCategoryId(category)
-    if m.seriesCategoryIndex <> invalid and m.seriesCategoryIndex[categoryId] <> invalid and m.seriesCategoryIndex[categoryId].Count() > 0 then return
-    if filterItemsByCategory(m.cachedSeries, categoryId).Count() > 0 then return
+    m.selectedSeriesCategory = category
+    m.selectedSeriesCategoryId = categoryId
+    cached = []
+    if m.seriesCategoryIndex <> invalid and m.seriesCategoryIndex[categoryId] <> invalid then cached = m.seriesCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedSeries, categoryId)
+    if cached.Count() > 0 then
+        m.simpleSeriesScreen.callFunc("setLoading", false)
+        m.simpleSeriesScreen.callFunc("setSeries", cached)
+        return
+    end if
+    m.simpleSeriesScreen.callFunc("setLoading", true)
+    loadSeries(category)
+end sub
+
+sub loadSeries(category as Object)
+    categoryId = getCategoryId(category)
+    cached = []
+    if m.seriesCategoryIndex <> invalid and m.seriesCategoryIndex[categoryId] <> invalid then cached = m.seriesCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedSeries, categoryId)
+    if cached.Count() > 0 then
+        m.simpleSeriesScreen.callFunc("setLoading", false)
+        m.simpleSeriesScreen.callFunc("setSeries", cached)
+        return
+    end if
+    if m.isDemoMode = true then
+        m.simpleSeriesScreen.callFunc("setLoading", false)
+        m.simpleSeriesScreen.callFunc("setSeries", cached)
+        return
+    end if
     if not hasAccount(m.account) or m.isLoadingRequest = true then return
     if beginXtreamRequest("getSeries") then
         m.xtreamService.control = "STOP"
