@@ -24,7 +24,7 @@ sub Init()
     m.debounceTimer.ObserveField("fire", "onDebounceTimerFire")
     m.inputLocked = false
     m.inputUnlockTimer = CreateObject("roSGNode", "Timer")
-    m.inputUnlockTimer.duration = 2.5
+    m.inputUnlockTimer.duration = 1.0
     m.inputUnlockTimer.repeat = false
     m.inputUnlockTimer.ObserveField("fire", "onInputUnlockTimerFire")
     configureLayout()
@@ -250,7 +250,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then m.top.backRequested = true : return true
     if handleRokuKeyboardKey(key) then return true
-    if m.inputLocked = true and (key = "up" or key = "down" or key = "left" or key = "right") then return true
     if key = "OK" then activate() : return true
     if key = "up" or key = "down" or key = "left" or key = "right" then moveFocus(key) : updateFocus() : return true
     return false
@@ -326,6 +325,7 @@ sub activate()
     end if
 
     key = m.rows[m.keyRow][m.keyCol]
+    oldQuery = m.query
     if key = "ESPAÇO" then
         m.query = m.query + " "
     else if key = "APAGAR" then
@@ -337,13 +337,17 @@ sub activate()
     else
         m.query = m.query + key
     end if
-    m.queryLabel.text = "Buscar: " + m.query
-    lockInputBriefly()
-    scheduleFilter()
+    if m.query <> oldQuery then
+        m.queryLabel.text = "Buscar: " + m.query
+        lockInputBriefly()
+        scheduleFilter()
+    end if
 end sub
 
 sub scheduleFilter()
+    if m.pendingQuery = m.query then return
     m.pendingQuery = m.query
+    PRINT "SEARCH_DEBOUNCE"
     m.messageLabel.text = "Carregando pesquisa..."
     m.debounceTimer.control = "stop"
     m.debounceTimer.duration = 0.4
@@ -384,7 +388,7 @@ sub lockInputBriefly()
     m.inputLocked = true
     if m.inputUnlockTimer <> invalid then
         m.inputUnlockTimer.control = "stop"
-        m.inputUnlockTimer.duration = 2.5
+        m.inputUnlockTimer.duration = 1.0
         m.inputUnlockTimer.control = "start"
     end if
 end sub
@@ -402,10 +406,12 @@ function handleRokuKeyboardKey(key as String) as Boolean
         return true
     end if
     if key = "backspace" or key = "delete" then
-        if Len(m.query) > 0 then m.query = Left(m.query, Len(m.query) - 1)
-        m.queryLabel.text = "Buscar: " + m.query
-        lockInputBriefly()
-        scheduleFilter()
+        if Len(m.query) > 0 then
+            m.query = Left(m.query, Len(m.query) - 1)
+            m.queryLabel.text = "Buscar: " + m.query
+            lockInputBriefly()
+            scheduleFilter()
+        end if
         return true
     end if
     return false
