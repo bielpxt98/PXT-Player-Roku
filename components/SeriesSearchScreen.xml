@@ -7,6 +7,8 @@
         <function name="showMessage" />
         <function name="setInitialSeries" />
         <function name="setCatalogLoading" />
+        <function name="setBackendSearchResults" />
+        <function name="useLocalSearchFallback" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="seriesSelected" type="assocarray" alwaysNotify="true" />
         <field id="loadMoreRequested" type="string" alwaysNotify="true" />

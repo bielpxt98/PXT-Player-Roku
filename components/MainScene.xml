@@ -34,6 +34,7 @@
         <XtreamService id="xtreamService" />
         <BackendService id="backendService" />
         <BackendService id="backendBootstrapService" />
+        <BackendService id="backendSearchService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
         <Timer id="autoConnectTimer" duration="0.3" repeat="false" />
