@@ -12,7 +12,7 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = [] : m.preloadPosters = [] : m.posterPoolSize = 5
-    m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false : m.lastAppliedQuery = invalid
+    m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false : m.lastAppliedQuery = invalid : m.searchRequestId = 0 : m.latestAppliedRequestId = 0
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
     m.posterLoadTimer.repeat = false
@@ -94,8 +94,8 @@ end sub
 
 sub setMovies(items as Object)
     m.allMovies = normalizeArray(items)
-    if m.allMovies.Count() > 0 then PRINT "LOCAL_CACHE_HIT" else PRINT "LOCAL_CACHE_EMPTY"
-    applyFilter()
+    if m.allMovies.Count() = 0 then PRINT "LOCAL_CACHE_EMPTY"
+    if m.lastAppliedQuery = invalid or m.lastAppliedQuery <> m.query then applyFilter()
 end sub
 
 sub showMessage(message as String)
@@ -289,7 +289,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "back" then m.top.backRequested = true : return true
     if handleRokuKeyboardKey(key) then return true
     if key = "OK" then activate() : return true
-    if key = "up" or key = "down" or key = "left" or key = "right" then PRINT "SEARCH_IGNORED_FOCUS_MOVE" : moveFocus(key) : updateFocus() : return true
+    if key = "up" or key = "down" or key = "left" or key = "right" then moveFocus(key) : updateFocus() : return true
     return false
 end function
 
@@ -386,8 +386,10 @@ sub scheduleFilter()
     if m.pendingQuery = m.query then return
     if m.lastAppliedQuery <> invalid and m.lastAppliedQuery = m.query then return
     m.pendingQuery = m.query
+    m.searchRequestId = m.searchRequestId + 1
+    m.latestAppliedRequestId = m.searchRequestId
     PRINT "SEARCH_TEXT_CHANGED"
-    PRINT "SEARCH_DEBOUNCE"
+    PRINT "SEARCH_DEBOUNCE id="; m.searchRequestId
     ' Mantém os resultados atuais visíveis enquanto a pesquisa nova roda em segundo plano.
     m.messageLabel.text = "Atualizando pesquisa..."
     m.debounceTimer.control = "stop"

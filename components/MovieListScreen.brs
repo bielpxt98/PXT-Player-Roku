@@ -12,7 +12,8 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
     m.searchEntry = { isSearch: true, category_name: "PESQUISAR", name: "PESQUISAR" }
     m.favoritesEntry = { isFavorites: true, category_name: "FAVORITOS", name: "FAVORITOS" }
-    m.categories = [m.searchEntry, m.favoritesEntry] : m.movies = [] : m.allMovie = []
+    m.recentEntry = { isRecent: true, category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS" }
+    m.categories = [m.searchEntry, m.favoritesEntry, m.recentEntry] : m.movies = [] : m.allMovie = []
     m.categoryNodes = [] : m.categoryRefs = []
     m.movieNodes = [] : m.movieRefs = [] : m.preloadPosters = []
     m.batchSize = 60 : m.loadedMovieCount = 0
@@ -98,7 +99,7 @@ sub setCategories(categories as Object)
 end sub
 
 function getFixedCategories() as Object
-    return [m.searchEntry, m.favoritesEntry]
+    return [m.searchEntry, m.favoritesEntry, m.recentEntry]
 end function
 
 function isSearchEntry(category as Dynamic) as Boolean

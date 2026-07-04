@@ -797,13 +797,6 @@ sub onBackendSearchResult()
     if query = "" then query = m.backendSearchActiveQuery
     requestId = result.requestId
     if requestId = invalid then requestId = 0
-    if requestId <> m.activeSearchRequestId then
-        PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
-        return
-    end if
-
-    requestId = 0
-    if result.requestId <> invalid then requestId = result.requestId
     if requestId = 0 then requestId = m.backendSearchActiveRequestId
     if requestId <> m.backendSearchLatestRequestId then
         PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
@@ -1593,6 +1586,10 @@ sub onMovieListCategorySelected()
         showFavoriteMoviesInMovieList()
         return
     end if
+    if isRecentCategory(category) then
+        showRecentMoviesInMovieList()
+        return
+    end if
     newCategoryId = getCategoryId(category)
     m.selectedMovieCategory = category
     if newCategoryId = m.selectedMovieCategoryId and m.movies <> invalid and m.movies.Count() > 0 then
@@ -2065,6 +2062,19 @@ sub showFavoriteMoviesInMovieList()
     m.moviesLoading = false
     m.movieListScreen.callFunc("setLoading", false)
     m.movieListScreen.callFunc("setMovies", m.movies)
+end sub
+
+sub showRecentMoviesInMovieList()
+    m.selectedMovieCategory = { category_name: "ÚLTIMOS ASSISTIDOS", name: "ÚLTIMOS ASSISTIDOS", isRecent: true }
+    m.selectedMovieCategoryId = ""
+    m.movies = historyContents(LoadViewingHistory().movies, "movies")
+    m.moviesLoading = false
+    m.movieListScreen.callFunc("setLoading", false)
+    if m.movies.Count() = 0 then
+        m.movieListScreen.callFunc("showMessage", "Você ainda não assistiu filmes.")
+    else
+        m.movieListScreen.callFunc("setMovies", m.movies)
+    end if
 end sub
 
 
@@ -2746,6 +2756,16 @@ sub processNextSearchIndexRequest()
     end if
     job = nextSearchIndexJob()
     if job = invalid then return
+    if job.categoryId <> invalid and job.categoryId.ToStr() <> "" then
+        if job.kind = "movies" and getCategoryLoadState(m.movieCategoryLoadState, job.categoryId.ToStr()) = "LOADED" then
+            if m.searchIndexTimer <> invalid then m.searchIndexTimer.control = "start"
+            return
+        end if
+        if job.kind = "series" and getCategoryLoadState(m.seriesCategoryLoadState, job.categoryId.ToStr()) = "LOADED" then
+            if m.searchIndexTimer <> invalid then m.searchIndexTimer.control = "start"
+            return
+        end if
+    end if
     PRINT "SEARCH_CATEGORY_LOADING"
     m.searchIndexKind = job.kind
     m.searchIndexCategoryId = job.categoryId
