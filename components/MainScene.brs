@@ -5,6 +5,7 @@ sub Init()
     m.globalBackground = m.top.FindNode("globalBackground")
     m.globalBackgroundOverlay = m.top.FindNode("globalBackgroundOverlay")
     m.homeScreen = m.top.FindNode("homeScreen")
+    m.videoSplashScreen = m.top.FindNode("videoSplashScreen")
     m.splashScreen = m.top.FindNode("splashScreen")
     m.loginScreen = m.top.FindNode("loginScreen")
     m.playlistAccountsScreen = m.top.FindNode("playlistAccountsScreen")
@@ -91,6 +92,11 @@ sub Init()
     m.allCatalogLoadingMovies = false
     m.allCatalogLoadingSeries = false
     m.allCatalogLoadingLive = false
+    ' Tracks one-shot global movie catalog request for search.
+    m.movieGlobalCatalogRequested = false
+    m.movieGlobalCatalogLoaded = false
+    m.seriesGlobalCatalogRequested = false
+    m.seriesGlobalCatalogLoaded = false
     m.movieCategoryIndex = {}
     m.seriesCategoryIndex = {}
     m.movieCategoryLoadState = {}
@@ -138,9 +144,11 @@ sub Init()
     m.searchScreen.ObserveField("seriesSelected", "onSearchSeriesSelected")
     m.movieSearchScreen.ObserveField("backRequested", "onMovieSearchBack")
     m.movieSearchScreen.ObserveField("movieSelected", "onMovieSearchMovieSelected")
+    m.movieSearchScreen.ObserveField("loadMoreRequested", "onMovieSearchNeedsMore")
     if m.seriesSearchScreen <> invalid then
         m.seriesSearchScreen.ObserveField("backRequested", "onSeriesSearchBack")
         m.seriesSearchScreen.ObserveField("seriesSelected", "onSeriesSearchSeriesSelected")
+        m.seriesSearchScreen.ObserveField("loadMoreRequested", "onSeriesSearchNeedsMore")
     end if
     m.recentScreen.ObserveField("backRequested", "onRecentBack")
     m.recentScreen.ObserveField("historySelected", "onHistorySelected")
@@ -189,6 +197,7 @@ sub Init()
     m.searchIndexTimer.ObserveField("fire", "onSearchIndexTimerFire")
     m.splashMinimumTimer.ObserveField("fire", "onSplashMinimumElapsed")
     m.splashMaximumTimer.ObserveField("fire", "onSplashMaximumElapsed")
+    m.videoSplashScreen.ObserveField("finished", "onVideoSplashFinished")
 
     startInitialFlow()
 end sub
@@ -197,23 +206,32 @@ sub startInitialFlow()
     m.localFavoritesCache = LoadFavorites()
     m.localHistoryCache = LoadViewingHistory()
 
+    ' The app always opens on the Home screen, whether or not a playlist is
+    ' connected. Without an account the user can still browse to TV/Filmes/
+    ' Séries (they'll be prompted to connect there) or tap CONTA to log in.
     if hasAccount(m.account) then
         m.isDemoMode = false
         setBootState("reconnecting")
         updateConnectionStatus(false, "Conectando...")
-        m.homeScreen.callFunc("hide")
-        m.loginScreen.callFunc("hide")
-        m.splashScreen.callFunc("show")
-        loadLocalSearchIndexCache()
-        if hasValidLocalCatalogData() then updateConnectionStatus(false, "Atualizando lista...")
-        startSplashBootstrap()
     else
         if m.account <> invalid then DeleteSavedPlaylist()
         m.account = invalid
         setBootState("error")
         updateConnectionStatus(false, "Nenhuma playlist conectada")
-        showPlaylistAccounts()
     end if
+
+    m.homeScreen.callFunc("hide")
+    m.loginScreen.callFunc("hide")
+    m.playlistAccountsScreen.callFunc("hide")
+    m.splashScreen.callFunc("hide")
+    m.videoSplashScreen.callFunc("show")
+end sub
+
+sub onVideoSplashFinished()
+    m.videoSplashScreen.callFunc("hide")
+    loadLocalSearchIndexCache()
+    if hasValidLocalCatalogData() then updateConnectionStatus(false, "Atualizando lista...")
+    startSplashBootstrap()
 end sub
 
 sub startAutoConnectTimer()
@@ -312,6 +330,7 @@ sub finishSplashIfReady()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
+    if m.videoSplashScreen <> invalid and m.videoSplashScreen.visible = true then return true
     if m.splashScreen <> invalid and m.splashScreen.visible = true then return true
     if not press then return false
 
@@ -549,11 +568,22 @@ sub onMovieSearchRequested()
     m.movieListScreen.callFunc("hide")
     m.searchBackTarget = "movies"
     m.movieSearchScreen.callFunc("show")
+
+    ' Pesquisa de filmes é independente de séries e não deve ficar presa
+    ' na categoria aberta. Mostra o cache atual imediatamente e, se o
+    ' catálogo global ainda não foi carregado, faz uma única chamada global
+    ' get_vod_streams em Task. A tela fica com loader, sem travar a render thread.
     movieSearchData = getMoviesForSearch()
     m.movieSearchScreen.callFunc("setMovies", movieSearchData)
     if hasAccount(m.account) then
-        m.movieSearchScreen.callFunc("setCatalogLoading", hasUnloadedMovieCategories())
-        startGlobalSearchCache("movies")
+        if m.movieGlobalCatalogLoaded <> true then
+            m.movieSearchScreen.callFunc("setCatalogLoading", true)
+            startGlobalSearchCache("movies")
+        else
+            m.movieSearchScreen.callFunc("setCatalogLoading", false)
+        end if
+    else
+        m.movieSearchScreen.callFunc("setCatalogLoading", false)
     end if
 end sub
 
@@ -561,23 +591,55 @@ sub onSeriesSearchRequested()
     m.simpleSeriesScreen.callFunc("hide")
     m.searchBackTarget = "series"
     m.seriesSearchScreen.callFunc("show")
+
+    ' Igual filmes: a busca de séries usa o catálogo global acumulado,
+    ' não apenas a última categoria aberta. Se o provedor não devolver tudo
+    ' em get_series sem categoria, carregamos as categorias restantes em
+    ' segundo plano somente enquanto a busca está aberta.
     m.seriesSearchScreen.callFunc("setInitialSeries", getInitialSeriesForSearch())
     m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
     if hasAccount(m.account) then
-        m.seriesSearchScreen.callFunc("setCatalogLoading", hasUnloadedSeriesCategories())
-        startGlobalSearchCache("series")
+        if hasUnloadedSeriesCategories() then
+            ' Se ainda não há nada em memória, faz só uma tentativa global.
+            ' Nunca varre categorias nem reinicia busca ao apertar letras.
+            m.seriesSearchScreen.callFunc("setCatalogLoading", true)
+            startGlobalSearchCache("series")
+        else
+            m.seriesSearchScreen.callFunc("setCatalogLoading", false)
+        end if
     end if
 end sub
 
 sub onMovieSearchBack()
-    m.movieSearchScreen.callFunc("hide")
+    ' Movie search must return to the real Movies catalog screen.
+    ' The app currently uses MovieListScreen for the Movies area; returning to
+    ' MovieCategoriesScreen leaves a dead/empty screen with only title/background.
+    if m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("hide")
+    if m.movieCategoriesScreen <> invalid then m.movieCategoriesScreen.callFunc("hide")
+    if m.movieDetailScreen <> invalid then m.movieDetailScreen.callFunc("hide")
+    if m.moviePlayerScreen <> invalid then m.moviePlayerScreen.callFunc("hide")
+
+    if m.movieListScreen = invalid then return
+
     if m.selectedMovieCategory <> invalid then
         m.movieListScreen.callFunc("show", m.selectedMovieCategory)
+        if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then m.movieListScreen.callFunc("setCategories", m.movieCategories)
         if m.movies <> invalid and m.movies.Count() > 0 then m.movieListScreen.callFunc("setMovies", m.movies)
         m.movieListScreen.callFunc("focusCategories")
     else
-        m.movieCategoriesScreen.callFunc("show")
+        m.movieListScreen.callFunc("show", invalid)
+        if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
+            m.movieListScreen.callFunc("setCategories", m.movieCategories)
+            m.movieListScreen.callFunc("showMessage", "Escolha uma categoria para carregar os filmes.")
+        else if m.movieCategoriesLoading = true then
+            m.movieListScreen.callFunc("setLoading", true)
+        else
+            m.movieListScreen.callFunc("showMessage", "Nenhuma categoria de filmes foi encontrada.")
+        end if
+        m.movieListScreen.callFunc("focusCategories")
     end if
+
+    m.currentScreen = "movies"
 end sub
 
 sub onMovieSearchMovieSelected()
@@ -609,27 +671,97 @@ sub onSeriesSearchSeriesSelected()
     loadSeriesInfo(series)
 end sub
 
+sub onMovieSearchNeedsMore()
+    if m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("setCatalogLoading", true)
+    startGlobalSearchCache("movies")
+end sub
+
+sub onSeriesSearchNeedsMore()
+    if m.seriesSearchScreen <> invalid then m.seriesSearchScreen.callFunc("setCatalogLoading", true)
+    startGlobalSearchCache("series")
+end sub
+
 
 function getMoviesForSearch() as Object
-    if m.allMoviesCache <> invalid then return m.allMoviesCache
-    if m.cachedMovies <> invalid then return m.cachedMovies
-    return []
+    ' Primeiro usa os previews persistentes: 10 itens por categoria já salvos.
+    ' Depois completa com o cache global acumulado, sem prender a busca à categoria aberta.
+    source = []
+    preview = flattenPreviewCache(m.movieCategoryPreviewCache, "movies")
+    if preview <> invalid and Type(preview) = "roArray" and preview.Count() > 0 then source = mergeUniqueItems(source, preview, "movies")
+    if m.allMoviesCache <> invalid and Type(m.allMoviesCache) = "roArray" and m.allMoviesCache.Count() > 0 then source = mergeUniqueItems(source, m.allMoviesCache, "movies")
+    if (source = invalid or source.Count() = 0) and m.cachedMovies <> invalid and Type(m.cachedMovies) = "roArray" then source = m.cachedMovies
+    if (source = invalid or source.Count() = 0) and m.movies <> invalid and Type(m.movies) = "roArray" then source = m.movies
+    return buildSearchPreviewByCategory(source, 10, 1200, "movies")
 end function
 
 function limitMovieSearchItems(items as Dynamic) as Object
-    limited = []
-    if items = invalid or Type(items) <> "roArray" then return limited
-    for each item in items
-        if limited.Count() >= 60 then exit for
-        limited.Push(item)
-    end for
-    return limited
+    return buildSearchPreviewByCategory(items, 10, 1200, "movies")
 end function
 
 function getSeriesForSearch() as Object
-    if m.allSeriesCache <> invalid and m.allSeriesCache.Count() > 0 then return m.allSeriesCache
-    if m.cachedSeries <> invalid then return m.cachedSeries
-    return []
+    ' Igual filmes: usa previews salvos + cache global acumulado.
+    source = []
+    preview = flattenPreviewCache(m.seriesCategoryPreviewCache, "series")
+    if preview <> invalid and Type(preview) = "roArray" and preview.Count() > 0 then source = mergeUniqueItems(source, preview, "series")
+    if m.allSeriesCache <> invalid and Type(m.allSeriesCache) = "roArray" and m.allSeriesCache.Count() > 0 then source = mergeUniqueItems(source, m.allSeriesCache, "series")
+    if (source = invalid or source.Count() = 0) and m.cachedSeries <> invalid and Type(m.cachedSeries) = "roArray" then source = m.cachedSeries
+    return buildSearchPreviewByCategory(source, 10, 1200, "series")
+end function
+
+
+function flattenPreviewCache(cache as Dynamic, kind as String) as Object
+    result = []
+    if cache = invalid or Type(cache) <> "roArray" then return result
+    for each preview in cache
+        if preview <> invalid and preview.items <> invalid and Type(preview.items) = "roArray" then
+            for each item in preview.items
+                result.Push(item)
+            end for
+        end if
+    end for
+    return result
+end function
+
+function buildSearchPreviewByCategory(items as Dynamic, perCategory as Integer, maxItems as Integer, kind as String) as Object
+    result = []
+    if items = invalid or Type(items) <> "roArray" then return result
+    counts = {}
+    for each item in items
+        if result.Count() >= maxItems then exit for
+        cid = getItemCategoryId(item)
+        if cid = "" then cid = "_sem_categoria"
+        currentCount = 0
+        if counts[cid] <> invalid then currentCount = counts[cid]
+        if currentCount < perCategory then
+            result.Push(item)
+            counts[cid] = currentCount + 1
+        end if
+    end for
+    ' If the list has few categories, fill the remaining slots with more global items.
+    if result.Count() < 80 then
+        seen = {}
+        for each item in result
+            key = getCatalogItemKey(item, kind)
+            if key <> "" then seen[key] = true
+        end for
+        for each item in items
+            if result.Count() >= maxItems then exit for
+            key = getCatalogItemKey(item, kind)
+            if key <> "" and seen[key] = invalid then
+                result.Push(item)
+                seen[key] = true
+            end if
+        end for
+    end if
+    return result
+end function
+
+function hasGlobalSeriesCatalog() as Boolean
+    return m.allSeriesCache <> invalid and Type(m.allSeriesCache) = "roArray" and m.allSeriesCache.Count() > 0
+end function
+
+function hasGlobalMovieCatalog() as Boolean
+    return m.allMoviesCache <> invalid and Type(m.allMoviesCache) = "roArray" and m.allMoviesCache.Count() > 0
 end function
 
 function getInitialSeriesForSearch() as Object
@@ -689,35 +821,61 @@ end sub
 sub startGlobalSearchCache(kind as String)
     if m.isDemoMode = true then return
     if not hasAccount(m.account) then return
+
+    ' A busca deve usar primeiro o cache e continuar carregando mais dados
+    ' em segundo plano. Nunca misturar filmes com séries. Nunca bloquear a tela.
     if kind = "movies" then
         if m.movieSearchIndexUpdating = true then return
         m.movieSearchIndexQueue = []
-        if m.movieCategories = invalid or m.movieCategories.Count() = 0 then queueMovieSearchIndexJob({ action: "getMovieCategories", kind: "movieCategories", categoryId: "", indexType: "movies" })
-        for each category in prioritizedSearchCategories(m.movieCategories)
-            cid = getCategoryId(category)
-            if getCategoryLoadState(m.movieCategoryLoadState, cid) <> "LOADED" then queueMovieSearchIndexJob({ action: "getMovies", kind: "movies", categoryId: cid, indexType: "movies" })
-        end for
+
+        if m.movieGlobalCatalogLoaded <> true and m.movieGlobalCatalogRequested <> true then
+            m.movieGlobalCatalogRequested = true
+            queueMovieSearchIndexJob({ action: "getMovies", kind: "movies", categoryId: "", indexType: "movies" })
+        end if
+
+        if m.movieCategories = invalid or m.movieCategories.Count() = 0 then
+            queueMovieSearchIndexJob({ action: "getMovieCategories", kind: "movieCategories", categoryId: "", indexType: "movies" })
+        else
+            queueMissingMovieCategoryJobs()
+        end if
+
         if m.movieSearchIndexQueue.Count() = 0 then
-            if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setCatalogLoading", false)
+            if m.movieSearchScreen <> invalid and m.movieSearchScreen.visible = true then
+                m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
+                m.movieSearchScreen.callFunc("setCatalogLoading", false)
+            end if
             return
         end if
         m.movieSearchIndexUpdating = true
     else if kind = "series" then
         if m.seriesSearchIndexUpdating = true then return
         m.seriesSearchIndexQueue = []
-        if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then queueSeriesSearchIndexJob({ action: "getSeriesCategories", kind: "seriesCategories", categoryId: "", indexType: "series" })
-        for each category in prioritizedSearchCategories(m.seriesCategories)
-            cid = getCategoryId(category)
-            if getCategoryLoadState(m.seriesCategoryLoadState, cid) <> "LOADED" then queueSeriesSearchIndexJob({ action: "getSeries", kind: "series", categoryId: cid, indexType: "series" })
-        end for
+
+        if m.seriesGlobalCatalogLoaded <> true and m.seriesGlobalCatalogRequested <> true then
+            m.seriesGlobalCatalogRequested = true
+            queueSeriesSearchIndexJob({ action: "getSeries", kind: "series", categoryId: "", indexType: "series" })
+        end if
+
+        if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then
+            queueSeriesSearchIndexJob({ action: "getSeriesCategories", kind: "seriesCategories", categoryId: "", indexType: "series" })
+        else
+            queueMissingSeriesCategoryJobs()
+        end if
+
         if m.seriesSearchIndexQueue.Count() = 0 then
-            if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setCatalogLoading", false)
+            if m.seriesSearchScreen <> invalid and m.seriesSearchScreen.visible = true then
+                m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
+                m.seriesSearchScreen.callFunc("setCatalogLoading", false)
+            end if
             return
         end if
         m.seriesSearchIndexUpdating = true
     end if
-    m.searchIndexTimer.control = "stop"
-    m.searchIndexTimer.control = "start"
+
+    if m.searchIndexTimer <> invalid then
+        m.searchIndexTimer.control = "stop"
+        m.searchIndexTimer.control = "start"
+    end if
 end sub
 
 sub queueMovieSearchIndexJob(job as Object)
@@ -728,6 +886,34 @@ end sub
 sub queueSeriesSearchIndexJob(job as Object)
     if m.seriesSearchIndexQueue = invalid then m.seriesSearchIndexQueue = []
     m.seriesSearchIndexQueue.Push(job)
+end sub
+
+sub queueMissingMovieCategoryJobs()
+    if m.movieCategories = invalid or Type(m.movieCategories) <> "roArray" then return
+    added = 0
+    for each category in m.movieCategories
+        if added >= 2 then exit for
+        cid = getCategoryId(category)
+        if cid <> "" and getCategoryLoadState(m.movieCategoryLoadState, cid) <> "LOADED" and getCategoryLoadState(m.movieCategoryLoadState, cid) <> "LOADING" then
+            m.movieCategoryLoadState[cid] = "LOADING"
+            queueMovieSearchIndexJob({ action: "getMovies", kind: "movies", categoryId: cid, indexType: "movies" })
+            added = added + 1
+        end if
+    end for
+end sub
+
+sub queueMissingSeriesCategoryJobs()
+    if m.seriesCategories = invalid or Type(m.seriesCategories) <> "roArray" then return
+    added = 0
+    for each category in m.seriesCategories
+        if added >= 2 then exit for
+        cid = getCategoryId(category)
+        if cid <> "" and getCategoryLoadState(m.seriesCategoryLoadState, cid) <> "LOADED" and getCategoryLoadState(m.seriesCategoryLoadState, cid) <> "LOADING" then
+            m.seriesCategoryLoadState[cid] = "LOADING"
+            queueSeriesSearchIndexJob({ action: "getSeries", kind: "series", categoryId: cid, indexType: "series" })
+            added = added + 1
+        end if
+    end for
 end sub
 
 function nextSearchIndexJob() as Dynamic
@@ -741,11 +927,25 @@ end function
 sub finishSearchIndexTypeIfDone(indexType as String)
     if indexType = "movies" then
         if m.movieSearchIndexQueue <> invalid and m.movieSearchIndexQueue.Count() > 0 then return
+        if hasUnloadedMovieCategories() and m.movieSearchScreen <> invalid and m.movieSearchScreen.visible = true then
+            queueMissingMovieCategoryJobs()
+            if m.movieSearchIndexQueue <> invalid and m.movieSearchIndexQueue.Count() > 0 then
+                m.searchIndexTimer.control = "start"
+                return
+            end if
+        end if
         m.movieSearchIndexUpdating = false
         m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
         if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setCatalogLoading", false)
     else if indexType = "series" then
         if m.seriesSearchIndexQueue <> invalid and m.seriesSearchIndexQueue.Count() > 0 then return
+        if hasUnloadedSeriesCategories() and m.seriesSearchScreen <> invalid and m.seriesSearchScreen.visible = true then
+            queueMissingSeriesCategoryJobs()
+            if m.seriesSearchIndexQueue <> invalid and m.seriesSearchIndexQueue.Count() > 0 then
+                m.searchIndexTimer.control = "start"
+                return
+            end if
+        end if
         m.seriesSearchIndexUpdating = false
         m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
         if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setCatalogLoading", false)
@@ -792,7 +992,16 @@ sub insertCategoryByName(sorted as Object, category as Object)
             exit for
         end if
     end for
-    sorted.Insert(insertAt, category)
+
+    ' BrightScript roArray does not support Insert() in all runtimes/simulators.
+    ' Append and shift manually to avoid runtime error &hf4 during startup/search cache loading.
+    sorted.Push(category)
+    if insertAt < sorted.Count() - 1 then
+        for j = sorted.Count() - 1 to insertAt + 1 step -1
+            sorted[j] = sorted[j - 1]
+        end for
+        sorted[insertAt] = category
+    end if
 end sub
 
 function getCategoryLoadState(states as Dynamic, categoryId as String) as String
@@ -801,17 +1010,19 @@ function getCategoryLoadState(states as Dynamic, categoryId as String) as String
 end function
 
 function hasUnloadedMovieCategories() as Boolean
-    if m.movieCategories = invalid or m.movieCategories.Count() = 0 then return true
+    if m.movieCategories = invalid or Type(m.movieCategories) <> "roArray" or m.movieCategories.Count() = 0 then return true
     for each category in m.movieCategories
-        if getCategoryLoadState(m.movieCategoryLoadState, getCategoryId(category)) <> "LOADED" then return true
+        cid = getCategoryId(category)
+        if cid <> "" and getCategoryLoadState(m.movieCategoryLoadState, cid) <> "LOADED" then return true
     end for
     return false
 end function
 
 function hasUnloadedSeriesCategories() as Boolean
-    if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then return true
+    if m.seriesCategories = invalid or Type(m.seriesCategories) <> "roArray" or m.seriesCategories.Count() = 0 then return true
     for each category in m.seriesCategories
-        if getCategoryLoadState(m.seriesCategoryLoadState, getCategoryId(category)) <> "LOADED" then return true
+        cid = getCategoryId(category)
+        if cid <> "" and getCategoryLoadState(m.seriesCategoryLoadState, cid) <> "LOADED" then return true
     end for
     return false
 end function
@@ -1155,8 +1366,8 @@ sub onDemoRequested()
     m.searchIndexCache.movies = m.cachedMovies
     m.searchIndexCache.series = m.cachedSeries
     m.searchIndexCache.seriesCategories = m.seriesCategories
-    m.movieSearchIndex = BuildMovieSearchIndexItems(m.cachedMovies, "")
-    m.seriesSearchIndex = BuildSeriesSearchIndexItems(m.cachedSeries, "")
+    m.movieSearchIndex = []
+    m.seriesSearchIndex = []
     m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
     m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
     updateConnectionStatus(true, "Modo Demo")
@@ -1712,9 +1923,15 @@ function isContinueCategory(category as Dynamic) as Boolean
 end function
 
 sub showMoviesFromCacheOrLoad(category as Object)
+    cancelSearchIndexRefresh()
+    if m.previewUpdating = true then
+        m.previewQueue = []
+        m.previewUpdating = false
+        m.previewKind = ""
+    end if
     categoryId = getCategoryId(category)
     cached = []
-    if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[categoryId] <> invalid then cached = m.movieCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedMovies, categoryId)
+    if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[categoryId] <> invalid then cached = m.movieCategoryIndex[categoryId]
     if cached.Count() > 0 then
         m.movies = cached
         m.moviesLoading = false
@@ -2028,8 +2245,8 @@ sub loadLocalSearchIndexCache()
     end if
     if m.searchIndexCache.movieCategoryPreviewCache <> invalid then m.movieCategoryPreviewCache = m.searchIndexCache.movieCategoryPreviewCache
     if m.searchIndexCache.seriesCategoryPreviewCache <> invalid then m.seriesCategoryPreviewCache = m.searchIndexCache.seriesCategoryPreviewCache
-    m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
-    m.seriesSearchIndex = BuildSeriesSearchIndexItems(m.allSeriesCache, "")
+    m.movieSearchIndex = []
+    m.seriesSearchIndex = []
     m.movieCategoryIndex = {}
     m.movieCategoryLoadState = {}
     if m.cachedMovies <> invalid and Type(m.cachedMovies) = "roArray" then
@@ -2053,10 +2270,9 @@ sub loadLocalSearchIndexCache()
 end sub
 
 sub startBackgroundCatalogCache()
-    if m.isDemoMode = true then return
-    if not hasAccount(m.account) then return
-    if m.previewUpdating = true then return
-    startSearchIndexRefresh()
+    ' Home must stay light. Do not start global movies/series caching here.
+    ' The full lists are loaded only when search is opened or when a category is selected.
+    return
 end sub
 
 sub cancelSearchIndexRefresh()
@@ -2075,14 +2291,17 @@ sub cancelSearchIndexRefresh()
 end sub
 
 sub startSearchIndexRefresh()
-    if m.isDemoMode = true then return
-    if not hasAccount(m.account) then return
-    startGlobalSearchCache("movies")
-    startGlobalSearchCache("series")
+    ' Disabled: building global movie/series search cache on the render thread
+    ' was freezing category navigation and causing runtime &h23 timeouts.
+    return
 end sub
 
 sub onSearchIndexTimerFire()
-    if m.previewUpdating = true then
+    ' Requisições da busca aberta têm prioridade. O cache de previews
+    ' roda só em segundo plano para não atrasar filme/série/categoria.
+    if m.movieSearchIndexUpdating = true or m.seriesSearchIndexUpdating = true then
+        processNextSearchIndexRequest()
+    else if m.previewUpdating = true then
         processNextPreviewRequest()
     else
         processNextSearchIndexRequest()
@@ -2134,24 +2353,24 @@ function handleSearchIndexResult(result as Object) as Boolean
         else if kind = "movieCategories" then
             m.movieCategories = normalizeMovieCategories(result.data)
             m.searchIndexCache.movieCategories = m.movieCategories
-            for each category in prioritizedSearchCategories(m.movieCategories)
-                cid = getCategoryId(category)
-                if getCategoryLoadState(m.movieCategoryLoadState, cid) <> "LOADED" then queueMovieSearchIndexJob({ action: "getMovies", kind: "movies", categoryId: cid, indexType: "movies" })
-            end for
+            queueMissingMovieCategoryJobs()
         else if kind = "movies" then
             freshMovies = normalizeMovies(result.data)
-            m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, freshMovies, "movies")
-            m.cachedMovies = m.allMoviesCache
-            if m.searchIndexCategoryId <> "" then m.movieCategoryLoadState[m.searchIndexCategoryId] = "LOADED"
-            m.searchIndexCache.movies = m.allMoviesCache
-            m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
-            m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
-            m.movieCategoryIndex = {}
-            for each item in m.cachedMovies
-                cid = getItemCategoryId(item)
-                if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
-                m.movieCategoryIndex[cid].Push(item)
-            end for
+            if m.searchIndexCategoryId = "" then
+                if freshMovies.Count() > 0 then m.movieGlobalCatalogLoaded = true
+                previewMovies = buildSearchPreviewByCategory(freshMovies, 10, 1200, "movies")
+                m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, previewMovies, "movies")
+            else
+                previewMovies = buildSearchPreviewByCategory(freshMovies, 10, 1200, "movies")
+                m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, previewMovies, "movies")
+                m.cachedMovies = m.allMoviesCache
+                m.movieCategoryPreviewCache = upsertCategoryPreview(m.movieCategoryPreviewCache, { category_id: m.searchIndexCategoryId, category_name: "" }, freshMovies, "movie")
+                m.searchIndexCache.movieCategoryPreviewCache = m.movieCategoryPreviewCache
+                m.movieCategoryLoadState[m.searchIndexCategoryId] = "LOADED"
+            end if
+            m.searchIndexCache.movies = getMoviesForSearch()
+            m.movieSearchIndex = []
+            m.searchIndexCache.movieSearchIndex = []
             if m.movieSearchScreen.visible = true then
                 m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
                 m.movieSearchScreen.callFunc("setCatalogLoading", hasUnloadedMovieCategories())
@@ -2160,24 +2379,24 @@ function handleSearchIndexResult(result as Object) as Boolean
         else if kind = "seriesCategories" then
             m.seriesCategories = normalizeSeriesCategories(result.data)
             m.searchIndexCache.seriesCategories = m.seriesCategories
-            for each category in prioritizedSearchCategories(m.seriesCategories)
-                cid = getCategoryId(category)
-                if getCategoryLoadState(m.seriesCategoryLoadState, cid) <> "LOADED" then queueSeriesSearchIndexJob({ action: "getSeries", kind: "series", categoryId: cid, indexType: "series" })
-            end for
+            queueMissingSeriesCategoryJobs()
         else if kind = "series" then
             freshSeries = normalizeSeries(result.data)
-            m.allSeriesCache = mergeUniqueItems(m.allSeriesCache, freshSeries, "series")
-            m.cachedSeries = m.allSeriesCache
-            if m.searchIndexCategoryId <> "" then m.seriesCategoryLoadState[m.searchIndexCategoryId] = "LOADED"
-            m.searchIndexCache.series = m.allSeriesCache
-            m.seriesSearchIndex = BuildSeriesSearchIndexItems(m.allSeriesCache, "")
-            m.searchIndexCache.seriesSearchIndex = m.seriesSearchIndex
-            m.seriesCategoryIndex = {}
-            for each item in m.cachedSeries
-                cid = getItemCategoryId(item)
-                if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
-                m.seriesCategoryIndex[cid].Push(item)
-            end for
+            if m.searchIndexCategoryId = "" then
+                if freshSeries.Count() > 0 then m.seriesGlobalCatalogLoaded = true
+                previewSeries = buildSearchPreviewByCategory(freshSeries, 10, 1200, "series")
+                m.allSeriesCache = mergeUniqueItems(m.allSeriesCache, previewSeries, "series")
+            else
+                previewSeries = buildSearchPreviewByCategory(freshSeries, 10, 1200, "series")
+                m.allSeriesCache = mergeUniqueItems(m.allSeriesCache, previewSeries, "series")
+                m.cachedSeries = m.allSeriesCache
+                m.seriesCategoryPreviewCache = upsertCategoryPreview(m.seriesCategoryPreviewCache, { category_id: m.searchIndexCategoryId, category_name: "" }, freshSeries, "series")
+                m.searchIndexCache.seriesCategoryPreviewCache = m.seriesCategoryPreviewCache
+                m.seriesCategoryLoadState[m.searchIndexCategoryId] = "LOADED"
+            end if
+            m.searchIndexCache.series = getSeriesForSearch()
+            m.seriesSearchIndex = []
+            m.searchIndexCache.seriesSearchIndex = []
             if m.seriesSearchScreen.visible = true then
                 m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
                 m.seriesSearchScreen.callFunc("setCatalogLoading", hasUnloadedSeriesCategories())
@@ -2185,6 +2404,11 @@ function handleSearchIndexResult(result as Object) as Boolean
             PRINT "SEARCH_CATEGORY_LOADED"
         end if
         SaveSearchIndexCache(m.searchIndexCache)
+    else
+        if kind = "movies" and m.searchIndexCategoryId = "" then m.movieGlobalCatalogRequested = false
+        if kind = "series" and m.searchIndexCategoryId = "" then m.seriesGlobalCatalogRequested = false
+        if kind = "movies" and m.searchIndexCategoryId <> "" then m.movieCategoryLoadState[m.searchIndexCategoryId] = "NOT_LOADED"
+        if kind = "series" and m.searchIndexCategoryId <> "" then m.seriesCategoryLoadState[m.searchIndexCategoryId] = "NOT_LOADED"
     end if
     finishSearchIndexTypeIfDone(activeType)
     m.searchIndexTimer.control = "start"
@@ -2296,13 +2520,13 @@ sub onSeriesResult(result as Object)
             m.searchIndexCache.series = m.allSeriesCache
             SaveSearchIndexCache(m.searchIndexCache)
         end if
-        m.seriesCategoryIndex = {}
-        if m.cachedSeries <> invalid and Type(m.cachedSeries) = "roArray" then
-            for each item in m.cachedSeries
-                cid = getItemCategoryId(item)
-                if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
-                m.seriesCategoryIndex[cid].Push(item)
-            end for
+        ' Keep category index incremental. Rebuilding the whole index on the
+        ' render thread after every category/global result causes mini freezes.
+        if m.seriesCategoryIndex = invalid then m.seriesCategoryIndex = {}
+        if resultCategoryId <> "" then
+            m.seriesCategoryIndex[resultCategoryId] = fresh
+        else
+            addItemsToSeriesCategoryIndex(fresh)
         end if
         if m.simpleSeriesScreen.visible = true then
             if resultCategoryId <> "" then
@@ -2318,6 +2542,31 @@ sub onSeriesResult(result as Object)
     else if m.simpleSeriesScreen.visible = true then
         m.simpleSeriesScreen.callFunc("setLoading", false)
     end if
+end sub
+
+
+sub addItemsToMovieCategoryIndex(items as Dynamic)
+    if m.movieCategoryIndex = invalid then m.movieCategoryIndex = {}
+    if items = invalid or Type(items) <> "roArray" then return
+    for each item in items
+        cid = getItemCategoryId(item)
+        if cid <> "" then
+            if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
+            m.movieCategoryIndex[cid].Push(item)
+        end if
+    end for
+end sub
+
+sub addItemsToSeriesCategoryIndex(items as Dynamic)
+    if m.seriesCategoryIndex = invalid then m.seriesCategoryIndex = {}
+    if items = invalid or Type(items) <> "roArray" then return
+    for each item in items
+        cid = getItemCategoryId(item)
+        if cid <> "" then
+            if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
+            m.seriesCategoryIndex[cid].Push(item)
+        end if
+    end for
 end sub
 
 function getSeriesResultCategoryId(result as Dynamic) as String
@@ -2341,6 +2590,12 @@ sub onSeriesCategoryLoadRequested()
 end sub
 
 sub showSeriesFromCacheOrLoad(category as Object)
+    cancelSearchIndexRefresh()
+    if m.previewUpdating = true then
+        m.previewQueue = []
+        m.previewUpdating = false
+        m.previewKind = ""
+    end if
     categoryId = getCategoryId(category)
     m.selectedSeriesCategory = category
     m.selectedSeriesCategoryId = categoryId
@@ -2594,25 +2849,17 @@ sub onMoviesResult(result as Object)
         clearAccountReconnectError()
         fresh = normalizeMovies(result.data)
         if resultCategoryId = "" then
-            m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, fresh, "movies")
-            m.cachedMovies = m.allMoviesCache
+            m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, buildSearchPreviewByCategory(fresh, 10, 1200, "movies"), "movies")
         else
             m.cachedMovies = replaceCachedCategoryItems(m.cachedMovies, fresh, resultCategoryId)
-            m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, fresh, "movies")
+            m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, buildSearchPreviewByCategory(fresh, 10, 1200, "movies"), "movies")
             m.movieCategoryLoadState[resultCategoryId] = "LOADED"
         end if
-        m.searchIndexCache.movies = m.allMoviesCache
-        m.movieSearchIndex = BuildMovieSearchIndexItems(m.allMoviesCache, "")
-        m.searchIndexCache.movieSearchIndex = m.movieSearchIndex
+        m.searchIndexCache.movies = getMoviesForSearch()
+        m.movieSearchIndex = []
+        m.searchIndexCache.movieSearchIndex = []
         SaveSearchIndexCache(m.searchIndexCache)
-        m.movieCategoryIndex = {}
-        if m.cachedMovies <> invalid and Type(m.cachedMovies) = "roArray" then
-            for each item in m.cachedMovies
-                cid = getItemCategoryId(item)
-                if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
-                m.movieCategoryIndex[cid].Push(item)
-            end for
-        end if
+        if resultCategoryId <> "" then addItemsToMovieCategoryIndex(fresh)
         if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[m.selectedMovieCategoryId] <> invalid then m.movies = m.movieCategoryIndex[m.selectedMovieCategoryId] else m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
         if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch()) : m.movieSearchScreen.callFunc("setCatalogLoading", hasUnloadedMovieCategories())
@@ -2922,13 +3169,38 @@ function sortableName(item as Dynamic, kind as String) as String
 end function
 
 sub startInitialCategoryPreviewCache()
+    ' Cache leve: salva até 10 itens por categoria de filmes/séries,
+    ' progressivamente, uma requisição por vez. Isso alimenta a busca sem
+    ' travar a tela e persiste enquanto a conta permanecer cadastrada.
     if m.isDemoMode = true then return
     if not hasAccount(m.account) then return
+    if m.previewUpdating = true then return
     m.previewQueue = []
-    if m.movieCategories = invalid or m.movieCategories.Count() = 0 then m.previewQueue.Push({ action: "getMovieCategories", kind: "movieCategories", categoryId: "" })
-    if m.seriesCategories = invalid or m.seriesCategories.Count() = 0 then m.previewQueue.Push({ action: "getSeriesCategories", kind: "seriesCategories", categoryId: "" })
+    if m.movieCategories <> invalid and Type(m.movieCategories) = "roArray" then
+        for each category in m.movieCategories
+            cid = getCategoryId(category)
+            previewItems = getPreviewItems(m.movieCategoryPreviewCache, cid)
+            if cid <> "" and previewItems.Count() = 0 then
+                m.previewQueue.Push({ kind: "moviePreview", action: "getMovies", categoryId: cid, category: category })
+            end if
+        end for
+    end if
+    if m.seriesCategories <> invalid and Type(m.seriesCategories) = "roArray" then
+        for each category in m.seriesCategories
+            cid = getCategoryId(category)
+            previewItems = getPreviewItems(m.seriesCategoryPreviewCache, cid)
+            if cid <> "" and previewItems.Count() = 0 then
+                m.previewQueue.Push({ kind: "seriesPreview", action: "getSeries", categoryId: cid, category: category })
+            end if
+        end for
+    end if
+    if m.previewQueue.Count() = 0 then return
     m.previewUpdating = true
-    processNextPreviewRequest()
+    m.previewKind = ""
+    if m.searchIndexTimer <> invalid then
+        m.searchIndexTimer.control = "stop"
+        m.searchIndexTimer.control = "start"
+    end if
 end sub
 
 sub processNextPreviewRequest()
@@ -2973,15 +3245,11 @@ function handlePreviewCacheResult(result as Object) as Boolean
         if kind = "movieCategories" then
             m.movieCategories = normalizeMovieCategories(result.data)
             m.searchIndexCache.movieCategories = m.movieCategories
-            for each cat in m.movieCategories
-                m.previewQueue.Push({ action: "getMovies", kind: "moviePreview", categoryId: getCategoryId(cat), category: cat })
-            end for
+            ' Do not queue every movie category preview.
         else if kind = "seriesCategories" then
             m.seriesCategories = normalizeSeriesCategories(result.data)
             m.searchIndexCache.seriesCategories = m.seriesCategories
-            for each cat in m.seriesCategories
-                m.previewQueue.Push({ action: "getSeries", kind: "seriesPreview", categoryId: getCategoryId(cat), category: cat })
-            end for
+            ' Do not queue every series category preview.
         else if kind = "moviePreview" then
             m.movieCategoryPreviewCache = upsertCategoryPreview(m.movieCategoryPreviewCache, category, normalizeMovies(result.data), "movie")
             m.searchIndexCache.movieCategoryPreviewCache = m.movieCategoryPreviewCache

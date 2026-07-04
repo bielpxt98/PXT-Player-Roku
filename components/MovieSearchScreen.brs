@@ -19,9 +19,14 @@ sub Init()
     m.posterLoadTimer.ObserveField("fire", "onPosterLoadTimerFire")
     m.maxMovies = 60 : m.maxResults = 40
     m.debounceTimer = CreateObject("roSGNode", "Timer")
-    m.debounceTimer.duration = 0.4
+    m.debounceTimer.duration = 3.0
     m.debounceTimer.repeat = false
     m.debounceTimer.ObserveField("fire", "onDebounceTimerFire")
+    m.inputLocked = false
+    m.inputUnlockTimer = CreateObject("roSGNode", "Timer")
+    m.inputUnlockTimer.duration = 2.5
+    m.inputUnlockTimer.repeat = false
+    m.inputUnlockTimer.ObserveField("fire", "onInputUnlockTimerFire")
     configureLayout()
 end sub
 
@@ -81,22 +86,22 @@ sub applyFilter()
         return
     end if
     needle = normalizeText(m.query)
-    firstWordMatches = []
-    secondWordMatches = []
-    otherWordMatches = []
-    for each movie in m.allMovies
-        rank = prefixMatchRank(getMovieName(movie), needle)
-        if rank = 1 then
-            firstWordMatches.Push(movie)
-        else if rank = 2 then
-            secondWordMatches.Push(movie)
-        else if rank = 3 then
-            otherWordMatches.Push(movie)
-        end if
-    end for
-    appendLimitedResults(firstWordMatches)
-    appendLimitedResults(secondWordMatches)
-    appendLimitedResults(otherWordMatches)
+    if needle = "" then
+        for each item in m.allMovies
+            if m.results.Count() >= m.maxResults then exit for
+            m.results.Push(item)
+        end for
+    else
+        ' Busca leve em 3 passadas, parando quando enche a tela.
+        ' Evita montar listas temporárias grandes a cada letra.
+        for rankTarget = 1 to 3
+            for each item in m.allMovies
+                if m.results.Count() >= m.maxResults then exit for
+                if prefixMatchRank(getMovieName(item), needle) = rankTarget then m.results.Push(item)
+            end for
+            if m.results.Count() >= m.maxResults then exit for
+        end for
+    end if
     if m.results.Count() = 0 then
         showMessage("Nenhum filme encontrado.")
         PRINT "SEARCH_RESULTS_UPDATED"
@@ -244,6 +249,8 @@ end sub
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then m.top.backRequested = true : return true
+    if handleRokuKeyboardKey(key) then return true
+    if m.inputLocked = true and (key = "up" or key = "down" or key = "left" or key = "right") then return true
     if key = "OK" then activate() : return true
     if key = "up" or key = "down" or key = "left" or key = "right" then moveFocus(key) : updateFocus() : return true
     return false
@@ -331,19 +338,55 @@ sub activate()
         m.query = m.query + key
     end if
     m.queryLabel.text = "Buscar: " + m.query
+    lockInputBriefly()
     scheduleFilter()
 end sub
 
 sub scheduleFilter()
     m.pendingQuery = m.query
+    m.messageLabel.text = "Carregando pesquisa..."
     m.debounceTimer.control = "stop"
+    m.debounceTimer.duration = 3.0
     m.debounceTimer.control = "start"
 end sub
 
 sub onDebounceTimerFire()
     m.query = m.pendingQuery
     applyFilter()
+    if Len(m.query) >= 1 then m.top.loadMoreRequested = m.query
 end sub
+
+
+sub lockInputBriefly()
+    m.inputLocked = true
+    if m.inputUnlockTimer <> invalid then
+        m.inputUnlockTimer.control = "stop"
+        m.inputUnlockTimer.duration = 2.5
+        m.inputUnlockTimer.control = "start"
+    end if
+end sub
+
+sub onInputUnlockTimerFire()
+    m.inputLocked = false
+end sub
+
+function handleRokuKeyboardKey(key as String) as Boolean
+    if Left(key, 4) = "lit_" then
+        m.query = m.query + Mid(key, 5)
+        m.queryLabel.text = "Buscar: " + m.query
+        lockInputBriefly()
+        scheduleFilter()
+        return true
+    end if
+    if key = "backspace" or key = "delete" then
+        if Len(m.query) > 0 then m.query = Left(m.query, Len(m.query) - 1)
+        m.queryLabel.text = "Buscar: " + m.query
+        lockInputBriefly()
+        scheduleFilter()
+        return true
+    end if
+    return false
+end function
 
 sub updateFocus()
     for r = 0 to m.keyNodes.Count() - 1
@@ -366,16 +409,35 @@ sub updateFocus()
 end sub
 
 function normalizeArray(value as Dynamic) as Object
-    if value <> invalid and Type(value) = "roArray" then return value
-    return []
+    result = []
+    if value = invalid or Type(value) <> "roArray" then return result
+    for each item in value
+        if result.Count() >= 1200 then exit for
+        result.Push(item)
+    end for
+    return result
+end function
+
+function limitArray(items as Dynamic, maxItems as Integer) as Object
+    limited = []
+    if items = invalid or Type(items) <> "roArray" then return limited
+    for each item in items
+        if limited.Count() >= maxItems then exit for
+        limited.Push(item)
+    end for
+    return limited
 end function
 
 function normalizeText(value as Dynamic) as String
-    text = LCase(value.ToStr().Trim())
-    repl = { "á":"a", "à":"a", "â":"a", "ã":"a", "é":"e", "ê":"e", "í":"i", "ó":"o", "ô":"o", "õ":"o", "ú":"u", "ç":"c", "-":" ", ".":" ", "_":" " }
-    for each k in repl : text = text.Replace(k, repl[k]) : end for
-    while Instr(1, text, "  ") > 0 : text = text.Replace("  ", " ") : end while
-    return text.Trim()
+    if value = invalid then return ""
+    raw = LCase(value.ToStr().Trim())
+    raw = raw.Replace(".", " ")
+    raw = raw.Replace("-", " ")
+    raw = raw.Replace("_", " ")
+    raw = raw.Replace(":", " ")
+    raw = raw.Replace(";", " ")
+    raw = raw.Replace(",", " ")
+    return raw.Trim()
 end function
 
 function prefixMatchRank(title as Dynamic, needle as String) as Integer

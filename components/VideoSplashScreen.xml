@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="VideoSplashScreen" extends="Group">
+    <interface>
+        <function name="show" />
+        <function name="hide" />
+        <field id="finished" type="boolean" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/VideoSplashScreen.brs" />
+    <children>
+        <Rectangle id="background" color="#000000" opacity="1" translation="[0,0]" />
+        <Video id="splashVideo" translation="[0,0]" />
+        <Timer id="fallbackTimer" duration="4.5" repeat="false" />
+    </children>
+</component>

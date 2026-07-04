@@ -232,23 +232,33 @@ function getSearchableTitle(item as Dynamic, fallbackName as String) as String
 end function
 
 function normalizeSearchQuery(value as Dynamic) as String
-    text = LCase(value.ToStr().Trim())
-    replacements = {
-        "á":"a", "à":"a", "â":"a", "ã":"a", "ä":"a", "å":"a",
-        "é":"e", "è":"e", "ê":"e", "ë":"e",
-        "í":"i", "ì":"i", "î":"i", "ï":"i",
-        "ó":"o", "ò":"o", "ô":"o", "õ":"o", "ö":"o",
-        "ú":"u", "ù":"u", "û":"u", "ü":"u",
-        "ç":"c", "ñ":"n", "ý":"y", "ÿ":"y",
-        "-":" ", ".":" ", ",":" ", ":":" ", ";":" ", "_":" "
-    }
-    for each key in replacements
-        text = text.Replace(key, replacements[key])
+    if value = invalid then return ""
+    raw = LCase(value.ToStr().Trim())
+    result = ""
+    lastWasSpace = false
+    maxLen = Len(raw)
+    if maxLen > 160 then maxLen = 160
+    for i = 1 to maxLen
+        ch = Mid(raw, i, 1)
+        out = ch
+        if ch = "á" or ch = "à" or ch = "â" or ch = "ã" or ch = "ä" or ch = "å" then out = "a"
+        if ch = "é" or ch = "è" or ch = "ê" or ch = "ë" then out = "e"
+        if ch = "í" or ch = "ì" or ch = "î" or ch = "ï" then out = "i"
+        if ch = "ó" or ch = "ò" or ch = "ô" or ch = "õ" or ch = "ö" then out = "o"
+        if ch = "ú" or ch = "ù" or ch = "û" or ch = "ü" then out = "u"
+        if ch = "ç" then out = "c"
+        if ch = "ñ" then out = "n"
+        if ch = "ý" or ch = "ÿ" then out = "y"
+        if ch = "-" or ch = "." or ch = "," or ch = ":" or ch = ";" or ch = "_" or ch = "	" then out = " "
+        if out = " " then
+            if lastWasSpace = false and result <> "" then result = result + " "
+            lastWasSpace = true
+        else
+            result = result + out
+            lastWasSpace = false
+        end if
     end for
-    while Instr(1, text, "  ") > 0
-        text = text.Replace("  ", " ")
-    end while
-    return text.Trim()
+    return result.Trim()
 end function
 
 sub appendSearchEntries(entries as Object)

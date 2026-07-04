@@ -11,6 +11,7 @@
         <Poster id="globalBackground" uri="pkg:/images/background.jpeg" translation="[0, 0]" loadDisplayMode="scaleToFill" />
         <Rectangle id="globalBackgroundOverlay" color="#000000" opacity="0.32" translation="[0, 0]" />
         <HomeScreen id="homeScreen" visible="false" />
+        <VideoSplashScreen id="videoSplashScreen" visible="false" />
         <SplashScreen id="splashScreen" visible="false" />
         <LoginScreen id="loginScreen" visible="false" />
         <PlaylistAccountsScreen id="playlistAccountsScreen" visible="false" />

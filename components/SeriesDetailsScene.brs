@@ -58,30 +58,30 @@ sub configureLayout()
     m.background.height = h
 
     marginX = 72
-    topY = 48
-    headerH = 454
-    posterW = 232
-    posterH = 348
-    buttonW = 156
-    continueButtonW = 188
-    buttonH = 50
-    episodeW = 178
-    thumbH = 100
-    episodeH = 186
-    episodeGap = 20
+    topY = 46
+    headerH = 620
+    posterW = 320
+    posterH = 480
+    buttonW = 148
+    continueButtonW = 166
+    buttonH = 54
+    episodeW = 230
+    thumbH = 132
+    episodeH = 214
+    episodeGap = 22
     if h <= 720 then
-        marginX = 48
+        marginX = 42
         topY = 30
-        headerH = 336
-        posterW = 164
-        posterH = 246
-        buttonW = 128
-        continueButtonW = 168
-        buttonH = 42
-        episodeW = 138
-        thumbH = 78
-        episodeH = 154
-        episodeGap = 14
+        headerH = 430
+        posterW = 238
+        posterH = 356
+        buttonW = 112
+        continueButtonW = 124
+        buttonH = 44
+        episodeW = 170
+        thumbH = 96
+        episodeH = 142
+        episodeGap = 16
     end if
 
     m.marginX = marginX
@@ -97,7 +97,7 @@ sub configureLayout()
     m.headerPanel.height = headerH
 
     posterX = marginX
-    posterY = topY + 20
+    posterY = topY + 18
     m.posterShadow.translation = [posterX + 8, posterY + 10]
     m.posterShadow.width = posterW
     m.posterShadow.height = posterH
@@ -108,40 +108,55 @@ sub configureLayout()
     m.poster.width = posterW
     m.poster.height = posterH
 
-    contentX = posterX + posterW + 44
+    contentX = posterX + posterW + 56
     contentW = w - contentX - marginX
-    m.titleLabel.translation = [contentX, topY + 12]
+    if h <= 720 then
+        contentX = posterX + posterW + 42
+        contentW = w - contentX - marginX
+    end if
+    m.titleLabel.translation = [contentX, topY + 18]
     m.titleLabel.width = contentW
-    m.titleLabel.height = 62
+    m.titleLabel.height = 64
     m.titleLabel.font = "font:LargeBoldSystemFont"
 
-    m.ratingGenreLabel.translation = [contentX, topY + 76]
+    m.ratingGenreLabel.translation = [contentX, topY + 88]
     m.ratingGenreLabel.width = contentW
     m.ratingGenreLabel.height = 34
     m.ratingGenreLabel.font = "font:MediumSystemFont"
 
-    m.synopsisTitle.translation = [contentX, topY + 124]
+    m.synopsisTitle.translation = [contentX, topY + 138]
     m.synopsisTitle.width = contentW
     m.synopsisTitle.font = "font:MediumBoldSystemFont"
-    m.synopsisLabel.translation = [contentX, topY + 158]
+    m.synopsisLabel.translation = [contentX, topY + 174]
     m.synopsisLabel.width = contentW
-    m.synopsisLabel.height = 112
+    m.synopsisLabel.height = 172
     m.synopsisLabel.font = "font:MediumSystemFont"
+    if h <= 720 then
+        m.titleLabel.translation = [contentX, topY + 10]
+        m.titleLabel.height = 48
+        m.ratingGenreLabel.translation = [contentX, topY + 66]
+        m.synopsisTitle.translation = [contentX, topY + 108]
+        m.synopsisLabel.translation = [contentX, topY + 138]
+        m.synopsisLabel.height = 126
+    end if
 
-    seasonY = topY + 284
-    if h <= 720 then seasonY = topY + 214
+    seasonY = topY + 382
+    if h <= 720 then seasonY = topY + 282
     m.seasonTitle.translation = [contentX, seasonY]
     m.seasonTitle.width = contentW
     m.seasonTitle.font = "font:MediumBoldSystemFont"
-    m.seasonsGroup.translation = [contentX, seasonY + 36]
+    m.seasonsGroup.translation = [contentX, seasonY + 38]
 
-    m.actionsGroup.translation = [contentX, seasonY + 94]
-    if h <= 720 then m.actionsGroup.translation = [contentX, seasonY + 78]
-    actionGap = 28
+    ' Botões agora ficam embaixo do poster principal, como player moderno.
+    actionsY = posterY + posterH + 28
+    if h <= 720 then actionsY = posterY + posterH + 18
+    m.actionsGroup.translation = [posterX, actionsY]
+    actionGap = 18
+    if h <= 720 then actionGap = 12
     setupActionButton(m.playButtonGroup, m.playButtonBg, m.playButtonFocus, m.playButtonLabel, 0, buttonW, buttonH)
     setupActionButton(m.continueButtonGroup, m.continueButtonBg, m.continueButtonFocus, m.continueButtonLabel, buttonW + actionGap, continueButtonW, buttonH)
 
-    episodesTitleY = topY + headerH + 24
+    episodesTitleY = topY + headerH + 22
     m.episodesDivider.translation = [marginX, episodesTitleY - 16]
     m.episodesDivider.width = w - (marginX * 2)
     m.episodesDivider.height = 2
@@ -152,10 +167,13 @@ sub configureLayout()
     m.episodesMoreLabel.width = 46
     m.episodesMoreLabel.height = 32
     m.episodesMoreLabel.font = "font:MediumBoldSystemFont"
-    episodesY = episodesTitleY + 46
+    episodesY = episodesTitleY + 42
+    if h <= 720 then episodesY = episodesTitleY + 38
     m.episodesGroup.translation = [marginX, episodesY]
     m.maxEpisodeCards = Int((w - (marginX * 2) + episodeGap) / (episodeW + episodeGap))
     if m.maxEpisodeCards < 1 then m.maxEpisodeCards = 1
+    if h <= 720 and m.maxEpisodeCards > 6 then m.maxEpisodeCards = 6
+    if h > 720 and m.maxEpisodeCards > 6 then m.maxEpisodeCards = 6
     m.episodesMessageLabel.translation = [marginX, episodesY + 30]
     m.episodesMessageLabel.width = w - (marginX * 2)
     m.episodesMessageLabel.height = 80
@@ -449,19 +467,19 @@ sub renderSeasonButtons()
         group = CreateObject("roSGNode", "Group")
         group.translation = [x, 0]
         bg = CreateObject("roSGNode", "Rectangle")
-        bg.width = 188
-        bg.height = 42
+        bg.width = 176
+        bg.height = 44
         bg.color = "#0B1424"
         border = CreateObject("roSGNode", "Rectangle")
         border.translation = [-3, -3]
-        border.width = 194
-        border.height = 48
+        border.width = 182
+        border.height = 50
         border.color = "#2F80ED"
         border.opacity = 0.65
         label = CreateObject("roSGNode", "Label")
         label.text = m.seasons[i]
-        label.width = 188
-        label.height = 42
+        label.width = 176
+        label.height = 44
         label.horizAlign = "center"
         label.vertAlign = "center"
         label.font = "font:MediumBoldSystemFont"
@@ -470,7 +488,7 @@ sub renderSeasonButtons()
         group.AppendChild(label)
         m.seasonsGroup.AppendChild(group)
         m.seasonNodes.Push({ group: group, bg: bg, border: border, label: label })
-        x = x + 204
+        x = x + 192
     end for
     if m.seasons.Count() > 0 then m.seasonTitle.text = "TEMPORADAS"
 end sub
@@ -704,7 +722,7 @@ end function
 
 sub updateSelectedSeason()
     m.selectedSeason = getSelectedSeason()
-    print "SERIES_DETAILS selectedSeason="; firstText(m.selectedSeason, ["name", "title", "season", "season_number", "number"])
+    ' debug removido para reduzir lentidão no Roku
 end sub
 
 sub updateSelectedEpisodeFromIndex()
@@ -713,11 +731,21 @@ sub updateSelectedEpisodeFromIndex()
         episode = m.episodes[m.selectedEpisodeIndex]
         if episode <> invalid and Type(episode) = "roAssociativeArray" and (not episode.DoesExist("episodes") or episode.episodes = invalid) then m.selectedEpisode = episode
     end if
-    print "SERIES_DETAILS selectedEpisode="; getEpisodeTitle(m.selectedEpisode, m.selectedEpisodeIndex)
+    ' debug removido para reduzir lentidão no Roku
 end sub
 
 function getEpisodeImage(episode as Dynamic) as String
-    return firstText(episode, ["cover", "image", "movie_image", "stream_icon", "info_movie_image", "thumbnail", "thumb"] )
+    image = firstText(episode, ["cover", "image", "movie_image", "stream_icon", "info_movie_image", "thumbnail", "thumb", "cover_big", "backdrop_path"] )
+    if image <> "" then return image
+    if episode <> invalid and Type(episode) = "roAssociativeArray" then
+        for each nestedKey in ["info", "movie_data", "metadata"]
+            if episode.DoesExist(nestedKey) and episode[nestedKey] <> invalid and Type(episode[nestedKey]) = "roAssociativeArray" then
+                image = firstText(episode[nestedKey], ["cover", "image", "movie_image", "stream_icon", "info_movie_image", "thumbnail", "thumb", "cover_big", "backdrop_path"] )
+                if image <> "" then return image
+            end if
+        end for
+    end if
+    return ""
 end function
 
 sub updateContinueButton()
@@ -786,11 +814,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "left" then
         if m.focusArea = "posterButton" and m.selectedArea = 1 then
             m.selectedArea = 0
-        else if m.focusArea = "seasons" and m.selectedSeasonIndex > 0 then
-            m.selectedSeasonIndex = m.selectedSeasonIndex - 1
-            m.selectedEpisodeIndex = 0
-            m.episodeWindowStart = 0
-            setupEpisodes(m.item)
+        else if m.focusArea = "seasons" then
+            ' Temporadas ficam ao lado dos botões: esquerda sempre volta
+            ' para Continuar, se existir, ou Jogar.
+            if m.continueEpisode <> invalid then m.selectedArea = 1 else m.selectedArea = 0
         else if m.focusArea = "episodes" and m.selectedEpisodeIndex > 0 then
             m.selectedEpisodeIndex = m.selectedEpisodeIndex - 1
             ensureEpisodeVisible()
@@ -802,6 +829,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "right" then
         if m.focusArea = "posterButton" and m.selectedArea = 0 and m.continueEpisode <> invalid then
             m.selectedArea = 1
+        else if m.focusArea = "posterButton" and hasSeasons() then
+            ' Depois de Jogar/Continuar, direita entra nas temporadas.
+            m.selectedArea = 2
         else if m.focusArea = "seasons" and m.selectedSeasonIndex < m.seasons.Count() - 1 then
             m.selectedSeasonIndex = m.selectedSeasonIndex + 1
             m.selectedEpisodeIndex = 0
@@ -833,7 +863,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if key = "down" then
         if m.focusArea = "posterButton" then
-            moveFocusToFirstSeason()
+            ' De Jogar/Continuar para baixo vai direto aos episódios.
+            moveFocusToEpisodes()
         else if m.focusArea = "seasons" then
             moveFocusToEpisodes()
         else if m.focusArea = "episodes" then
@@ -932,7 +963,7 @@ sub logFocusState()
     episodeCount = 0
     if m.seasons <> invalid then seasonCount = m.seasons.Count()
     if m.episodes <> invalid then episodeCount = m.episodes.Count()
-    print "SERIES_DETAILS_FOCUS selectedSeasonIndex="; m.selectedSeasonIndex; " seasons.count="; seasonCount; " episodes.count="; episodeCount; " focusArea="; m.focusArea
+    ' debug removido para reduzir lentidão no Roku
 end sub
 
 sub ensureEpisodeVisible()

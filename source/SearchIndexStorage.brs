@@ -1,27 +1,42 @@
 ' Lightweight local search index storage for movies and series.
 function LoadSearchIndexCache() as Object
     section = CreateObject("roRegistrySection", "PXTPlayerSearchIndex")
-    json = section.Read("cache")
+    json = section.Read("cache_v2")
     if json <> invalid and json.Trim() <> "" then
-        data = ParseJson(json)
-        if data <> invalid and Type(data) = "roAssociativeArray" then return normalizeSearchIndexCache(data)
+        trimmed = json.Trim()
+        ' Avoid ParseJson runtime crash when an old registry write was truncated.
+        if Left(trimmed, 1) = "{" and Right(trimmed, 1) = "}" then
+            data = ParseJson(trimmed)
+            if data <> invalid and Type(data) = "roAssociativeArray" then return normalizeSearchIndexCache(data)
+        end if
     end if
     return createEmptySearchIndexCache()
 end function
 
 sub SaveSearchIndexCache(cache as Object)
     section = CreateObject("roRegistrySection", "PXTPlayerSearchIndex")
-    section.Write("cache", FormatJson(limitSearchIndexCacheForRegistry(normalizeSearchIndexCache(cache))))
+    section.Write("cache_v2", FormatJson(limitSearchIndexCacheForRegistry(normalizeSearchIndexCache(cache))))
     section.Flush()
 end sub
 
 function limitSearchIndexCacheForRegistry(cache as Object) as Object
-    ' Registry is only for lightweight startup data. Full 30k+ lists stay in memory/service cache.
-    cache.movies = []
-    cache.series = []
+    ' Registry is only for lightweight startup data. Keep a small global preview
+    ' so Search opens instantly next time, but never persist 30k+ item catalogs.
+    cache.movies = limitRegistryArray(cache.movies, 1000)
+    cache.series = limitRegistryArray(cache.series, 1000)
     cache.movieSearchIndex = []
     cache.seriesSearchIndex = []
     return cache
+end function
+
+function limitRegistryArray(items as Dynamic, maxItems as Integer) as Object
+    result = []
+    if items = invalid or Type(items) <> "roArray" then return result
+    for each item in items
+        if result.Count() >= maxItems then exit for
+        result.Push(item)
+    end for
+    return result
 end function
 
 function createEmptySearchIndexCache() as Object
@@ -47,23 +62,16 @@ function normalizeSearchIndexCache(data as Dynamic) as Object
 end function
 
 function BuildMovieSearchIndexItems(items as Dynamic, categoryId as String) as Object
-    indexed = []
-    if items = invalid or Type(items) <> "roArray" then return indexed
-    for each item in items
-        entry = CreateSearchIndexItem("movie", item, categoryId)
-        if entry <> invalid then indexed.Push(entry)
-    end for
-    return indexed
+    ' Do not build a full search index on the render thread.
+    ' Large Xtream lists can trigger runtime error &h23 (execution timeout).
+    ' MovieSearchScreen receives the raw movie list and filters it itself.
+    return []
 end function
 
 function BuildSeriesSearchIndexItems(items as Dynamic, categoryId as String) as Object
-    indexed = []
-    if items = invalid or Type(items) <> "roArray" then return indexed
-    for each item in items
-        entry = CreateSearchIndexItem("series", item, categoryId)
-        if entry <> invalid then indexed.Push(entry)
-    end for
-    return indexed
+    ' Do not build a full search index on the render thread.
+    ' SeriesSearchScreen receives the raw series list and filters it itself.
+    return []
 end function
 
 function CreateSearchIndexItem(kind as String, item as Dynamic, categoryId as String) as Dynamic
@@ -74,7 +82,7 @@ function CreateSearchIndexItem(kind as String, item as Dynamic, categoryId as St
     return {
         id: streamId,
         title: title,
-        normalizedTitle: NormalizeSearchText(title),
+        normalizedTitle: LCase(title),
         poster: searchIndexPoster(item),
         categoryId: categoryId,
         streamId: streamId,
@@ -84,28 +92,11 @@ function CreateSearchIndexItem(kind as String, item as Dynamic, categoryId as St
 end function
 
 function NormalizeSearchText(value as Dynamic) as String
-    text = LCase(value.ToStr().Trim())
-    while Instr(1, text, "  ") > 0
-        text = text.Replace("  ", " ")
-    end while
-    replacements = {
-        "á":"a", "à":"a", "â":"a", "ã":"a", "ä":"a", "å":"a",
-        "é":"e", "è":"e", "ê":"e", "ë":"e",
-        "í":"i", "ì":"i", "î":"i", "ï":"i",
-        "ó":"o", "ò":"o", "ô":"o", "õ":"o", "ö":"o",
-        "ú":"u", "ù":"u", "û":"u", "ü":"u",
-        "ç":"c", "ñ":"n", "ý":"y", "ÿ":"y",
-        "-":" ", ".":" ", ",":" ", ":":" ", ";":" ", "_":" "
-    }
-    for each key in replacements
-        text = text.Replace(key, replacements[key])
-    end for
-    while Instr(1, text, "  ") > 0
-        text = text.Replace("  ", " ")
-    end while
-    return text.Trim()
+    ' Fast path only. Accent normalization on the render thread caused &h23 timeouts
+    ' on large movie/series lists. Search screens can still filter by lowercase text.
+    if value = invalid then return ""
+    return LCase(value.ToStr().Trim())
 end function
-
 function searchIndexTitle(item as Object) as String
     if item.name <> invalid and item.name.ToStr().Trim() <> "" then return item.name.ToStr()
     if item.title <> invalid and item.title.ToStr().Trim() <> "" then return item.title.ToStr()

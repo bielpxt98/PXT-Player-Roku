@@ -6,13 +6,34 @@
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SplashScreen.brs" />
     <children>
-        <Rectangle id="background" color="#020713" opacity="1" translation="[0,0]" />
-        <Group id="content" translation="[640,330]">
-            <Label id="iconLabel" text="📺" color="#FFFFFF" font="font:LargeBoldSystemFont" horizAlign="center" vertAlign="center" translation="[-80,-110]" width="160" height="120" />
-            <Label id="phaseLabel" text="TV AO VIVO" color="#EAF2FF" font="font:MediumBoldSystemFont" horizAlign="center" translation="[-280,25]" width="560" height="52" opacity="0" />
-            <Label id="brandLabel" text="PXT PLAYER" color="#FFFFFF" font="font:LargeBoldSystemFont" horizAlign="center" translation="[-300,105]" width="600" height="80" opacity="0" />
-            <Label id="statusLabel" text="Carregando lista..." color="#8EA4C7" font="font:SmallSystemFont" horizAlign="center" translation="[-300,190]" width="600" height="38" />
+        <Poster id="background" uri="pkg:/images/background.jpeg" opacity="1" translation="[0,0]" loadDisplayMode="scaleToFill" />
+        <Rectangle id="overlay" color="#000000" opacity="0.55" translation="[0,0]" />
+
+        <Label id="titleLabel" text="Preparando biblioteca" color="#9AA4B5" font="font:MediumSystemFont" horizAlign="center" translation="[0,258]" width="1280" height="40" />
+
+        <Group id="statusGrid" translation="[90,320]">
+            <Rectangle id="box0" color="#FFFFFF" opacity="0.08" width="260" height="112" translation="[0,0]" />
+            <Label id="header0" text="TV AO VIVO" color="#E8ECF5" font="font:SmallBoldSystemFont" horizAlign="center" translation="[0,26]" width="260" height="30" />
+            <Label id="status0" text="Esperando..." color="#9AA4B5" font="font:SmallSystemFont" horizAlign="center" translation="[0,60]" width="260" height="30" />
+
+            <Rectangle id="box1" color="#FFFFFF" opacity="0.08" width="260" height="112" translation="[280,0]" />
+            <Label id="header1" text="FILMES" color="#E8ECF5" font="font:SmallBoldSystemFont" horizAlign="center" translation="[280,26]" width="260" height="30" />
+            <Label id="status1" text="Esperando..." color="#9AA4B5" font="font:SmallSystemFont" horizAlign="center" translation="[280,60]" width="260" height="30" />
+
+            <Rectangle id="box2" color="#FFFFFF" opacity="0.08" width="260" height="112" translation="[560,0]" />
+            <Label id="header2" text="SÉRIES" color="#E8ECF5" font="font:SmallBoldSystemFont" horizAlign="center" translation="[560,26]" width="260" height="30" />
+            <Label id="status2" text="Esperando..." color="#9AA4B5" font="font:SmallSystemFont" horizAlign="center" translation="[560,60]" width="260" height="30" />
+
+            <Rectangle id="box3" color="#FFFFFF" opacity="0.08" width="260" height="112" translation="[840,0]" />
+            <Label id="header3" text="PESQUISA" color="#E8ECF5" font="font:SmallBoldSystemFont" horizAlign="center" translation="[840,26]" width="260" height="30" />
+            <Label id="status3" text="Esperando..." color="#9AA4B5" font="font:SmallSystemFont" horizAlign="center" translation="[840,60]" width="260" height="30" />
         </Group>
-        <Timer id="animationTimer" duration="1.1" repeat="true" />
+
+        <Label id="waitLabel" text="Por favor, aguarde..." color="#8B93A3" font="font:SmallSystemFont" horizAlign="center" translation="[0,498]" width="1280" height="30" />
+
+        <Rectangle id="progressTrack" color="#FFFFFF" opacity="0.12" width="700" height="6" translation="[290,532]" />
+        <Rectangle id="progressFill" color="#5DCAA5" opacity="1" width="0" height="6" translation="[290,532]" />
+
+        <Timer id="tickTimer" duration="0.1" repeat="true" />
     </children>
 </component>

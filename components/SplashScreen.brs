@@ -1,66 +1,76 @@
-' Lightweight startup splash. It owns only presentation and key blocking;
-' MainScene controls bootstrap timing so this screen never keeps the app stuck.
+' "Preparando biblioteca" screen. Shown right after the intro video, while
+' MainScene loads accounts/categories/cache in the background (see
+' startSplashBootstrap in MainScene.brs). It reuses the same background photo
+' as the rest of the app so there is no
+' visual cut/flash when the video splash hands off to this screen, or when
+' this screen hands off to the Home screen.
+' The checklist animation is simulated on a timer -- it does not need to
+' reflect real network progress, it only needs to communicate that the app
+' is getting ready.
 sub Init()
     m.background = m.top.FindNode("background")
-    m.content = m.top.FindNode("content")
-    m.iconLabel = m.top.FindNode("iconLabel")
-    m.phaseLabel = m.top.FindNode("phaseLabel")
-    m.brandLabel = m.top.FindNode("brandLabel")
-    m.statusLabel = m.top.FindNode("statusLabel")
-    m.animationTimer = m.top.FindNode("animationTimer")
-    m.phaseIndex = 0
-    m.phases = [
-        { icon: "📺", label: "TV AO VIVO" },
-        { icon: "🎬", label: "FILMES" },
-        { icon: "▶", label: "SÉRIES" },
-        { icon: "⏯", label: "PLAYER" }
+    m.overlay = m.top.FindNode("overlay")
+    m.tickTimer = m.top.FindNode("tickTimer")
+    m.progressFill = m.top.FindNode("progressFill")
+
+    m.statuses = [
+        { label: m.top.FindNode("status0"), threshold: 0.8, done: false }
+        { label: m.top.FindNode("status1"), threshold: 1.8, done: false }
+        { label: m.top.FindNode("status2"), threshold: 2.8, done: false }
+        { label: m.top.FindNode("status3"), threshold: 3.6, done: false }
     ]
 
     size = CreateObject("roDeviceInfo").GetDisplaySize()
     m.background.width = size.w
     m.background.height = size.h
-    m.content.translation = [size.w / 2, size.h / 2 - 30]
+    m.overlay.width = size.w
+    m.overlay.height = size.h
 
-    m.animationTimer.ObserveField("fire", "onAnimationTick")
+
+    m.totalDuration = 4.0
+    m.maxBarWidth = 700
+    m.elapsed = 0
+
+    m.tickTimer.ObserveField("fire", "onTick")
     m.top.visible = false
 end sub
 
 sub show()
-    m.phaseIndex = 0
+    m.elapsed = 0
+    m.progressFill.width = 0
+
+    for each item in m.statuses
+        item.done = false
+        item.label.text = "Esperando..."
+        item.label.color = "#9AA4B5"
+    end for
+
     m.top.visible = true
     m.top.SetFocus(true)
-    applyPhase()
-    m.statusLabel.text = "Carregando lista..."
-    m.animationTimer.control = "start"
+    m.tickTimer.control = "stop"
+    m.tickTimer.control = "start"
 end sub
 
 sub hide()
-    m.animationTimer.control = "stop"
+    m.tickTimer.control = "stop"
     m.top.visible = false
 end sub
 
-sub onAnimationTick()
-    m.phaseIndex = m.phaseIndex + 1
-    applyPhase()
-end sub
+sub onTick()
+    m.elapsed = m.elapsed + 0.1
+    progress = m.elapsed / m.totalDuration
+    if progress > 1 then progress = 1
+    m.progressFill.width = m.maxBarWidth * progress
 
-sub applyPhase()
-    if m.phaseIndex < m.phases.Count() then
-        phase = m.phases[m.phaseIndex]
-        m.iconLabel.text = phase.icon
-        m.phaseLabel.text = phase.label
-        m.phaseLabel.opacity = 1
-        m.brandLabel.opacity = 0
-        m.iconLabel.rotation = m.iconLabel.rotation + 0.35
-    else
-        m.iconLabel.text = "▶"
-        m.phaseLabel.text = ""
-        m.phaseLabel.opacity = 0
-        m.brandLabel.opacity = 1
-        m.statusLabel.text = "Carregando lista..."
-        m.iconLabel.rotation = m.iconLabel.rotation + 0.35
-        if m.phaseIndex > m.phases.Count() + 1 then m.phaseIndex = 0
-    end if
+    for each item in m.statuses
+        if item.done <> true and m.elapsed >= item.threshold then
+            item.done = true
+            item.label.text = "SUCESSO!"
+            item.label.color = "#5DCAA5"
+        end if
+    end for
+
+    if progress >= 1 then m.tickTimer.control = "stop"
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean

@@ -5,8 +5,10 @@
         <function name="hide" />
         <function name="setMovies" />
         <function name="showMessage" />
+        <function name="setCatalogLoading" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="movieSelected" type="assocarray" alwaysNotify="true" />
+        <field id="loadMoreRequested" type="string" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/MovieSearchScreen.brs" />
     <children>
