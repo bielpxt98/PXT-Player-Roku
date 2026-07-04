@@ -6,6 +6,7 @@ function PlaylistStorageSectionName() as String
 end function
 
 function LoadSavedPlaylist() as Object
+    PRINT "LOGIN_RESTORE_START"
     playlists = LoadSavedPlaylists()
     if playlists.Count() = 0 then
         PRINT "LOGIN_RESTORE_FAILED"
@@ -15,12 +16,12 @@ function LoadSavedPlaylist() as Object
     activeUsername = LoadActivePlaylistUsername()
     for each playlist in playlists
         if safePlaylistText(playlist.username) = activeUsername then
-            PRINT "LOGIN_RESTORE_ACCOUNT"
+            PRINT "LOGIN_RESTORE_SUCCESS"
             return playlist
         end if
     end for
 
-    PRINT "LOGIN_RESTORE_ACCOUNT"
+    PRINT "LOGIN_RESTORE_SUCCESS"
     return playlists[0]
 end function
 
@@ -64,7 +65,7 @@ end function
 
 sub SavePlaylist(playlist as Object)
     if not isStoredPlaylistValid(playlist) then return
-    PRINT "LOGIN_SAVE_ACCOUNT"
+    PRINT "LOGIN_SAVE_SUCCESS"
 
     playlists = LoadSavedPlaylists()
     updated = false
