@@ -111,6 +111,8 @@ sub Init()
     m.bootstrapQueue = []
     m.backendBootstrapStatus = createBackendBootstrapStatus("idle")
     m.backendBootstrapAccountKey = ""
+    m.backendCatalogAccountKey = ""
+    m.backendCatalogCache = invalid
     m.localFavoritesCache = []
     m.localHistoryCache = []
     m.movieListRestoreState = invalid
@@ -1775,6 +1777,13 @@ sub loadMovies(category as Object)
         m.movieListScreen.callFunc("setMovies", m.movies)
         return
     end if
+    if canUseBackendCatalog() then
+        m.movies = filterItemsByCategory(m.cachedMovies, categoryId)
+        m.moviesLoading = false
+        m.movieListScreen.callFunc("setLoading", false)
+        m.movieListScreen.callFunc("setMovies", m.movies)
+        return
+    end if
     if m.isDemoMode = true then
         m.movies = cached
         m.moviesLoading = false
@@ -1803,6 +1812,16 @@ end sub
 
 sub loadMovieCategories(account as Object)
     if m.isDemoMode = true then return
+    if canUseBackendCatalog() then
+        m.movieCategoriesLoading = false
+        if m.movieListScreen.visible = true then
+            m.movieListScreen.callFunc("setLoading", false)
+            m.movieListScreen.callFunc("setCategories", m.movieCategories)
+        end if
+        if m.movieCategoriesScreen.visible = true then m.movieCategoriesScreen.callFunc("setLoading", false)
+        m.homeScreen.callFunc("setMovieCategoriesLoading", false)
+        return
+    end if
     if not beginXtreamRequest("getMovieCategories") then return
     m.movieCategoriesLoading = true
     if m.movieCategoriesScreen.visible = true then
@@ -2140,6 +2159,8 @@ sub resetAccountLoadedData()
     m.searchMovies = []
     m.movieCategoriesLoading = false
     m.moviesLoading = false
+    m.backendCatalogAccountKey = ""
+    m.backendCatalogCache = invalid
 end sub
 
 sub startLoginTimeout()
@@ -2239,11 +2260,108 @@ sub onBackendBootstrapResult()
 
     if result.success = true and result.ok = true then
         m.backendBootstrapStatus = buildBackendBootstrapReadyStatus(result)
+        applyBackendCatalog(result)
         PRINT "BACKEND_BOOTSTRAP_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
     else
         m.backendBootstrapStatus = createBackendBootstrapStatus("error")
         PRINT "BACKEND_BOOTSTRAP_ERROR"
         if result.message <> invalid then PRINT "Backend bootstrap falhou: "; result.message
+    end if
+end sub
+
+sub applyBackendCatalog(result as Object)
+    if result = invalid or result.ok <> true then return
+    if not hasAccount(m.account) then return
+
+    movieCategories = normalizeMovieCategories(result.movieCategories)
+    movies = normalizeMovies(result.movies)
+    seriesCategories = normalizeSeriesCategories(result.seriesCategories)
+    series = normalizeSeries(result.series)
+    if movieCategories.Count() = 0 and movies.Count() = 0 and seriesCategories.Count() = 0 and series.Count() = 0 then return
+
+    m.backendCatalogAccountKey = buildBackendBootstrapAccountKey(m.account)
+    m.backendCatalogCache = {
+        movieCategories: movieCategories,
+        movies: movies,
+        seriesCategories: seriesCategories,
+        series: series
+    }
+
+    if movieCategories.Count() > 0 then m.movieCategories = movieCategories
+    if movies.Count() > 0 then
+        m.cachedMovies = movies
+        m.allMoviesCache = movies
+        m.movieGlobalCatalogLoaded = true
+    end if
+    if seriesCategories.Count() > 0 then m.seriesCategories = seriesCategories
+    if series.Count() > 0 then
+        m.cachedSeries = series
+        m.allSeriesCache = series
+        m.seriesGlobalCatalogLoaded = true
+    end if
+
+    rebuildBackendCatalogIndexes()
+    m.searchIndexCache.movieCategories = m.movieCategories
+    m.searchIndexCache.movies = m.allMoviesCache
+    m.searchIndexCache.seriesCategories = m.seriesCategories
+    m.searchIndexCache.series = m.allSeriesCache
+    SaveSearchIndexCache(m.searchIndexCache)
+
+    refreshCatalogScreensFromBackendCatalog()
+end sub
+
+function canUseBackendCatalog() as Boolean
+    if m.backendBootstrapStatus = invalid or m.backendBootstrapStatus.status <> "ready" then return false
+    if m.backendCatalogCache = invalid then return false
+    if not hasAccount(m.account) then return false
+    return m.backendCatalogAccountKey = buildBackendBootstrapAccountKey(m.account)
+end function
+
+sub rebuildBackendCatalogIndexes()
+    m.movieCategoryIndex = {}
+    m.movieCategoryLoadState = {}
+    if m.cachedMovies <> invalid and Type(m.cachedMovies) = "roArray" then
+        for each item in m.cachedMovies
+            cid = getItemCategoryId(item)
+            if cid <> "" then
+                if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
+                m.movieCategoryIndex[cid].Push(item)
+                m.movieCategoryLoadState[cid] = "LOADED"
+            end if
+        end for
+    end if
+
+    m.seriesCategoryIndex = {}
+    m.seriesCategoryLoadState = {}
+    if m.cachedSeries <> invalid and Type(m.cachedSeries) = "roArray" then
+        for each item in m.cachedSeries
+            cid = getItemCategoryId(item)
+            if cid <> "" then
+                if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
+                m.seriesCategoryIndex[cid].Push(item)
+                m.seriesCategoryLoadState[cid] = "LOADED"
+            end if
+        end for
+    end if
+end sub
+
+sub refreshCatalogScreensFromBackendCatalog()
+    if m.movieListScreen <> invalid and m.movieListScreen.visible = true then
+        m.movieListScreen.callFunc("setLoading", false)
+        m.movieListScreen.callFunc("setCategories", m.movieCategories)
+        if m.selectedMovieCategoryId <> "" then
+            m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
+            m.movieListScreen.callFunc("setMovies", m.movies)
+        end if
+    end if
+    if m.simpleSeriesScreen <> invalid and m.simpleSeriesScreen.visible = true then
+        m.simpleSeriesScreen.callFunc("setLoading", false)
+        m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
+        if m.selectedSeriesCategoryId <> "" then
+            m.simpleSeriesScreen.callFunc("setSeries", filterItemsByCategory(m.cachedSeries, m.selectedSeriesCategoryId))
+        else
+            m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
+        end if
     end if
 end sub
 
@@ -2267,7 +2385,7 @@ function buildBackendBootstrapReadyStatus(result as Object) as Object
 end function
 
 function buildBackendBootstrapAccountKey(account as Object) as String
-    return account.dns.ToStr().Trim() + "|" + account.username.ToStr().Trim()
+    return account.dns.ToStr().Trim() + "|" + account.username.ToStr().Trim() + "|" + account.password.ToStr().Trim()
 end function
 
 function safeCount(value as Dynamic) as Integer
@@ -2566,6 +2684,13 @@ end sub
 
 sub loadSeriesCategoriesForCurrentScreen()
     if not hasAccount(m.account) then return
+    if canUseBackendCatalog() then
+        if m.simpleSeriesScreen.visible = true then
+            m.simpleSeriesScreen.callFunc("setLoading", false)
+            m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
+        end if
+        return
+    end if
     if beginXtreamRequest("getSeriesCategories") then
         m.seriesCategoriesLoading = true
         m.xtreamService.control = "STOP"
@@ -2711,6 +2836,11 @@ sub loadSeries(category as Object)
     if m.isDemoMode = true then
         m.simpleSeriesScreen.callFunc("setLoading", false)
         m.simpleSeriesScreen.callFunc("setSeries", cached)
+        return
+    end if
+    if canUseBackendCatalog() then
+        m.simpleSeriesScreen.callFunc("setLoading", false)
+        m.simpleSeriesScreen.callFunc("setSeries", filterItemsByCategory(m.cachedSeries, categoryId))
         return
     end if
     if not hasAccount(m.account) or m.isLoadingRequest = true then return
