@@ -7,13 +7,20 @@ end function
 
 function LoadSavedPlaylist() as Object
     playlists = LoadSavedPlaylists()
-    if playlists.Count() = 0 then return invalid
+    if playlists.Count() = 0 then
+        PRINT "LOGIN_RESTORE_FAILED"
+        return invalid
+    end if
 
     activeUsername = LoadActivePlaylistUsername()
     for each playlist in playlists
-        if safePlaylistText(playlist.username) = activeUsername then return playlist
+        if safePlaylistText(playlist.username) = activeUsername then
+            PRINT "LOGIN_RESTORE_ACCOUNT"
+            return playlist
+        end if
     end for
 
+    PRINT "LOGIN_RESTORE_ACCOUNT"
     return playlists[0]
 end function
 
@@ -57,6 +64,7 @@ end function
 
 sub SavePlaylist(playlist as Object)
     if not isStoredPlaylistValid(playlist) then return
+    PRINT "LOGIN_SAVE_ACCOUNT"
 
     playlists = LoadSavedPlaylists()
     updated = false

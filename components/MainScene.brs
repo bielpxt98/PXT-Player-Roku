@@ -214,7 +214,7 @@ sub startInitialFlow()
         setBootState("reconnecting")
         updateConnectionStatus(false, "Conectando...")
     else
-        if m.account <> invalid then DeleteSavedPlaylist()
+        if m.account <> invalid then PRINT "LOGIN_RESTORE_FAILED"
         m.account = invalid
         setBootState("error")
         updateConnectionStatus(false, "Nenhuma playlist conectada")
@@ -250,7 +250,7 @@ sub onAutoConnectTimerFire()
 
     if not hasAccount(m.account) then
         m.account = invalid
-        DeleteSavedPlaylist()
+        PRINT "LOGIN_RESTORE_FAILED"
         updateConnectionStatus(false, "Nenhuma playlist conectada")
         showPlaylistAccounts()
         return
@@ -1318,7 +1318,6 @@ sub onLoginSubmit()
         m.isDemoMode = false
         m.loginErrorActive = false
         m.account = invalid
-        DeleteSavedPlaylist()
         resetAccountLoadedData()
         updateConnectionStatus(false, "Nenhuma playlist conectada")
         showHome()
