@@ -69,7 +69,7 @@ sub Init()
     m.searchChannels = []
     m.searchMovies = []
     m.searchLoadStep = ""
-    m.searchIndexCache = LoadSearchIndexCache()
+    m.searchIndexCache = LoadSearchIndexCache(m.account)
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
@@ -828,13 +828,23 @@ sub onBackendSearchResult()
         PRINT "SEARCH_REQUEST_APPLY id="; requestId; " query="; query
         PRINT "BACKEND_SEARCH_READY type="; searchType; " query="; query; " count="; items.Count()
         if searchType = "movies" then
-            if items.Count() > 0 then m.allMoviesCache = mergeUniqueItems(items, m.allMoviesCache, "movies")
+            if items.Count() > 0 then
+                m.allMoviesCache = mergeUniqueItems(items, m.allMoviesCache, "movies")
+                m.searchIndexCache.lastMovieSearchResults = items
+                m.searchIndexCache.movies = getMoviesForSearch()
+                saveLocalSearchIndexCache()
+            end if
             if m.movieSearchScreen <> invalid and m.movieSearchScreen.visible = true then
                 m.movieSearchScreen.callFunc("setCatalogLoading", false)
                 m.movieSearchScreen.callFunc("setBackendSearchResults", items)
             end if
         else if searchType = "series" then
-            if items.Count() > 0 then m.allSeriesCache = mergeUniqueItems(items, m.allSeriesCache, "series")
+            if items.Count() > 0 then
+                m.allSeriesCache = mergeUniqueItems(items, m.allSeriesCache, "series")
+                m.searchIndexCache.lastSeriesSearchResults = items
+                m.searchIndexCache.series = getSeriesForSearch()
+                saveLocalSearchIndexCache()
+            end if
             if m.seriesSearchScreen <> invalid and m.seriesSearchScreen.visible = true then
                 m.seriesSearchScreen.callFunc("setCatalogLoading", false)
                 m.seriesSearchScreen.callFunc("setBackendSearchResults", items)
@@ -889,6 +899,7 @@ function getMoviesForSearch() as Object
     preview = flattenPreviewCache(m.movieCategoryPreviewCache, "movies")
     if preview <> invalid and Type(preview) = "roArray" and preview.Count() > 0 then source = mergeUniqueItems(source, preview, "movies")
     if m.allMoviesCache <> invalid and Type(m.allMoviesCache) = "roArray" and m.allMoviesCache.Count() > 0 then source = mergeUniqueItems(source, m.allMoviesCache, "movies")
+    if (source = invalid or source.Count() = 0) and m.searchIndexCache.lastMovieSearchResults <> invalid and Type(m.searchIndexCache.lastMovieSearchResults) = "roArray" then source = m.searchIndexCache.lastMovieSearchResults
     if (source = invalid or source.Count() = 0) and m.cachedMovies <> invalid and Type(m.cachedMovies) = "roArray" then source = m.cachedMovies
     if (source = invalid or source.Count() = 0) and m.movies <> invalid and Type(m.movies) = "roArray" then source = m.movies
     return buildSearchPreviewByCategory(source, 10, 1200, "movies")
@@ -904,6 +915,7 @@ function getSeriesForSearch() as Object
     preview = flattenPreviewCache(m.seriesCategoryPreviewCache, "series")
     if preview <> invalid and Type(preview) = "roArray" and preview.Count() > 0 then source = mergeUniqueItems(source, preview, "series")
     if m.allSeriesCache <> invalid and Type(m.allSeriesCache) = "roArray" and m.allSeriesCache.Count() > 0 then source = mergeUniqueItems(source, m.allSeriesCache, "series")
+    if (source = invalid or source.Count() = 0) and m.searchIndexCache.lastSeriesSearchResults <> invalid and Type(m.searchIndexCache.lastSeriesSearchResults) = "roArray" then source = m.searchIndexCache.lastSeriesSearchResults
     if (source = invalid or source.Count() = 0) and m.cachedSeries <> invalid and Type(m.cachedSeries) = "roArray" then source = m.cachedSeries
     return buildSearchPreviewByCategory(source, 10, 1200, "series")
 end function
@@ -1151,7 +1163,7 @@ sub finishSearchIndexTypeIfDone(indexType as String)
         if m.seriesSearchScreen.visible = true then m.seriesSearchScreen.callFunc("setCatalogLoading", false)
     end if
     m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
-    SaveSearchIndexCache(m.searchIndexCache)
+    saveLocalSearchIndexCache()
     PRINT "SEARCH_FINISHED"
 end sub
 
@@ -1541,7 +1553,9 @@ end sub
 sub onAccountRemoveRequested()
     stopLoginTimeout()
     cancelLoginRequest()
+    removedAccount = m.account
     DeleteSavedPlaylist()
+    DeleteSearchIndexCache(removedAccount)
     m.savedPlaylists = []
     m.account = invalid
     m.pendingAccount = invalid
@@ -1754,6 +1768,11 @@ sub onMoviePlayerBack()
         duration = m.moviePlayerScreen.callFunc("getPlaybackDuration")
     end if
     UpsertMovieHistory(m.selectedMovie, position, duration)
+    m.localHistoryCache = LoadViewingHistory()
+    if m.searchIndexCache <> invalid then
+        m.searchIndexCache.lastWatchedMovies = m.localHistoryCache.movies
+        saveLocalSearchIndexCache()
+    end if
 
     if m.moviePlayerScreen <> invalid then
         m.moviePlayerScreen.callFunc("hide")
@@ -2607,7 +2626,7 @@ sub applyBackendCatalog(result as Object)
     m.searchIndexCache.movies = m.allMoviesCache
     m.searchIndexCache.seriesCategories = m.seriesCategories
     m.searchIndexCache.series = m.allSeriesCache
-    SaveSearchIndexCache(m.searchIndexCache)
+    saveLocalSearchIndexCache()
 
     PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
     PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
@@ -2740,7 +2759,7 @@ sub continueBootstrapIfNeeded()
 end sub
 
 sub loadLocalSearchIndexCache()
-    m.searchIndexCache = LoadSearchIndexCache()
+    m.searchIndexCache = LoadSearchIndexCache(m.account)
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
     m.cachedMovies = m.searchIndexCache.movies
@@ -2759,6 +2778,7 @@ sub loadLocalSearchIndexCache()
     if m.searchIndexCache.movieCategories.Count() > 0 then
         m.movieCategories = m.searchIndexCache.movieCategories
         PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
+        PRINT "MOVIE_CATEGORIES_CACHE_RESTORED"
         PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
     end if
     if m.searchIndexCache.movies.Count() > 0 then
@@ -2768,6 +2788,7 @@ sub loadLocalSearchIndexCache()
     if m.searchIndexCache.seriesCategories.Count() > 0 then
         m.seriesCategories = m.searchIndexCache.seriesCategories
         PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
+        PRINT "SERIES_CATEGORIES_CACHE_RESTORED"
         PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
     end if
     if m.searchIndexCache.series.Count() > 0 then
@@ -2800,9 +2821,20 @@ sub loadLocalSearchIndexCache()
     end if
     if hasValidLocalCatalogData() then
         PRINT "LOCAL_CACHE_HIT"
+        PRINT "USER_CACHE_RESTORE_OK"
+        if (m.cachedMovies <> invalid and m.cachedMovies.Count() > 0) or (m.cachedSeries <> invalid and m.cachedSeries.Count() > 0) then PRINT "SEARCH_INITIAL_CACHE_RESTORED"
     else
         PRINT "LOCAL_CACHE_EMPTY"
+        PRINT "USER_CACHE_EMPTY"
     end if
+end sub
+
+sub saveLocalSearchIndexCache()
+    if m.searchIndexCache = invalid then return
+    if hasAccount(m.account) then m.searchIndexCache.accountKey = buildBackendBootstrapAccountKey(m.account)
+    if m.localHistoryCache <> invalid and m.localHistoryCache.movies <> invalid then m.searchIndexCache.lastWatchedMovies = m.localHistoryCache.movies
+    m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
+    SaveSearchIndexCache(m.searchIndexCache, m.account)
 end sub
 
 sub startBackgroundCatalogCache()
@@ -2949,7 +2981,7 @@ function handleSearchIndexResult(result as Object) as Boolean
             end if
             PRINT "SEARCH_CATEGORY_LOADED"
         end if
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
     else
         if kind = "movies" and m.searchIndexCategoryId = "" then m.movieGlobalCatalogRequested = false
         if kind = "series" and m.searchIndexCategoryId = "" then m.seriesGlobalCatalogRequested = false
@@ -3058,7 +3090,7 @@ sub onSeriesCategoriesResult(result as Object)
         PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
         if m.seriesCategories.Count() = 0 then PRINT "CATEGORIES_EMPTY series"
         m.searchIndexCache.seriesCategories = m.seriesCategories
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
         if m.simpleSeriesScreen.visible = true then
             m.simpleSeriesScreen.callFunc("setLoading", false)
             m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
@@ -3075,13 +3107,13 @@ sub onSeriesResult(result as Object)
             m.allSeriesCache = mergeUniqueItems(m.allSeriesCache, fresh, "series")
             m.cachedSeries = m.allSeriesCache
             m.searchIndexCache.series = m.allSeriesCache
-            SaveSearchIndexCache(m.searchIndexCache)
+            saveLocalSearchIndexCache()
         else
             m.cachedSeries = replaceCachedCategoryItems(m.cachedSeries, fresh, resultCategoryId)
             m.allSeriesCache = mergeUniqueItems(m.allSeriesCache, fresh, "series")
             m.seriesCategoryLoadState[resultCategoryId] = "LOADED"
             m.searchIndexCache.series = m.allSeriesCache
-            SaveSearchIndexCache(m.searchIndexCache)
+            saveLocalSearchIndexCache()
         end if
         ' Keep category index incremental. Rebuilding the whole index on the
         ' render thread after every category/global result causes mini freezes.
@@ -3364,7 +3396,7 @@ sub onLiveCategoriesResult(result as Object)
         clearAccountReconnectError()
         m.liveCategories = normalizeLiveCategories(result.data)
         m.searchIndexCache.liveCategories = m.liveCategories
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
         if m.liveChannelsScreen.visible = true then
             m.liveChannelsScreen.callFunc("setCategories", m.liveCategories)
             m.liveChannelsScreen.callFunc("showMessage", "Escolha uma categoria para carregar os canais.")
@@ -3388,7 +3420,7 @@ sub onLiveChannelsResult(result as Object)
         clearAccountReconnectError()
         m.cachedLiveChannels = normalizeLiveChannels(result.data)
         m.searchIndexCache.liveChannels = m.cachedLiveChannels
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
         m.liveChannels = filterItemsByCategory(m.cachedLiveChannels, m.selectedLiveCategoryId)
         if m.liveChannelsScreen.visible = true then m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
     else if m.liveChannelsScreen.visible = true then
@@ -3416,7 +3448,7 @@ sub onMovieCategoriesResult(result as Object)
         PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
         if m.movieCategories.Count() = 0 then PRINT "CATEGORIES_EMPTY movies"
         m.searchIndexCache.movieCategories = m.movieCategories
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
         if m.movieListScreen.visible = true then
             m.movieListScreen.callFunc("setCategories", m.movieCategories)
             m.movieListScreen.callFunc("showMessage", "Escolha uma categoria para carregar os filmes.")
@@ -3449,7 +3481,7 @@ sub onMoviesResult(result as Object)
         m.searchIndexCache.movies = getMoviesForSearch()
         m.movieSearchIndex = []
         m.searchIndexCache.movieSearchIndex = []
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
         if resultCategoryId <> "" then addItemsToMovieCategoryIndex(fresh)
         if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[m.selectedMovieCategoryId] <> invalid then m.movies = m.movieCategoryIndex[m.selectedMovieCategoryId] else m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
@@ -3833,7 +3865,7 @@ sub processNextPreviewRequest()
         m.searchIndexCache.movieCategories = m.movieCategories
         m.searchIndexCache.seriesCategories = m.seriesCategories
         m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
         PRINT "SERIES_PRELOAD_READY"
         PRINT "MOVIES_PRELOAD_READY"
         return
@@ -3876,7 +3908,7 @@ function handlePreviewCacheResult(result as Object) as Boolean
             m.seriesCategoryPreviewCache = upsertCategoryPreview(m.seriesCategoryPreviewCache, category, normalizeSeries(result.data), "series")
             m.searchIndexCache.seriesCategoryPreviewCache = m.seriesCategoryPreviewCache
         end if
-        SaveSearchIndexCache(m.searchIndexCache)
+        saveLocalSearchIndexCache()
     end if
     processNextPreviewRequest()
     return true

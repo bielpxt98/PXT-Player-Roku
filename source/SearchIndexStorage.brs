@@ -1,7 +1,13 @@
 ' Lightweight local search index storage for movies and series.
-function LoadSearchIndexCache() as Object
+function LoadSearchIndexCache(account as Dynamic) as Object
     section = CreateObject("roRegistrySection", "PXTPlayerSearchIndex")
-    json = section.Read("cache_v2")
+    key = buildUserSearchIndexCacheKey(account)
+    json = section.Read(key)
+    if json = invalid then
+        if key = "cache_v2" then json = section.Read("cache_v2")
+    else if json.Trim() = "" and key = "cache_v2" then
+        json = section.Read("cache_v2")
+    end if
     if json <> invalid and json.Trim() <> "" then
         trimmed = json.Trim()
         ' Avoid ParseJson runtime crash when an old registry write was truncated.
@@ -13,17 +19,38 @@ function LoadSearchIndexCache() as Object
     return createEmptySearchIndexCache()
 end function
 
-sub SaveSearchIndexCache(cache as Object)
+sub SaveSearchIndexCache(cache as Object, account as Dynamic)
     section = CreateObject("roRegistrySection", "PXTPlayerSearchIndex")
-    section.Write("cache_v2", FormatJson(limitSearchIndexCacheForRegistry(normalizeSearchIndexCache(cache))))
+    key = buildUserSearchIndexCacheKey(account)
+    normalized = limitSearchIndexCacheForRegistry(normalizeSearchIndexCache(cache))
+    existing = LoadSearchIndexCache(account)
+    if isSearchIndexCacheEmpty(normalized) then
+        PRINT "USER_CACHE_EMPTY"
+        if not isSearchIndexCacheEmpty(existing) then
+            PRINT "USER_CACHE_SKIP_EMPTY_OVERWRITE"
+            return
+        end if
+    end if
+    section.Write(key, FormatJson(normalized))
+    section.Flush()
+    PRINT "USER_CACHE_SAVE_OK"
+end sub
+
+sub DeleteSearchIndexCache(account as Dynamic)
+    section = CreateObject("roRegistrySection", "PXTPlayerSearchIndex")
+    key = buildUserSearchIndexCacheKey(account)
+    if section.Exists(key) then section.Delete(key)
     section.Flush()
 end sub
 
 function limitSearchIndexCacheForRegistry(cache as Object) as Object
     ' Registry is only for lightweight startup data. Keep a small global preview
     ' so Search opens instantly next time, but never persist 30k+ item catalogs.
-    cache.movies = limitRegistryArray(cache.movies, 1000)
-    cache.series = limitRegistryArray(cache.series, 1000)
+    cache.movies = limitRegistryArray(cache.movies, 50)
+    cache.series = limitRegistryArray(cache.series, 50)
+    cache.lastMovieSearchResults = limitRegistryArray(cache.lastMovieSearchResults, 50)
+    cache.lastSeriesSearchResults = limitRegistryArray(cache.lastSeriesSearchResults, 50)
+    cache.lastWatchedMovies = limitRegistryArray(cache.lastWatchedMovies, 50)
     cache.movieSearchIndex = []
     cache.seriesSearchIndex = []
     return cache
@@ -40,7 +67,7 @@ function limitRegistryArray(items as Dynamic, maxItems as Integer) as Object
 end function
 
 function createEmptySearchIndexCache() as Object
-    return { liveCategories: [], liveChannels: [], movieCategories: [], movies: [], seriesCategories: [], series: [], seriesInfo: {}, movieSearchIndex: [], seriesSearchIndex: [], movieCategoryPreviewCache: [], seriesCategoryPreviewCache: [], updatedAt: "" }
+    return { liveCategories: [], liveChannels: [], movieCategories: [], movies: [], seriesCategories: [], series: [], seriesInfo: {}, movieSearchIndex: [], seriesSearchIndex: [], movieCategoryPreviewCache: [], seriesCategoryPreviewCache: [], lastMovieSearchResults: [], lastSeriesSearchResults: [], lastWatchedMovies: [], accountKey: "", updatedAt: "" }
 end function
 
 function normalizeSearchIndexCache(data as Dynamic) as Object
@@ -57,6 +84,10 @@ function normalizeSearchIndexCache(data as Dynamic) as Object
     if data.seriesSearchIndex <> invalid and Type(data.seriesSearchIndex) = "roArray" then normalized.seriesSearchIndex = data.seriesSearchIndex
     if data.movieCategoryPreviewCache <> invalid and Type(data.movieCategoryPreviewCache) = "roArray" then normalized.movieCategoryPreviewCache = data.movieCategoryPreviewCache
     if data.seriesCategoryPreviewCache <> invalid and Type(data.seriesCategoryPreviewCache) = "roArray" then normalized.seriesCategoryPreviewCache = data.seriesCategoryPreviewCache
+    if data.lastMovieSearchResults <> invalid and Type(data.lastMovieSearchResults) = "roArray" then normalized.lastMovieSearchResults = data.lastMovieSearchResults
+    if data.lastSeriesSearchResults <> invalid and Type(data.lastSeriesSearchResults) = "roArray" then normalized.lastSeriesSearchResults = data.lastSeriesSearchResults
+    if data.lastWatchedMovies <> invalid and Type(data.lastWatchedMovies) = "roArray" then normalized.lastWatchedMovies = data.lastWatchedMovies
+    if data.accountKey <> invalid then normalized.accountKey = data.accountKey.ToStr()
     if data.updatedAt <> invalid then normalized.updatedAt = data.updatedAt.ToStr()
     return normalized
 end function
@@ -121,4 +152,38 @@ end function
 function searchIndexField(item as Object, fieldName as String) as String
     if item.DoesExist(fieldName) and item[fieldName] <> invalid then return item[fieldName].ToStr()
     return ""
+end function
+
+
+function buildUserSearchIndexCacheKey(account as Dynamic) as String
+    if account = invalid or Type(account) <> "roAssociativeArray" then return "cache_v2"
+    dns = "" : username = ""
+    if account.dns <> invalid then dns = account.dns.ToStr()
+    if account.username <> invalid then username = account.username.ToStr()
+    base = LCase(dns.Trim() + "|" + username.Trim())
+    if base = "|" then return "cache_v2"
+    return "user_cache_v3_" + safeRegistryKey(base)
+end function
+
+function safeRegistryKey(value as String) as String
+    result = ""
+    for i = 1 to Len(value)
+        ch = Mid(value, i, 1)
+        code = Asc(ch)
+        if (code >= 48 and code <= 57) or (code >= 97 and code <= 122) then
+            result = result + ch
+        else
+            result = result + "_" + code.ToStr() + "_"
+        end if
+    end for
+    return result
+end function
+
+function isSearchIndexCacheEmpty(cache as Dynamic) as Boolean
+    if cache = invalid or Type(cache) <> "roAssociativeArray" then return true
+    fields = ["liveCategories", "liveChannels", "movieCategories", "movies", "seriesCategories", "series", "movieCategoryPreviewCache", "seriesCategoryPreviewCache", "lastMovieSearchResults", "lastSeriesSearchResults", "lastWatchedMovies"]
+    for each field in fields
+        if cache[field] <> invalid and Type(cache[field]) = "roArray" and cache[field].Count() > 0 then return false
+    end for
+    return true
 end function
