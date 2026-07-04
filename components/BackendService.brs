@@ -80,15 +80,16 @@ function bootstrapViaBackend() as Object
     end if
 
     if parsed.ok = true then
+        data = getBackendCatalogData(parsed)
         return {
             success: true,
             connected: true,
             request: "backendBootstrap",
             ok: true,
-            movieCategories: getBackendCount(parsed, "movieCategories"),
-            movies: getBackendCount(parsed, "movies"),
-            seriesCategories: getBackendCount(parsed, "seriesCategories"),
-            series: getBackendCount(parsed, "series"),
+            movieCategories: getBackendCatalogArray(data, ["movieCategories", "vodCategories", "categoriesMovies"]),
+            movies: getBackendCatalogArray(data, ["movies", "vod", "movieStreams"]),
+            seriesCategories: getBackendCatalogArray(data, ["seriesCategories", "categoriesSeries"]),
+            series: getBackendCatalogArray(data, ["series", "seriesStreams"]),
             message: "Bootstrap pronto."
         }
     end if
@@ -157,6 +158,21 @@ function buildBackendBootstrapFailure(message as String) as Object
         series: 0,
         message: message
     }
+end function
+
+function getBackendCatalogData(parsed as Object) as Dynamic
+    if parsed.data <> invalid and Type(parsed.data) = "roAssociativeArray" then return parsed.data
+    if parsed.catalog <> invalid and Type(parsed.catalog) = "roAssociativeArray" then return parsed.catalog
+    return parsed
+end function
+
+function getBackendCatalogArray(data as Dynamic, keys as Object) as Object
+    empty = []
+    if data = invalid then return empty
+    for each key in keys
+        if data[key] <> invalid and Type(data[key]) = "roArray" then return data[key]
+    end for
+    return empty
 end function
 
 function getBackendCount(parsed as Object, key as String) as Integer
