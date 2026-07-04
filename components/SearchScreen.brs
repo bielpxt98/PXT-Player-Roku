@@ -17,7 +17,7 @@ sub Init()
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
-    m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = "" : m.pendingSearchText = "" : m.searchText = ""
+    m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = "" : m.lastSearchText = "" : m.pendingSearchText = "" : m.searchText = ""
     m.resultBatchSize = 80 : m.renderedResultLimit = 80 : m.maxSearchResults = 100
     m.searchMode = "live"
     m.searchLetters = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"] ]
@@ -66,7 +66,7 @@ sub show(mode as Dynamic)
     configureSearchLabels()
     m.top.visible = true : m.top.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
-    m.searchInput.text = "" : m.pendingSearchText = "" : m.searchText = "" : m.queryMirror.text = "Buscar: "
+    m.searchInput.text = "" : m.pendingSearchText = "" : m.searchText = "" : m.lastSearchText = "" : m.queryMirror.text = "Buscar: "
     m.searchFocusArea = "keyboardLetters" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.searchResultOffset = 0
     renderKeyboard()
     applyFilter()
@@ -74,7 +74,15 @@ sub show(mode as Dynamic)
 end sub
 
 sub hide()
+    resetSearchStateOnExit()
     m.top.visible = false
+end sub
+
+sub resetSearchStateOnExit()
+    if m.searchDebounceTimer <> invalid then m.searchDebounceTimer.control = "stop"
+    m.pendingSearchText = ""
+    PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
+    PRINT "SEARCH_STATE_RESET_ON_EXIT"
 end sub
 
 sub setLoading(isLoading as Boolean)
@@ -146,13 +154,15 @@ end sub
 
 sub onSearchTextChanged()
     newText = m.searchInput.text
-    if newText = m.pendingSearchText then
-        PRINT "SEARCH_TEXT_UNCHANGED"
+    if newText = m.pendingSearchText or newText = m.lastSearchText then
+        PRINT "SEARCH_BLOCKED_SAME_TEXT"
         return
     end if
     m.pendingSearchText = newText
+    m.lastSearchText = newText
     m.searchText = newText
     m.queryMirror.text = "Buscar: " + newText
+    PRINT "SEARCH_TEXT_CHANGED_ONLY_ON_INPUT"
     PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE"
     m.searchDebounceTimer.control = "stop"
@@ -161,10 +171,18 @@ sub onSearchTextChanged()
 end sub
 
 sub onSearchDebounceFire()
+    if m.top.visible <> true then
+        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        return
+    end if
     applyFilter()
 end sub
 
 sub applyFilter()
+    if m.top.visible <> true then
+        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        return
+    end if
     query = normalizeSearchQuery(m.searchInput.text)
 
     ' Always rebuild results from the current source list. Filtering previously

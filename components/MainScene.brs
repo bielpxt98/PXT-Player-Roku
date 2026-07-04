@@ -116,6 +116,7 @@ sub Init()
     m.backendSearchRequestId = 0
     m.backendSearchLatestRequestId = 0
     m.backendSearchLastKey = ""
+    m.backendSearchActiveRequestId = 0
     m.backendBootstrapAccountKey = ""
     m.backendCatalogAccountKey = ""
     m.backendCatalogCache = invalid
@@ -641,6 +642,7 @@ sub onSeriesSearchRequested()
 end sub
 
 sub onMovieSearchBack()
+    resetBackendSearchStateOnExit("movies")
     ' Movie search must return to the real Movies catalog screen.
     ' The app currently uses MovieListScreen for the Movies area; returning to
     ' MovieCategoriesScreen leaves a dead/empty screen with only title/background.
@@ -679,6 +681,7 @@ sub onMovieSearchMovieSelected()
     m.movieSearchRestoreState = m.movieSearchScreen.callFunc("getState")
     m.selectedMovie = normalizeMovieFromSearch(movie)
     m.openedFromSearch = true
+    resetBackendSearchStateOnExit("movies")
     m.movieSearchScreen.callFunc("hide")
     m.movieDetailScreen.callFunc("show", m.selectedMovie)
     m.movieDetailScreen.callFunc("setDetails", m.selectedMovie)
@@ -691,6 +694,7 @@ sub onMovieSearchMovieSelected()
 end sub
 
 sub onSeriesSearchBack()
+    resetBackendSearchStateOnExit("series")
     m.seriesSearchScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("show")
 end sub
@@ -702,6 +706,7 @@ sub onSeriesSearchSeriesSelected()
     m.seriesSearchRestoreState = m.seriesSearchScreen.callFunc("getState")
     m.selectedSeries = normalizeSeriesFromSearch(series)
     m.openedFromSearch = true
+    resetBackendSearchStateOnExit("series")
     m.seriesSearchScreen.callFunc("hide")
     setSeriesDetailsCredentials()
     m.seriesDetailsScreen.callFunc("show", m.selectedSeries)
@@ -757,6 +762,10 @@ sub onSeriesSearchNeedsMore()
 end sub
 
 sub startBackendSearch(query as String, searchType as String)
+    if not isSearchScreenActive(searchType) then
+        PRINT "SEARCH_BLOCKED_CATEGORY_FOCUS"
+        return
+    end if
     if m.backendSearchService = invalid or not hasAccount(m.account) then
         PRINT "BACKEND_SEARCH_CACHE_EMPTY"
         useBackendSearchFallback(query, searchType)
@@ -765,7 +774,10 @@ sub startBackendSearch(query as String, searchType as String)
     cleanQuery = safeText(query)
     if cleanQuery = "" then return
     searchKey = searchType + "|" + cleanQuery
-    if searchKey = m.backendSearchLastKey then return
+    if searchKey = m.backendSearchLastKey then
+        PRINT "SEARCH_BLOCKED_SAME_TEXT"
+        return
+    end if
     m.backendSearchLastKey = searchKey
     m.backendSearchRequestId = m.backendSearchRequestId + 1
     m.backendSearchLatestRequestId = m.backendSearchRequestId
@@ -800,6 +812,11 @@ sub onBackendSearchResult()
     requestId = result.requestId
     if requestId = invalid then requestId = 0
     if requestId = 0 then requestId = m.backendSearchActiveRequestId
+
+    if not isSearchScreenActive(searchType) then
+        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        return
+    end if
     if requestId <> m.backendSearchLatestRequestId then
         PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
         return
@@ -827,6 +844,28 @@ sub onBackendSearchResult()
         PRINT "BACKEND_SEARCH_ERROR type="; searchType; " query="; query
         useBackendSearchFallback(query, searchType)
     end if
+end sub
+
+function isSearchScreenActive(searchType as String) as Boolean
+    if searchType = "movies" then return m.movieSearchScreen <> invalid and m.movieSearchScreen.visible = true
+    if searchType = "series" then return m.seriesSearchScreen <> invalid and m.seriesSearchScreen.visible = true
+    return m.searchScreen <> invalid and m.searchScreen.visible = true
+end function
+
+sub resetBackendSearchStateOnExit(searchType as String)
+    m.backendSearchRequestId = m.backendSearchRequestId + 1
+    m.backendSearchLatestRequestId = m.backendSearchRequestId
+    m.backendSearchActiveRequestId = m.backendSearchRequestId
+    if m.backendSearchActiveType = searchType then
+        m.backendSearchActiveType = ""
+        m.backendSearchActiveQuery = ""
+    end if
+    m.backendSearchLastKey = ""
+    if m.backendSearchService <> invalid then m.backendSearchService.control = "STOP"
+    if searchType = "movies" and m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("setCatalogLoading", false)
+    if searchType = "series" and m.seriesSearchScreen <> invalid then m.seriesSearchScreen.callFunc("setCatalogLoading", false)
+    PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
+    PRINT "SEARCH_STATE_RESET_ON_EXIT"
 end sub
 
 sub useBackendSearchFallback(query as String, searchType as String)

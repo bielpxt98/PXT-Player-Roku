@@ -12,7 +12,7 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = [] : m.preloadPosters = [] : m.posterPoolSize = 5
-    m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false : m.lastAppliedQuery = invalid : m.searchRequestId = 0 : m.latestAppliedRequestId = 0
+    m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false : m.lastAppliedQuery = invalid : m.lastSearchText = "" : m.searchRequestId = 0 : m.latestAppliedRequestId = 0
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
     m.posterLoadTimer.repeat = false
@@ -57,7 +57,7 @@ sub show()
     configureLayout()
     PRINT "SEARCH_OPEN"
     m.top.visible = true : m.top.SetFocus(true)
-    m.query = "" : m.pendingQuery = "" : m.queryLabel.text = "Buscar: "
+    m.query = "" : m.pendingQuery = "" : m.lastSearchText = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     renderKeyboard()
     m.lastAppliedQuery = invalid
@@ -65,11 +65,25 @@ sub show()
 end sub
 
 sub hide()
+    resetSearchStateOnExit()
     m.top.visible = false
 end sub
 
+sub resetSearchStateOnExit()
+    if m.debounceTimer <> invalid then m.debounceTimer.control = "stop"
+    if m.inputUnlockTimer <> invalid then m.inputUnlockTimer.control = "stop"
+    m.searchRequestId = m.searchRequestId + 1
+    m.latestAppliedRequestId = m.searchRequestId
+    m.pendingQuery = ""
+    m.catalogLoading = false
+    m.inputLocked = false
+    m.messageLabel.text = ""
+    PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
+    PRINT "SEARCH_STATE_RESET_ON_EXIT"
+end sub
+
 function getState() as Object
-    return { query: m.query, pendingQuery: m.pendingQuery, results: m.results, allMovies: m.allMovies, focusArea: m.focusArea, keyRow: m.keyRow, keyCol: m.keyCol, selectedResultIndex: m.selectedResultIndex, posterIndex: m.posterIndex, resultOffset: m.resultOffset, lastAppliedQuery: m.lastAppliedQuery }
+    return { query: m.query, pendingQuery: m.pendingQuery, results: m.results, allMovies: m.allMovies, focusArea: m.focusArea, keyRow: m.keyRow, keyCol: m.keyCol, selectedResultIndex: m.selectedResultIndex, posterIndex: m.posterIndex, resultOffset: m.resultOffset, lastAppliedQuery: m.lastAppliedQuery, lastSearchText: m.lastSearchText }
 end function
 
 sub restoreState(state as Dynamic)
@@ -85,6 +99,7 @@ sub restoreState(state as Dynamic)
     if state.posterIndex <> invalid then m.posterIndex = Int(state.posterIndex)
     if state.resultOffset <> invalid then m.resultOffset = Int(state.resultOffset)
     if state.lastAppliedQuery <> invalid then m.lastAppliedQuery = state.lastAppliedQuery.ToStr()
+    if state.lastSearchText <> invalid then m.lastSearchText = state.lastSearchText.ToStr() else m.lastSearchText = m.query
     m.queryLabel.text = "Buscar: " + m.query
     syncResultOffset()
     refreshVisiblePosters()
@@ -388,11 +403,23 @@ sub activate()
 end sub
 
 sub scheduleFilter()
-    if m.pendingQuery = m.query then return
-    if m.lastAppliedQuery <> invalid and m.lastAppliedQuery = m.query then return
+    if m.focusArea <> "keyboard" then
+        PRINT "SEARCH_BLOCKED_CATEGORY_FOCUS"
+        return
+    end if
+    if m.pendingQuery = m.query then
+        PRINT "SEARCH_BLOCKED_SAME_TEXT"
+        return
+    end if
+    if m.lastSearchText = m.query then
+        PRINT "SEARCH_BLOCKED_SAME_TEXT"
+        return
+    end if
+    m.lastSearchText = m.query
     m.pendingQuery = m.query
     m.searchRequestId = m.searchRequestId + 1
     m.latestAppliedRequestId = m.searchRequestId
+    PRINT "SEARCH_TEXT_CHANGED_ONLY_ON_INPUT"
     PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE id="; m.searchRequestId
     ' Mantém os resultados atuais visíveis enquanto a pesquisa nova roda em segundo plano.
@@ -403,6 +430,10 @@ sub scheduleFilter()
 end sub
 
 sub onDebounceTimerFire()
+    if m.top.visible <> true then
+        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        return
+    end if
     m.query = m.pendingQuery
     if Len(m.query) >= 1 then
         m.top.loadMoreRequested = m.query
@@ -412,6 +443,10 @@ sub onDebounceTimerFire()
 end sub
 
 sub setBackendSearchResults(items as Object)
+    if m.top.visible <> true then
+        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        return
+    end if
     newResults = limitArray(normalizeArray(items), m.maxResults)
     if areSearchResultsSame(m.results, newResults) then
         PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
