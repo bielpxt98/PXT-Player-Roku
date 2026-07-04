@@ -387,7 +387,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then m.top.backRequested = true : return true
     if key = "up" or key = "down" or key = "left" or key = "right" then
-        PRINT "SEARCH_IGNORED_FOCUS_MOVE"
         moveSearchFocus(key)
         updateSearchFocus()
         return true
