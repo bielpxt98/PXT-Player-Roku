@@ -25,6 +25,7 @@ sub Init()
     m.seriesDetailsScreen = m.top.FindNode("seriesDetailsScreen")
     m.seriesPlayerScreen = m.top.FindNode("seriesPlayerScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
+    m.backendService = m.top.FindNode("backendService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
     m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
@@ -191,6 +192,7 @@ sub Init()
     m.seriesDetailsScreen.ObserveField("episodeSelected", "onSeriesEpisodeSelected")
     m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
+    m.backendService.ObserveField("result", "onBackendLoginResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
     m.autoConnectTimer.ObserveField("fire", "onAutoConnectTimerFire")
@@ -260,7 +262,7 @@ sub onAutoConnectTimerFire()
     m.connectionMode = "auto"
     updateConnectionStatus(false, "Conectando...")
     startLoginTimeout()
-    connectXtream(m.account)
+    connectBackendLogin(m.account)
 end sub
 
 sub startSplashBootstrap()
@@ -358,7 +360,7 @@ function handleBackKeySafely() as Boolean
         m.loginConnecting = false
         m.isConnecting = false
         stopLoginTimeout()
-        cancelXtreamRequest()
+        cancelLoginRequest()
         updateConnectionStatus(false, "Conexão cancelada")
         showLogin()
         return true
@@ -1195,7 +1197,7 @@ sub onPlaylistAccountSelected()
     selected = m.playlistAccountsScreen.playlistSelected
     if not hasAccount(selected) then return
     stopLoginTimeout()
-    cancelXtreamRequest()
+    cancelLoginRequest()
     m.account = selected
     SavePlaylist(m.account)
     m.savedPlaylists = LoadSavedPlaylists()
@@ -1210,7 +1212,7 @@ sub onPlaylistAccountSelected()
     updateConnectionStatus(false, "Conectando...")
     showHome()
     startLoginTimeout()
-    connectXtream(m.account)
+    connectBackendLogin(m.account)
 end sub
 
 sub onOpenLiveCategoriesRequested()
@@ -1309,7 +1311,7 @@ sub onLoginSubmit()
     account = m.loginScreen.submit
     if not hasAccount(account) then
         stopLoginTimeout()
-        cancelXtreamRequest()
+        cancelLoginRequest()
         m.pendingAccount = invalid
         m.loginFormAccount = invalid
         m.loginConnecting = false
@@ -1334,7 +1336,7 @@ sub onLoginSubmit()
     m.loginScreen.callFunc("setLoading", true)
     updateConnectionStatus(false, "Conectando...")
     startLoginTimeout()
-    connectXtream(account)
+    connectBackendLogin(account)
 end sub
 
 
@@ -1349,7 +1351,7 @@ sub onDemoRequested()
     m.connectionMode = ""
     m.loginErrorActive = false
     stopLoginTimeout()
-    cancelXtreamRequest()
+    cancelLoginRequest()
     m.liveCategories = demo.liveCategories
     m.cachedLiveChannels = demo.liveChannels
     m.liveChannels = []
@@ -1380,7 +1382,7 @@ sub onLoginBack()
     m.connectionMode = ""
     m.isDemoMode = false
     m.loginErrorActive = false
-    cancelXtreamRequest()
+    cancelLoginRequest()
     showHome()
 end sub
 
@@ -1737,7 +1739,7 @@ sub buildMovieStreamUrl(movie as Object)
     m.xtreamService.control = "RUN"
 end sub
 
-sub connectXtream(account as Object)
+sub connectBackendLogin(account as Object)
     if m.isDemoMode = true then return
     if m.isConnecting = true then return
     if m.isLoadingRequest = true then return
@@ -1748,14 +1750,13 @@ sub connectXtream(account as Object)
     end if
 
     m.isConnecting = true
-    if not beginXtreamRequest("connect") then return
-    m.xtreamService.control = "STOP"
-    m.xtreamService.action = "connect"
-    m.xtreamService.cacheEnabled = false
-    m.xtreamService.dns = account.dns
-    m.xtreamService.username = account.username
-    m.xtreamService.password = account.password
-    m.xtreamService.control = "RUN"
+    if not beginXtreamRequest("backendLogin") then return
+    m.backendService.control = "STOP"
+    m.backendService.action = "login"
+    m.backendService.dns = account.dns
+    m.backendService.username = account.username
+    m.backendService.password = account.password
+    m.backendService.control = "RUN"
 end sub
 
 
@@ -2051,7 +2052,7 @@ sub handleLoginConnectionResult(result as Object)
 
     connectionMode = m.connectionMode
 
-    if isValidXtreamConnectionResult(result) then
+    if isValidLoginConnectionResult(result) then
         m.account = m.pendingAccount
         m.loginFormAccount = invalid
         SavePlaylist(m.account)
@@ -2092,8 +2093,10 @@ sub handleLoginConnectionResult(result as Object)
             updateConnectionStatus(false, "Não foi possível conectar. Verifique os dados.")
             m.connectionMode = ""
             showLogin()
-            if result <> invalid and result.message = "Tempo esgotado ao conectar." then
-                m.loginScreen.callFunc("showError", "Tempo esgotado ao conectar.")
+            if result <> invalid and result.backendUnavailable = true then
+                m.loginScreen.callFunc("showError", "Não foi possível conectar ao servidor.")
+            else if result <> invalid and result.message <> invalid and result.message.ToStr().Trim() <> "" then
+                m.loginScreen.callFunc("showError", result.message.ToStr())
             else
                 m.loginScreen.callFunc("showError", "Login inválido. Verifique DNS, usuário e senha.")
             end if
@@ -2173,18 +2176,33 @@ end sub
 
 sub onLoginTimeout()
     if m.pendingAccount = invalid then return
-    cancelXtreamRequest()
+    cancelLoginRequest()
+    PRINT "Backend indisponível"
     onXtreamConnectionResultForLogin({
         success: false,
         connected: false,
-        request: "connect",
-        message: "Tempo esgotado ao conectar."
+        request: "backendLogin",
+        ok: false,
+        backendUnavailable: true,
+        message: "Não foi possível conectar ao servidor."
     })
 end sub
 
 sub cancelXtreamRequest()
     if m.xtreamService <> invalid then m.xtreamService.control = "STOP"
     completeXtreamRequest()
+end sub
+
+sub cancelLoginRequest()
+    if m.backendService <> invalid then m.backendService.control = "STOP"
+    completeXtreamRequest()
+end sub
+
+sub onBackendLoginResult()
+    result = m.backendService.result
+    if result = invalid then return
+    completeXtreamRequest()
+    handleLoginConnectionResult(result)
 end sub
 
 sub cancelBlockingRequestForPlayback()
@@ -2933,6 +2951,17 @@ function normalizeMovieCategories(data as Dynamic) as Object
     if data = invalid then return []
     if Type(data) = "roArray" then return data
     return []
+end function
+
+function isValidLoginConnectionResult(result as Dynamic) as Boolean
+    if isValidBackendLoginResult(result) then return true
+    return isValidXtreamConnectionResult(result)
+end function
+
+function isValidBackendLoginResult(result as Dynamic) as Boolean
+    if result = invalid then return false
+    if result.request <> "backendLogin" then return false
+    return result.success = true and result.connected = true and result.ok = true
 end function
 
 function isValidXtreamConnectionResult(result as Dynamic) as Boolean
