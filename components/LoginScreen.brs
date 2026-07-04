@@ -12,6 +12,7 @@ sub Init()
     m.enterButton = m.top.FindNode("enterButton")
     m.backButton = m.top.FindNode("backButton")
     m.demoButton = m.top.FindNode("demoButton")
+    m.removeButton = m.top.FindNode("removeButton")
     m.loadingSpinner = m.top.FindNode("loadingSpinner")
     m.loadingLabel = m.top.FindNode("loadingLabel")
     m.messageLabel = m.top.FindNode("messageLabel")
@@ -22,16 +23,23 @@ sub Init()
         m.top.FindNode("userFocus"),
         m.top.FindNode("passwordFocus")
     ]
-    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.demoButton, m.backButton]
+    m.focusableControls = [m.dnsInput, m.userInput, m.passwordInput, m.enterButton, m.demoButton, m.backButton, m.removeButton]
     m.textFieldMaxLengths = [200, 100, 100]
     m.textFieldTitles = ["DNS", "USUÁRIO", "SENHA"]
     m.textFieldLogNames = ["dns", "username", "password"]
     m.focusIndex = 0
     m.isLoading = false
+    m.isEditingField = false
+    m.hasSavedAccount = false
+    PRINT "ACCOUNT_SCREEN_INIT"
 
     m.enterButton.ObserveField("buttonSelected", "onEnterSelected")
     m.backButton.ObserveField("buttonSelected", "onBackSelected")
     m.demoButton.ObserveField("buttonSelected", "onDemoSelected")
+    m.removeButton.ObserveField("buttonSelected", "onRemoveSelected")
+    m.dnsInput.ObserveField("text", "onAccountFieldTextChanged")
+    m.userInput.ObserveField("text", "onAccountFieldTextChanged")
+    m.passwordInput.ObserveField("text", "onAccountFieldTextChanged")
 
     configureLayout()
     setLoading(false)
@@ -64,10 +72,13 @@ end sub
 sub show(account as Object)
     wasVisible = m.top.visible
     m.top.visible = true
+    m.hasSavedAccount = account <> invalid and safeTrim(account.dns) <> "" and safeTrim(account.username) <> "" and safeTrim(account.password) <> ""
+    m.removeButton.visible = m.hasSavedAccount
     if account <> invalid then
         m.dnsInput.text = account.dns
         m.userInput.text = account.username
         m.passwordInput.text = account.password
+        if m.hasSavedAccount then PRINT "ACCOUNT_RESTORE_SUCCESS"
     end if
     setLoading(false)
     clearMessage()
@@ -124,7 +135,7 @@ sub onEnterSelected()
 
     ' LoginScreen only validates and submits data. MainScene owns navigation
     ' and all Xtream network work so focus never stays trapped on ENTRAR.
-    PRINT "LOGIN_SUBMIT"
+    PRINT "ACCOUNT_LOGIN_SUBMIT"
     setLoading(true)
     m.top.submit = account
 end sub
@@ -138,6 +149,24 @@ sub onDemoSelected()
     setLoading(false)
     clearMessage()
     m.top.demoRequested = true
+end sub
+
+sub onRemoveSelected()
+    PRINT "ACCOUNT_REMOVE_CONFIRMED"
+    setLoading(false)
+    clearMessage()
+    m.dnsInput.text = ""
+    m.userInput.text = ""
+    m.passwordInput.text = ""
+    m.hasSavedAccount = false
+    m.removeButton.visible = false
+    m.focusIndex = 0
+    updateFocus()
+    m.top.removeRequested = true
+end sub
+
+sub onAccountFieldTextChanged()
+    if m.isEditingField = true then PRINT "ACCOUNT_FIELD_EDIT_APPLIED"
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
@@ -166,6 +195,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return true
     else if isOkKey(key) then
         if m.focusIndex <= 2 then
+            m.isEditingField = true
+            PRINT "ACCOUNT_FIELD_EDIT_OPEN"
             m.focusableControls[m.focusIndex].SetFocus(true)
             return false
         else if m.focusIndex = 3 then
@@ -176,6 +207,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         else if m.focusIndex = 5 then
             onBackSelected()
+            return true
+        else if m.focusIndex = 6 then
+            onRemoveSelected()
             return true
         end if
     end if
@@ -193,9 +227,14 @@ function isConfirmKey(key as String) as Boolean
 end function
 
 sub moveFocus(direction as Integer)
+    m.isEditingField = false
     nextIndex = m.focusIndex + direction
-    if nextIndex < 0 then nextIndex = m.focusableControls.Count() - 1
-    if nextIndex >= m.focusableControls.Count() then nextIndex = 0
+    for i = 0 to m.focusableControls.Count() - 1
+        if nextIndex < 0 then nextIndex = m.focusableControls.Count() - 1
+        if nextIndex >= m.focusableControls.Count() then nextIndex = 0
+        if nextIndex <> 6 or m.removeButton.visible = true then exit for
+        nextIndex = nextIndex + direction
+    end for
     m.focusIndex = nextIndex
     updateFocus()
 end sub
@@ -209,6 +248,7 @@ sub updateFocus()
         m.focusRings[m.focusIndex].visible = true
     end if
 
+    if m.focusIndex = 6 and m.removeButton.visible <> true then m.focusIndex = 0
     m.focusableControls[m.focusIndex].SetFocus(true)
 end sub
 
