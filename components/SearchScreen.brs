@@ -17,7 +17,7 @@ sub Init()
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
-    m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = "" : m.pendingSearchText = ""
+    m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = "" : m.pendingSearchText = "" : m.searchText = ""
     m.resultBatchSize = 80 : m.renderedResultLimit = 80 : m.maxSearchResults = 100
     m.searchMode = "live"
     m.searchLetters = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"] ]
@@ -66,7 +66,7 @@ sub show(mode as Dynamic)
     configureSearchLabels()
     m.top.visible = true : m.top.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
-    m.searchInput.text = "" : m.pendingSearchText = "" : m.queryMirror.text = "Buscar: "
+    m.searchInput.text = "" : m.pendingSearchText = "" : m.searchText = "" : m.queryMirror.text = "Buscar: "
     m.searchFocusArea = "keyboardLetters" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.searchResultOffset = 0
     renderKeyboard()
     applyFilter()
@@ -151,6 +151,7 @@ sub onSearchTextChanged()
         return
     end if
     m.pendingSearchText = newText
+    m.searchText = newText
     m.queryMirror.text = "Buscar: " + newText
     PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE"
@@ -508,28 +509,59 @@ function getFocusedKeyboardLabel() as String
 end function
 
 function handleRokuKeyboardKey(key as String) as Boolean
+    remoteText = ""
     if Left(key, 4) = "lit_" then
-        PRINT "SEARCH_REMOTE_TEXT_INPUT"
-        if m.searchFocusArea = "results" then m.searchFocusArea = "keyboardLetters"
         remoteText = Mid(key, 5)
-        if remoteText = "" then
-            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+    else if isPlainRemoteCharacter(key) then
+        remoteText = key
+    end if
+
+    if remoteText <> "" then
+        PRINT "SEARCH_REMOTE_CHAR_RECEIVED"
+        if not isSearchFieldActive() then
+            PRINT "SEARCH_REMOTE_TEXT_BLOCKED_NO_ACTIVE_FIELD"
             return true
         end if
-        m.searchInput.text = m.searchInput.text + remoteText
-        PRINT "SEARCH_REMOTE_TEXT_APPLIED"
-        updateSearchFocus()
-        return true
+        return applyRemoteSearchText(remoteText)
     end if
+
     if key = "backspace" or key = "delete" then
-        PRINT "SEARCH_REMOTE_TEXT_INPUT"
-        if m.searchFocusArea = "results" then m.searchFocusArea = "keyboardLetters"
+        if not isSearchFieldActive() then
+            PRINT "SEARCH_REMOTE_TEXT_BLOCKED_NO_ACTIVE_FIELD"
+            return true
+        end if
         t = m.searchInput.text
-        if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
+        if Len(t) > 0 then
+            m.searchInput.text = Left(t, Len(t) - 1)
+            m.searchText = m.searchInput.text
+            PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+        end if
         updateSearchFocus()
         return true
     end if
     return false
+end function
+
+function isSearchFieldActive() as Boolean
+    return m.searchFocusArea = "keyboardLetters" or m.searchFocusArea = "keyboardNumbers" or m.searchFocusArea = "keyboardActions"
+end function
+
+function isPlainRemoteCharacter(key as String) as Boolean
+    if Len(key) <> 1 then return false
+    allowed = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    return Instr(1, allowed, key) > 0
+end function
+
+function applyRemoteSearchText(remoteText as String) as Boolean
+    if remoteText = "" then return true
+    oldText = m.searchInput.text
+    newText = oldText + remoteText
+    if newText = oldText then return true
+    m.searchInput.text = newText
+    m.searchText = newText
+    PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+    updateSearchFocus()
+    return true
 end function
 
 sub updateSearchFocus()

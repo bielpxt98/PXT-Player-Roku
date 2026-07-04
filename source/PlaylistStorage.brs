@@ -17,11 +17,13 @@ function LoadSavedPlaylist() as Object
     for each playlist in playlists
         if safePlaylistText(playlist.username) = activeUsername then
             PRINT "LOGIN_RESTORE_OK"
+            PRINT "ACCOUNT_RESTORE_SUCCESS"
             return playlist
         end if
     end for
 
     PRINT "LOGIN_RESTORE_OK"
+    PRINT "ACCOUNT_RESTORE_SUCCESS"
     return playlists[0]
 end function
 

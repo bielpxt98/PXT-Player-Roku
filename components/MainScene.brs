@@ -174,6 +174,7 @@ sub Init()
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.loginScreen.ObserveField("demoRequested", "onDemoRequested")
+    m.loginScreen.ObserveField("removeRequested", "onAccountRemoveRequested")
     m.liveCategoriesScreen.ObserveField("backRequested", "onLiveCategoriesBack")
     m.liveCategoriesScreen.ObserveField("categorySelected", "onLiveCategorySelected")
     m.liveCategoriesScreen.ObserveField("searchRequested", "onLiveSearchRequested")
@@ -1498,6 +1499,24 @@ sub onLoginSubmit()
 end sub
 
 
+sub onAccountRemoveRequested()
+    stopLoginTimeout()
+    cancelLoginRequest()
+    DeleteSavedPlaylist()
+    m.savedPlaylists = []
+    m.account = invalid
+    m.pendingAccount = invalid
+    m.loginFormAccount = invalid
+    m.loginConnecting = false
+    m.isConnecting = false
+    m.connectionMode = ""
+    m.loginErrorActive = false
+    SavePlaylistConnectionStatus("Desconectado")
+    resetAccountLoadedData()
+    updateConnectionStatus(false, "Nenhuma playlist conectada")
+    showLogin()
+end sub
+
 sub onDemoRequested()
     demo = CreateDemoData()
     m.isDemoMode = true
@@ -2301,6 +2320,7 @@ sub handleLoginConnectionResult(result as Object)
         m.account = m.pendingAccount
         m.loginFormAccount = invalid
         SavePlaylist(m.account)
+        PRINT "ACCOUNT_LOGIN_SUCCESS_SAVE"
         m.savedPlaylists = LoadSavedPlaylists()
         SavePlaylistConnectionStatus("Conectado")
         setBootState("ready")
