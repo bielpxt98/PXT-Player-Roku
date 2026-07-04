@@ -62,6 +62,7 @@ sub configureLayout()
 end sub
 
 sub show(account as Object)
+    wasVisible = m.top.visible
     m.top.visible = true
     if account <> invalid then
         m.dnsInput.text = account.dns
@@ -70,7 +71,7 @@ sub show(account as Object)
     end if
     setLoading(false)
     clearMessage()
-    m.focusIndex = 0
+    if wasVisible <> true then m.focusIndex = 0
     updateFocus()
 end sub
 

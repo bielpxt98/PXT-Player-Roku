@@ -219,6 +219,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
     if key = "back" then
         return handleBackKeySafely()
+    else if key = "up" then
+        PRINT "LIVE_PLAYER_PREVIOUS_CHANNEL"
+        m.top.channelChangeRequested = "previous"
+        return true
+    else if key = "down" then
+        PRINT "LIVE_PLAYER_NEXT_CHANNEL"
+        m.top.channelChangeRequested = "next"
+        return true
     end if
 
     return false

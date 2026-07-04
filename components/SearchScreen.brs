@@ -391,9 +391,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         updateSearchFocus()
         return true
     end if
-    if key = "OK" then activateFocused() : return true
+    if isOkKey(key) then activateFocused() : return true
     if handleRokuKeyboardKey(key) then return true
     return false
+end function
+
+function isOkKey(key as String) as Boolean
+    k = LCase(key)
+    return k = "ok" or k = "enter" or k = "return" or k = "select" or k = "numpadenter"
 end function
 
 sub moveSearchFocus(key as String)
@@ -505,10 +510,7 @@ end function
 function handleRokuKeyboardKey(key as String) as Boolean
     if Left(key, 4) = "lit_" then
         PRINT "SEARCH_REMOTE_TEXT_INPUT"
-        if m.searchFocusArea = "results" then
-            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
-            return true
-        end if
+        if m.searchFocusArea = "results" then m.searchFocusArea = "keyboardLetters"
         remoteText = Mid(key, 5)
         if remoteText = "" then
             PRINT "SEARCH_REMOTE_TEXT_IGNORED"
@@ -521,10 +523,7 @@ function handleRokuKeyboardKey(key as String) as Boolean
     end if
     if key = "backspace" or key = "delete" then
         PRINT "SEARCH_REMOTE_TEXT_INPUT"
-        if m.searchFocusArea = "results" then
-            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
-            return true
-        end if
+        if m.searchFocusArea = "results" then m.searchFocusArea = "keyboardLetters"
         t = m.searchInput.text
         if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
         updateSearchFocus()

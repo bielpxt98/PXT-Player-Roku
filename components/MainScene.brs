@@ -183,6 +183,7 @@ sub Init()
     m.liveChannelsScreen.ObserveField("categorySelected", "onLiveChannelsCategorySelected")
     m.liveChannelsScreen.ObserveField("channelFavoriteToggled", "onLiveChannelFavoriteToggled")
     m.livePlayerScreen.ObserveField("backRequested", "onLivePlayerBack")
+    m.livePlayerScreen.ObserveField("channelChangeRequested", "onLivePlayerChannelChangeRequested")
     m.movieCategoriesScreen.ObserveField("backRequested", "onMovieCategoriesBack")
     m.movieCategoriesScreen.ObserveField("categorySelected", "onMovieCategorySelected")
     m.movieCategoriesScreen.ObserveField("searchRequested", "onMovieSearchRequested")
@@ -1805,6 +1806,43 @@ sub onLiveChannelSelected()
     m.liveChannelsRestoreState = m.liveChannelsScreen.callFunc("getState")
     m.liveChannelsScreen.callFunc("hide")
     openPlayer(channel, "live")
+end sub
+
+sub onLivePlayerChannelChangeRequested()
+    direction = m.livePlayerScreen.channelChangeRequested
+    if direction = invalid or direction = "" then return
+    switchLivePlayerChannel(direction)
+end sub
+
+sub switchLivePlayerChannel(direction as String)
+    channels = m.liveChannels
+    if channels = invalid then channels = []
+    if channels.Count() = 0 and m.cachedLiveChannels <> invalid then channels = m.cachedLiveChannels
+    if channels = invalid then return
+    if channels.Count() = 0 then return
+
+    currentId = getStreamId(m.selectedLiveChannel)
+    currentIndex = -1
+    for i = 0 to channels.Count() - 1
+        if getStreamId(channels[i]) = currentId then
+            currentIndex = i
+            exit for
+        end if
+    end for
+    if currentIndex < 0 then currentIndex = 0
+
+    if direction = "previous" then
+        nextIndex = currentIndex - 1
+        if nextIndex < 0 then nextIndex = channels.Count() - 1
+    else
+        nextIndex = currentIndex + 1
+        if nextIndex >= channels.Count() then nextIndex = 0
+    end if
+
+    nextChannel = channels[nextIndex]
+    m.selectedLiveChannel = nextChannel
+    m.livePlayerScreen.callFunc("show", nextChannel)
+    buildLiveStreamUrl(nextChannel)
 end sub
 
 sub onLivePlayerBack()

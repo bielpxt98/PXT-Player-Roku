@@ -288,9 +288,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then m.top.backRequested = true : return true
     if handleRokuKeyboardKey(key) then return true
-    if key = "OK" then activate() : return true
+    if isOkKey(key) then activate() : return true
     if key = "up" or key = "down" or key = "left" or key = "right" then moveFocus(key) : updateFocus() : return true
     return false
+end function
+
+function isOkKey(key as String) as Boolean
+    k = LCase(key)
+    return k = "ok" or k = "enter" or k = "return" or k = "select" or k = "numpadenter"
 end function
 
 sub moveFocus(key as String)
@@ -457,10 +462,11 @@ end sub
 function handleRokuKeyboardKey(key as String) as Boolean
     if Left(key, 4) = "lit_" then
         PRINT "SEARCH_REMOTE_TEXT_INPUT"
-        if m.top.visible <> true or m.focusArea <> "keyboard" then
+        if m.top.visible <> true then
             PRINT "SEARCH_REMOTE_TEXT_IGNORED"
             return true
         end if
+        if m.focusArea <> "keyboard" then m.focusArea = "keyboard"
         PRINT "SEARCH_REMOTE_TEXT_APPLIED"
         m.query = m.query + Mid(key, 5)
         m.queryLabel.text = "Buscar: " + m.query
@@ -470,10 +476,7 @@ function handleRokuKeyboardKey(key as String) as Boolean
     end if
     if key = "backspace" or key = "delete" then
         PRINT "SEARCH_REMOTE_TEXT_INPUT"
-        if m.focusArea <> "keyboard" then
-            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
-            return true
-        end if
+        if m.focusArea <> "keyboard" then m.focusArea = "keyboard"
         if Len(m.query) > 0 then
             m.query = Left(m.query, Len(m.query) - 1)
             m.queryLabel.text = "Buscar: " + m.query
