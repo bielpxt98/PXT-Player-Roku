@@ -26,6 +26,7 @@ sub Init()
     m.seriesPlayerScreen = m.top.FindNode("seriesPlayerScreen")
     m.xtreamService = m.top.FindNode("xtreamService")
     m.backendService = m.top.FindNode("backendService")
+    m.backendBootstrapService = m.top.FindNode("backendBootstrapService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
     m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
@@ -108,6 +109,8 @@ sub Init()
     m.splashMaximumElapsed = false
     m.bootstrapActive = false
     m.bootstrapQueue = []
+    m.backendBootstrapStatus = createBackendBootstrapStatus("idle")
+    m.backendBootstrapAccountKey = ""
     m.localFavoritesCache = []
     m.localHistoryCache = []
     m.movieListRestoreState = invalid
@@ -193,6 +196,7 @@ sub Init()
     m.seriesPlayerScreen.ObserveField("backRequested", "onSeriesPlayerBack")
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.backendService.ObserveField("result", "onBackendLoginResult")
+    m.backendBootstrapService.ObserveField("result", "onBackendBootstrapResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
     m.autoConnectTimer.ObserveField("fire", "onAutoConnectTimerFire")
@@ -2066,6 +2070,7 @@ sub handleLoginConnectionResult(result as Object)
         resetAccountLoadedData()
         loadLocalSearchIndexCache()
         m.loginScreen.callFunc("showMessage", "Login confirmado. Carregando...")
+        startBackendBootstrap(m.account)
         if m.currentScreen = "home" or m.currentScreen = "login" or m.currentScreen = "" then showHome()
         refreshCurrentCatalogScreenAfterBoot()
         startBackgroundCatalogCache()
@@ -2204,6 +2209,73 @@ sub onBackendLoginResult()
     completeXtreamRequest()
     handleLoginConnectionResult(result)
 end sub
+
+sub startBackendBootstrap(account as Object)
+    if m.isDemoMode = true then return
+    if m.backendBootstrapService = invalid then return
+    if not hasAccount(account) then return
+
+    accountKey = buildBackendBootstrapAccountKey(account)
+    if m.backendBootstrapStatus <> invalid then
+        if m.backendBootstrapAccountKey = accountKey and (m.backendBootstrapStatus.status = "loading" or m.backendBootstrapStatus.status = "ready") then return
+    end if
+
+    m.backendBootstrapAccountKey = accountKey
+    m.backendBootstrapStatus = createBackendBootstrapStatus("loading")
+    PRINT "BACKEND_BOOTSTRAP_START"
+
+    m.backendBootstrapService.control = "STOP"
+    m.backendBootstrapService.action = "bootstrap"
+    m.backendBootstrapService.dns = account.dns
+    m.backendBootstrapService.username = account.username
+    m.backendBootstrapService.password = account.password
+    m.backendBootstrapService.control = "RUN"
+end sub
+
+sub onBackendBootstrapResult()
+    result = m.backendBootstrapService.result
+    if result = invalid then return
+    if result.request <> "backendBootstrap" then return
+
+    if result.success = true and result.ok = true then
+        m.backendBootstrapStatus = buildBackendBootstrapReadyStatus(result)
+        PRINT "BACKEND_BOOTSTRAP_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
+    else
+        m.backendBootstrapStatus = createBackendBootstrapStatus("error")
+        PRINT "BACKEND_BOOTSTRAP_ERROR"
+        if result.message <> invalid then PRINT "Backend bootstrap falhou: "; result.message
+    end if
+end sub
+
+function createBackendBootstrapStatus(status as String) as Object
+    return {
+        status: status,
+        movieCategories: 0,
+        movies: 0,
+        seriesCategories: 0,
+        series: 0
+    }
+end function
+
+function buildBackendBootstrapReadyStatus(result as Object) as Object
+    status = createBackendBootstrapStatus("ready")
+    status.movieCategories = safeCount(result.movieCategories)
+    status.movies = safeCount(result.movies)
+    status.seriesCategories = safeCount(result.seriesCategories)
+    status.series = safeCount(result.series)
+    return status
+end function
+
+function buildBackendBootstrapAccountKey(account as Object) as String
+    return account.dns.ToStr().Trim() + "|" + account.username.ToStr().Trim()
+end function
+
+function safeCount(value as Dynamic) as Integer
+    if value = invalid then return 0
+    if Type(value) = "roInt" or Type(value) = "Integer" then return value
+    if Type(value) = "roArray" then return value.Count()
+    return 0
+end function
 
 sub cancelBlockingRequestForPlayback()
     if m.isLoadingRequest <> true then return
