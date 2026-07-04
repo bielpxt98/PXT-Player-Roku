@@ -113,6 +113,8 @@ sub Init()
     m.backendBootstrapStatus = createBackendBootstrapStatus("idle")
     m.backendSearchActiveType = ""
     m.backendSearchActiveQuery = ""
+    m.searchRequestId = 0
+    m.activeSearchRequestId = 0
     m.backendBootstrapAccountKey = ""
     m.backendCatalogAccountKey = ""
     m.backendCatalogCache = invalid
@@ -714,7 +716,14 @@ sub startBackendSearch(query as String, searchType as String)
     end if
     cleanQuery = safeText(query)
     if cleanQuery = "" then return
+    if cleanQuery = m.backendSearchActiveQuery and searchType = m.backendSearchActiveType then
+        PRINT "SEARCH_TEXT_UNCHANGED"
+        return
+    end if
 
+    m.searchRequestId = m.searchRequestId + 1
+    m.activeSearchRequestId = m.searchRequestId
+    PRINT "SEARCH_REQUEST_START id="; m.activeSearchRequestId; " query="; cleanQuery
     PRINT "BACKEND_SEARCH_START type="; searchType; " query="; cleanQuery
     m.backendSearchActiveType = searchType
     m.backendSearchActiveQuery = cleanQuery
@@ -729,6 +738,7 @@ sub startBackendSearch(query as String, searchType as String)
     m.backendSearchService.query = cleanQuery
     m.backendSearchService.searchType = searchType
     m.backendSearchService.limit = 50
+    m.backendSearchService.requestId = m.activeSearchRequestId
     m.backendSearchService.control = "RUN"
 end sub
 
@@ -739,10 +749,17 @@ sub onBackendSearchResult()
     query = safeText(result.query)
     if searchType = "" then searchType = m.backendSearchActiveType
     if query = "" then query = m.backendSearchActiveQuery
+    requestId = result.requestId
+    if requestId = invalid then requestId = 0
+    if requestId <> m.activeSearchRequestId then
+        PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
+        return
+    end if
 
     if result.success = true and result.ok = true then
         items = result.results
         if items = invalid or Type(items) <> "roArray" then items = []
+        PRINT "SEARCH_REQUEST_APPLY id="; requestId; " query="; query
         PRINT "BACKEND_SEARCH_READY type="; searchType; " query="; query; " count="; items.Count()
         if searchType = "movies" then
             if items.Count() > 0 then m.allMoviesCache = mergeUniqueItems(items, m.allMoviesCache, "movies")

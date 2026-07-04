@@ -17,7 +17,7 @@ sub Init()
     m.resultsGroup = m.top.FindNode("resultsGroup")
     m.hintLabel = m.top.FindNode("hintLabel")
 
-    m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = ""
+    m.channels = [] : m.movies = [] : m.series = [] : m.results = [] : m.lastQuery = "" : m.pendingSearchText = ""
     m.resultBatchSize = 80 : m.renderedResultLimit = 80 : m.maxSearchResults = 100
     m.searchMode = "live"
     m.searchLetters = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"] ]
@@ -66,7 +66,7 @@ sub show(mode as Dynamic)
     configureSearchLabels()
     m.top.visible = true : m.top.SetFocus(true)
     m.searchDebounceTimer.control = "stop"
-    m.searchInput.text = "" : m.queryMirror.text = "Buscar: "
+    m.searchInput.text = "" : m.pendingSearchText = "" : m.queryMirror.text = "Buscar: "
     m.searchFocusArea = "keyboardLetters" : m.searchLetterRow = 0 : m.searchLetterCol = 0 : m.searchNumberIndex = 0 : m.searchActionIndex = 0 : m.searchResultIndex = 0 : m.searchResultOffset = 0
     renderKeyboard()
     applyFilter()
@@ -145,9 +145,18 @@ sub renderKeyboard()
 end sub
 
 sub onSearchTextChanged()
-    m.queryMirror.text = "Buscar: " + m.searchInput.text
+    newText = m.searchInput.text
+    if newText = m.pendingSearchText then
+        PRINT "SEARCH_TEXT_UNCHANGED"
+        return
+    end if
+    m.pendingSearchText = newText
+    m.queryMirror.text = "Buscar: " + newText
+    PRINT "SEARCH_TEXT_CHANGED"
+    PRINT "SEARCH_DEBOUNCE"
     m.searchDebounceTimer.control = "stop"
-    applyFilter()
+    m.searchDebounceTimer.duration = 0.4
+    m.searchDebounceTimer.control = "start"
 end sub
 
 sub onSearchDebounceFire()
@@ -378,6 +387,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
     if key = "back" then m.top.backRequested = true : return true
     if key = "up" or key = "down" or key = "left" or key = "right" then
+        PRINT "SEARCH_IGNORED_FOCUS_MOVE"
         moveSearchFocus(key)
         updateSearchFocus()
         return true
@@ -495,11 +505,27 @@ end function
 
 function handleRokuKeyboardKey(key as String) as Boolean
     if Left(key, 4) = "lit_" then
-        m.searchInput.text = m.searchInput.text + Mid(key, 5)
+        PRINT "SEARCH_REMOTE_TEXT_INPUT"
+        if m.searchFocusArea = "results" then
+            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+            return true
+        end if
+        remoteText = Mid(key, 5)
+        if remoteText = "" then
+            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+            return true
+        end if
+        m.searchInput.text = m.searchInput.text + remoteText
+        PRINT "SEARCH_REMOTE_TEXT_APPLIED"
         updateSearchFocus()
         return true
     end if
     if key = "backspace" or key = "delete" then
+        PRINT "SEARCH_REMOTE_TEXT_INPUT"
+        if m.searchFocusArea = "results" then
+            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+            return true
+        end if
         t = m.searchInput.text
         if Len(t) > 0 then m.searchInput.text = Left(t, Len(t) - 1)
         updateSearchFocus()
