@@ -170,7 +170,7 @@ function buildBackendSearchFailure(message as String, query as String, searchTyp
         ok: false,
         query: query,
         searchType: searchType,
-i        requestId: m.top.requestId,
+        requestId: requestId,
         results: [],
         message: message
     }
