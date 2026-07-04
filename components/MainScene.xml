@@ -5,6 +5,7 @@
     <script type="text/brightscript" uri="pkg:/source/HistoryStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/SearchIndexStorage.brs" />
     <script type="text/brightscript" uri="pkg:/source/DemoData.brs" />
+    <script type="text/brightscript" uri="pkg:/source/BackendConfig.brs" />
     <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
     <children>
@@ -31,6 +32,7 @@
         <SeriesDetailsScene id="seriesDetailsScreen" visible="false" />
         <SeriesPlayerScreen id="seriesPlayerScreen" visible="false" />
         <XtreamService id="xtreamService" />
+        <BackendService id="backendService" />
         <Timer id="loginTimeoutTimer" duration="15" repeat="false" />
         <Timer id="detailTimeoutTimer" duration="10" repeat="false" />
         <Timer id="autoConnectTimer" duration="0.3" repeat="false" />
