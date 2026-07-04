@@ -1,6 +1,7 @@
 ' Central backend configuration for Roku-to-Node.js API calls.
+' Local testing URL; replace this with the public backend URL after hosting.
 function BACKEND_BASE_URL() as String
-    return "http://192.168.X.X:3000"
+    return "http://192.168.0.6:3000"
 end function
 
 function GetBackendBaseUrl() as String
