@@ -16,12 +16,12 @@ function LoadSavedPlaylist() as Object
     activeUsername = LoadActivePlaylistUsername()
     for each playlist in playlists
         if safePlaylistText(playlist.username) = activeUsername then
-            PRINT "LOGIN_RESTORE_SUCCESS"
+            PRINT "LOGIN_RESTORE_OK"
             return playlist
         end if
     end for
 
-    PRINT "LOGIN_RESTORE_SUCCESS"
+    PRINT "LOGIN_RESTORE_OK"
     return playlists[0]
 end function
 
@@ -65,7 +65,7 @@ end function
 
 sub SavePlaylist(playlist as Object)
     if not isStoredPlaylistValid(playlist) then return
-    PRINT "LOGIN_SAVE_SUCCESS"
+    PRINT "LOGIN_SAVE_OK"
 
     playlists = LoadSavedPlaylists()
     updated = false

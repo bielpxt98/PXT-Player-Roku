@@ -7,6 +7,7 @@
         <function name="showError" />
         <field id="backRequested" type="boolean" alwaysNotify="true" />
         <field id="channelName" type="string" />
+        <field id="channelChangeRequested" type="string" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/LivePlayerScreen.brs" />
     <children>
