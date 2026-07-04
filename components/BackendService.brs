@@ -10,6 +10,8 @@ sub runBackendRequest()
 
     if action = "login" then
         m.top.result = loginViaBackend()
+    else if action = "bootstrap" then
+        m.top.result = bootstrapViaBackend()
     else
         m.top.result = buildBackendFailure("Ação backend não suportada: " + action, false)
     end if
@@ -60,6 +62,42 @@ function loginViaBackend() as Object
     }
 end function
 
+function bootstrapViaBackend() as Object
+    body = {
+        dns: safeBackendText(m.top.dns),
+        username: safeBackendText(m.top.username),
+        password: safeBackendText(m.top.password)
+    }
+
+    response = requestBackend("/api/bootstrap", body, 30000)
+    if response.success <> true then
+        return buildBackendBootstrapFailure("Backend bootstrap falhou.")
+    end if
+
+    parsed = ParseJson(response.body)
+    if parsed = invalid then
+        return buildBackendBootstrapFailure("Backend bootstrap retornou resposta inválida.")
+    end if
+
+    if parsed.ok = true then
+        return {
+            success: true,
+            connected: true,
+            request: "backendBootstrap",
+            ok: true,
+            movieCategories: getBackendCount(parsed, "movieCategories"),
+            movies: getBackendCount(parsed, "movies"),
+            seriesCategories: getBackendCount(parsed, "seriesCategories"),
+            series: getBackendCount(parsed, "series"),
+            message: "Bootstrap pronto."
+        }
+    end if
+
+    errorMessage = safeBackendText(parsed.error)
+    if errorMessage = "" then errorMessage = "Backend bootstrap falhou."
+    return buildBackendBootstrapFailure(errorMessage)
+end function
+
 function requestBackend(path as String, body as Object, timeoutMs as Integer) as Object
     baseUrl = normalizeBackendBaseUrl(GetBackendBaseUrl())
     if baseUrl = "" then return buildBackendTransportFailure()
@@ -105,6 +143,31 @@ function buildBackendTransportFailure() as Object
         statusCode: 0,
         body: ""
     }
+end function
+
+function buildBackendBootstrapFailure(message as String) as Object
+    return {
+        success: false,
+        connected: false,
+        request: "backendBootstrap",
+        ok: false,
+        movieCategories: 0,
+        movies: 0,
+        seriesCategories: 0,
+        series: 0,
+        message: message
+    }
+end function
+
+function getBackendCount(parsed as Object, key as String) as Integer
+    value = invalid
+    if parsed[key] <> invalid then value = parsed[key]
+    if value = invalid and parsed.counts <> invalid and parsed.counts[key] <> invalid then value = parsed.counts[key]
+    if value = invalid and parsed.data <> invalid and parsed.data[key] <> invalid then value = parsed.data[key]
+    if value = invalid then return 0
+    if Type(value) = "roInt" or Type(value) = "Integer" then return value
+    if Type(value) = "roArray" then return value.Count()
+    return 0
 end function
 
 function buildBackendFailure(message as String, backendUnavailable as Boolean) as Object
