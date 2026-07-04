@@ -12,7 +12,7 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = [] : m.preloadPosters = [] : m.posterPoolSize = 5
-    m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false
+    m.posterPlaceholderUri = "" : m.posterUriCache = {} : m.catalogLoading = false : m.lastAppliedQuery = invalid
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
     m.posterLoadTimer.repeat = false
@@ -60,6 +60,7 @@ sub show()
     m.query = "" : m.pendingQuery = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     renderKeyboard()
+    m.lastAppliedQuery = invalid
     applyFilter()
 end sub
 
@@ -79,8 +80,8 @@ sub showMessage(message as String)
 end sub
 
 sub applyFilter()
-    m.results = []
-    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
+    newResults = []
+    oldFocusArea = m.focusArea : oldKeyRow = m.keyRow : oldKeyCol = m.keyCol : oldSelected = m.selectedResultIndex
     if m.allMovies.Count() = 0 then
         showMessage("Nenhum filme carregado ainda.")
         return
@@ -88,20 +89,33 @@ sub applyFilter()
     needle = normalizeText(m.query)
     if needle = "" then
         for each item in m.allMovies
-            if m.results.Count() >= m.maxResults then exit for
-            m.results.Push(item)
+            if newResults.Count() >= m.maxResults then exit for
+            newResults.Push(item)
         end for
     else
         ' Busca leve em 3 passadas, parando quando enche a tela.
         ' Evita montar listas temporárias grandes a cada letra.
         for rankTarget = 1 to 3
             for each item in m.allMovies
-                if m.results.Count() >= m.maxResults then exit for
-                if prefixMatchRank(getMovieName(item), needle) = rankTarget then m.results.Push(item)
+                if newResults.Count() >= m.maxResults then exit for
+                if prefixMatchRank(getMovieName(item), needle) = rankTarget then newResults.Push(item)
             end for
-            if m.results.Count() >= m.maxResults then exit for
+            if newResults.Count() >= m.maxResults then exit for
         end for
     end if
+    if areSearchResultsSame(m.results, newResults) then
+        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        PRINT "SEARCH_FOCUS_PRESERVED"
+        m.lastAppliedQuery = m.query
+        updateFocus()
+        return
+    end if
+    m.results = newResults
+    m.lastAppliedQuery = m.query
+    m.focusArea = oldFocusArea : m.keyRow = oldKeyRow : m.keyCol = oldKeyCol
+    if oldSelected >= m.results.Count() then oldSelected = m.results.Count() - 1
+    if oldSelected < 0 then oldSelected = 0
+    m.selectedResultIndex = oldSelected : m.posterIndex = oldSelected
     if m.results.Count() = 0 then
         showMessage("Nenhum filme encontrado.")
         PRINT "SEARCH_RESULTS_UPDATED"
@@ -346,6 +360,7 @@ end sub
 
 sub scheduleFilter()
     if m.pendingQuery = m.query then return
+    if m.lastAppliedQuery <> invalid and m.lastAppliedQuery = m.query then return
     m.pendingQuery = m.query
     PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE"
@@ -365,8 +380,21 @@ sub onDebounceTimerFire()
 end sub
 
 sub setBackendSearchResults(items as Object)
-    m.results = limitArray(normalizeArray(items), m.maxResults)
-    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
+    newResults = limitArray(normalizeArray(items), m.maxResults)
+    if areSearchResultsSame(m.results, newResults) then
+        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        PRINT "SEARCH_FOCUS_PRESERVED"
+        updateSearchLoadingMessage()
+        updateFocus()
+        return
+    end if
+    oldFocusArea = m.focusArea : oldKeyRow = m.keyRow : oldKeyCol = m.keyCol : oldSelected = m.selectedResultIndex
+    m.results = newResults
+    m.lastAppliedQuery = m.query
+    if oldSelected >= m.results.Count() then oldSelected = m.results.Count() - 1
+    if oldSelected < 0 then oldSelected = 0
+    m.posterIndex = oldSelected : m.selectedResultIndex = oldSelected : m.resultOffset = 0
+    m.focusArea = oldFocusArea : m.keyRow = oldKeyRow : m.keyCol = oldKeyCol
     if m.results.Count() = 0 then
         showMessage("Nenhum filme encontrado.")
         if m.focusArea = "posters" then m.focusArea = "keyboard"
@@ -375,6 +403,7 @@ sub setBackendSearchResults(items as Object)
         renderPosters()
     end if
     PRINT "SEARCH_RESULTS_UPDATED"
+    PRINT "SEARCH_FOCUS_PRESERVED"
     updateFocus()
 end sub
 
@@ -400,6 +429,12 @@ end sub
 
 function handleRokuKeyboardKey(key as String) as Boolean
     if Left(key, 4) = "lit_" then
+        PRINT "SEARCH_REMOTE_TEXT_INPUT"
+        if m.top.visible <> true or m.focusArea <> "keyboard" then
+            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+            return true
+        end if
+        PRINT "SEARCH_REMOTE_TEXT_APPLIED"
         m.query = m.query + Mid(key, 5)
         m.queryLabel.text = "Buscar: " + m.query
         lockInputBriefly()
@@ -482,6 +517,16 @@ function prefixMatchRank(title as Dynamic, needle as String) as Integer
         end if
     end for
     return 0
+end function
+
+function areSearchResultsSame(oldItems as Dynamic, newItems as Dynamic) as Boolean
+    if oldItems = invalid or newItems = invalid then return false
+    if Type(oldItems) <> "roArray" or Type(newItems) <> "roArray" then return false
+    if oldItems.Count() <> newItems.Count() then return false
+    for i = 0 to oldItems.Count() - 1
+        if getMovieCacheKey(oldItems[i]) <> getMovieCacheKey(newItems[i]) then return false
+    end for
+    return true
 end function
 
 sub setCatalogLoading(isLoading as Boolean)
