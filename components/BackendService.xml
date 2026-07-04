@@ -7,6 +7,7 @@
         <field id="query" type="string" />
         <field id="searchType" type="string" value="all" />
         <field id="limit" type="integer" value="50" />
+        <field id="requestId" type="integer" value="0" />
         <field id="action" type="string" value="login" />
         <field id="result" type="assocarray" alwaysNotify="true" />
     </interface>
