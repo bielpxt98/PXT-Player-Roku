@@ -1985,7 +1985,7 @@ end sub
 
 sub loadMovieCategories(account as Object)
     if m.isDemoMode = true then return
-    if canUseBackendCatalog() then
+    if canUseBackendCatalog() and m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
         m.movieCategoriesLoading = false
         if m.movieListScreen.visible = true then
             m.movieListScreen.callFunc("setLoading", false)
@@ -1995,6 +1995,7 @@ sub loadMovieCategories(account as Object)
         m.homeScreen.callFunc("setMovieCategoriesLoading", false)
         return
     end if
+    PRINT "CATEGORIES_FALLBACK_XTREAM movies"
     if not beginXtreamRequest("getMovieCategories") then return
     m.movieCategoriesLoading = true
     if m.movieCategoriesScreen.visible = true then
@@ -2467,13 +2468,27 @@ sub applyBackendCatalog(result as Object)
         series: series
     }
 
-    if movieCategories.Count() > 0 then m.movieCategories = movieCategories
+    if movieCategories.Count() > 0 then
+        PRINT "CATEGORIES_FROM_BACKEND movies"
+        m.movieCategories = movieCategories
+    else if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
+        PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
+    else
+        PRINT "CATEGORIES_EMPTY movies"
+    end if
     if movies.Count() > 0 then
         m.cachedMovies = movies
         m.allMoviesCache = movies
         m.movieGlobalCatalogLoaded = true
     end if
-    if seriesCategories.Count() > 0 then m.seriesCategories = seriesCategories
+    if seriesCategories.Count() > 0 then
+        PRINT "CATEGORIES_FROM_BACKEND series"
+        m.seriesCategories = seriesCategories
+    else if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
+        PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
+    else
+        PRINT "CATEGORIES_EMPTY series"
+    end if
     if series.Count() > 0 then
         m.cachedSeries = series
         m.allSeriesCache = series
@@ -2486,6 +2501,9 @@ sub applyBackendCatalog(result as Object)
     m.searchIndexCache.seriesCategories = m.seriesCategories
     m.searchIndexCache.series = m.allSeriesCache
     SaveSearchIndexCache(m.searchIndexCache)
+
+    PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
+    PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
 
     refreshCatalogScreensFromBackendCatalog()
     startInitialCategoryPreviewCache()
@@ -2631,12 +2649,20 @@ sub loadLocalSearchIndexCache()
         m.cachedLiveChannels = m.searchIndexCache.liveChannels
         m.allLiveCache = m.searchIndexCache.liveChannels
     end if
-    if m.searchIndexCache.movieCategories.Count() > 0 then m.movieCategories = m.searchIndexCache.movieCategories
+    if m.searchIndexCache.movieCategories.Count() > 0 then
+        m.movieCategories = m.searchIndexCache.movieCategories
+        PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
+        PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
+    end if
     if m.searchIndexCache.movies.Count() > 0 then
         m.cachedMovies = m.searchIndexCache.movies
         m.allMoviesCache = m.searchIndexCache.movies
     end if
-    if m.searchIndexCache.seriesCategories.Count() > 0 then m.seriesCategories = m.searchIndexCache.seriesCategories
+    if m.searchIndexCache.seriesCategories.Count() > 0 then
+        m.seriesCategories = m.searchIndexCache.seriesCategories
+        PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
+        PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
+    end if
     if m.searchIndexCache.series.Count() > 0 then
         m.cachedSeries = m.searchIndexCache.series
         m.allSeriesCache = m.searchIndexCache.series
@@ -2880,13 +2906,14 @@ end sub
 
 sub loadSeriesCategoriesForCurrentScreen()
     if not hasAccount(m.account) then return
-    if canUseBackendCatalog() then
+    if canUseBackendCatalog() and m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
         if m.simpleSeriesScreen.visible = true then
             m.simpleSeriesScreen.callFunc("setLoading", false)
             m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
         end if
         return
     end if
+    PRINT "CATEGORIES_FALLBACK_XTREAM series"
     if beginXtreamRequest("getSeriesCategories") then
         m.seriesCategoriesLoading = true
         m.xtreamService.control = "STOP"
@@ -2903,7 +2930,16 @@ end sub
 sub onSeriesCategoriesResult(result as Object)
     if result.success = true then
         clearAccountReconnectError()
-        m.seriesCategories = normalizeSeriesCategories(result.data)
+        freshCategories = normalizeSeriesCategories(result.data)
+        if freshCategories.Count() > 0 then
+            m.seriesCategories = freshCategories
+        else if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
+            PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
+        else
+            m.seriesCategories = freshCategories
+        end if
+        PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
+        if m.seriesCategories.Count() = 0 then PRINT "CATEGORIES_EMPTY series"
         m.searchIndexCache.seriesCategories = m.seriesCategories
         SaveSearchIndexCache(m.searchIndexCache)
         if m.simpleSeriesScreen.visible = true then
@@ -3252,7 +3288,16 @@ sub onMovieCategoriesResult(result as Object)
 
     if result.success = true then
         clearAccountReconnectError()
-        m.movieCategories = normalizeMovieCategories(result.data)
+        freshCategories = normalizeMovieCategories(result.data)
+        if freshCategories.Count() > 0 then
+            m.movieCategories = freshCategories
+        else if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
+            PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
+        else
+            m.movieCategories = freshCategories
+        end if
+        PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
+        if m.movieCategories.Count() = 0 then PRINT "CATEGORIES_EMPTY movies"
         m.searchIndexCache.movieCategories = m.movieCategories
         SaveSearchIndexCache(m.searchIndexCache)
         if m.movieListScreen.visible = true then

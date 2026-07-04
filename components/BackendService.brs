@@ -88,9 +88,9 @@ function bootstrapViaBackend() as Object
             connected: true,
             request: "backendBootstrap",
             ok: true,
-            movieCategories: getBackendCatalogArrayWithCounts(parsed, data, "movieCategories", ["movieCategories", "vodCategories", "categoriesMovies"]),
+            movieCategories: getBackendCatalogArrayWithCounts(parsed, data, "movieCategories", ["movieCategories", "vodCategories", "categoriesMovies", "movie_categories", "vod_categories", "categories_movies", "movieCategoriesList"]),
             movies: getBackendCatalogArrayWithCounts(parsed, data, "movies", ["movies", "vod", "movieStreams"]),
-            seriesCategories: getBackendCatalogArrayWithCounts(parsed, data, "seriesCategories", ["seriesCategories", "categoriesSeries"]),
+            seriesCategories: getBackendCatalogArrayWithCounts(parsed, data, "seriesCategories", ["seriesCategories", "categoriesSeries", "series_categories", "categories_series", "seriesCategoriesList"]),
             series: getBackendCatalogArrayWithCounts(parsed, data, "series", ["series", "seriesStreams"]),
             message: "Bootstrap pronto."
         }
@@ -259,8 +259,33 @@ function getBackendCatalogArray(data as Dynamic, keys as Object) as Object
     empty = []
     if data = invalid then return empty
     for each key in keys
-        if data[key] <> invalid and Type(data[key]) = "roArray" then return data[key]
+        direct = getNestedBackendCatalogArray(data, key)
+        if direct.Count() > 0 then return direct
     end for
+    if data.categories <> invalid and Type(data.categories) = "roAssociativeArray" then
+        for each key in keys
+            nested = getNestedBackendCatalogArray(data.categories, key)
+            if nested.Count() > 0 then return nested
+        end for
+    end if
+    if data.catalog <> invalid and Type(data.catalog) = "roAssociativeArray" then
+        for each key in keys
+            nestedCatalog = getNestedBackendCatalogArray(data.catalog, key)
+            if nestedCatalog.Count() > 0 then return nestedCatalog
+        end for
+    end if
+    return empty
+end function
+
+function getNestedBackendCatalogArray(data as Dynamic, key as String) as Object
+    empty = []
+    if data = invalid or Type(data) <> "roAssociativeArray" then return empty
+    if data[key] <> invalid and Type(data[key]) = "roArray" then return data[key]
+    if data[key] <> invalid and Type(data[key]) = "roAssociativeArray" then
+        for each nestedKey in ["items", "data", "categories", "results"]
+            if data[key][nestedKey] <> invalid and Type(data[key][nestedKey]) = "roArray" then return data[key][nestedKey]
+        end for
+    end if
     return empty
 end function
 
