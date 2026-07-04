@@ -19,7 +19,7 @@ sub Init()
     m.posterLoadTimer.ObserveField("fire", "onPosterLoadTimerFire")
     m.maxMovies = 60 : m.maxResults = 40
     m.debounceTimer = CreateObject("roSGNode", "Timer")
-    m.debounceTimer.duration = 3.0
+    m.debounceTimer.duration = 0.4
     m.debounceTimer.repeat = false
     m.debounceTimer.ObserveField("fire", "onDebounceTimerFire")
     m.inputLocked = false
@@ -346,14 +346,37 @@ sub scheduleFilter()
     m.pendingQuery = m.query
     m.messageLabel.text = "Carregando pesquisa..."
     m.debounceTimer.control = "stop"
-    m.debounceTimer.duration = 3.0
+    m.debounceTimer.duration = 0.4
     m.debounceTimer.control = "start"
 end sub
 
 sub onDebounceTimerFire()
     m.query = m.pendingQuery
+    if Len(m.query) >= 1 then
+        m.top.loadMoreRequested = m.query
+    else
+        applyFilter()
+    end if
+end sub
+
+sub setBackendSearchResults(items as Object)
+    m.results = limitArray(normalizeArray(items), m.maxResults)
+    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
+    if m.results.Count() = 0 then
+        showMessage("Nenhum filme encontrado.")
+        if m.focusArea = "posters" then m.focusArea = "keyboard"
+    else
+        updateSearchLoadingMessage()
+        renderPosters()
+    end if
+    PRINT "SEARCH_RESULTS_UPDATED"
+    updateFocus()
+end sub
+
+sub useLocalSearchFallback(query as String)
+    m.query = query
+    m.queryLabel.text = "Buscar: " + m.query
     applyFilter()
-    if Len(m.query) >= 1 then m.top.loadMoreRequested = m.query
 end sub
 
 

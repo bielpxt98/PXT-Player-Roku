@@ -27,6 +27,7 @@ sub Init()
     m.xtreamService = m.top.FindNode("xtreamService")
     m.backendService = m.top.FindNode("backendService")
     m.backendBootstrapService = m.top.FindNode("backendBootstrapService")
+    m.backendSearchService = m.top.FindNode("backendSearchService")
     m.loginTimeoutTimer = m.top.FindNode("loginTimeoutTimer")
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
     m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
@@ -110,6 +111,8 @@ sub Init()
     m.bootstrapActive = false
     m.bootstrapQueue = []
     m.backendBootstrapStatus = createBackendBootstrapStatus("idle")
+    m.backendSearchActiveType = ""
+    m.backendSearchActiveQuery = ""
     m.backendBootstrapAccountKey = ""
     m.backendCatalogAccountKey = ""
     m.backendCatalogCache = invalid
@@ -199,6 +202,7 @@ sub Init()
     m.xtreamService.ObserveField("result", "onXtreamConnectionResult")
     m.backendService.ObserveField("result", "onBackendLoginResult")
     m.backendBootstrapService.ObserveField("result", "onBackendBootstrapResult")
+    if m.backendSearchService <> invalid then m.backendSearchService.ObserveField("result", "onBackendSearchResult")
     m.loginTimeoutTimer.ObserveField("fire", "onLoginTimeout")
     m.detailTimeoutTimer.ObserveField("fire", "onDetailTimeout")
     m.autoConnectTimer.ObserveField("fire", "onAutoConnectTimerFire")
@@ -583,6 +587,11 @@ sub onMovieSearchRequested()
     ' get_vod_streams em Task. A tela fica com loader, sem travar a render thread.
     movieSearchData = getMoviesForSearch()
     m.movieSearchScreen.callFunc("setMovies", movieSearchData)
+    if movieSearchData = invalid then
+        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+    else if movieSearchData.Count() = 0 then
+        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+    end if
     if hasAccount(m.account) then
         if m.movieGlobalCatalogLoaded <> true then
             m.movieSearchScreen.callFunc("setCatalogLoading", true)
@@ -605,7 +614,13 @@ sub onSeriesSearchRequested()
     ' em get_series sem categoria, carregamos as categorias restantes em
     ' segundo plano somente enquanto a busca está aberta.
     m.seriesSearchScreen.callFunc("setInitialSeries", getInitialSeriesForSearch())
-    m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
+    seriesSearchData = getSeriesForSearch()
+    m.seriesSearchScreen.callFunc("setSeries", seriesSearchData)
+    if seriesSearchData = invalid then
+        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+    else if seriesSearchData.Count() = 0 then
+        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+    end if
     if hasAccount(m.account) then
         if hasUnloadedSeriesCategories() then
             ' Se ainda não há nada em memória, faz só uma tentativa global.
@@ -680,13 +695,89 @@ sub onSeriesSearchSeriesSelected()
 end sub
 
 sub onMovieSearchNeedsMore()
-    if m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("setCatalogLoading", true)
-    startGlobalSearchCache("movies")
+    query = ""
+    if m.movieSearchScreen <> invalid then query = m.movieSearchScreen.loadMoreRequested
+    startBackendSearch(query, "movies")
 end sub
 
 sub onSeriesSearchNeedsMore()
-    if m.seriesSearchScreen <> invalid then m.seriesSearchScreen.callFunc("setCatalogLoading", true)
-    startGlobalSearchCache("series")
+    query = ""
+    if m.seriesSearchScreen <> invalid then query = m.seriesSearchScreen.loadMoreRequested
+    startBackendSearch(query, "series")
+end sub
+
+sub startBackendSearch(query as String, searchType as String)
+    if m.backendSearchService = invalid or not hasAccount(m.account) then
+        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+        useBackendSearchFallback(query, searchType)
+        return
+    end if
+    cleanQuery = safeText(query)
+    if cleanQuery = "" then return
+
+    PRINT "BACKEND_SEARCH_START type="; searchType; " query="; cleanQuery
+    m.backendSearchActiveType = searchType
+    m.backendSearchActiveQuery = cleanQuery
+    if searchType = "movies" and m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("setCatalogLoading", true)
+    if searchType = "series" and m.seriesSearchScreen <> invalid then m.seriesSearchScreen.callFunc("setCatalogLoading", true)
+
+    m.backendSearchService.control = "STOP"
+    m.backendSearchService.action = "search"
+    m.backendSearchService.dns = m.account.dns
+    m.backendSearchService.username = m.account.username
+    m.backendSearchService.password = m.account.password
+    m.backendSearchService.query = cleanQuery
+    m.backendSearchService.searchType = searchType
+    m.backendSearchService.limit = 50
+    m.backendSearchService.control = "RUN"
+end sub
+
+sub onBackendSearchResult()
+    result = m.backendSearchService.result
+    if result = invalid or result.request <> "backendSearch" then return
+    searchType = safeText(result.searchType)
+    query = safeText(result.query)
+    if searchType = "" then searchType = m.backendSearchActiveType
+    if query = "" then query = m.backendSearchActiveQuery
+
+    if result.success = true and result.ok = true then
+        items = result.results
+        if items = invalid or Type(items) <> "roArray" then items = []
+        PRINT "BACKEND_SEARCH_READY type="; searchType; " query="; query; " count="; items.Count()
+        if searchType = "movies" then
+            if items.Count() > 0 then m.allMoviesCache = mergeUniqueItems(items, m.allMoviesCache, "movies")
+            if m.movieSearchScreen <> invalid and m.movieSearchScreen.visible = true then
+                m.movieSearchScreen.callFunc("setCatalogLoading", false)
+                m.movieSearchScreen.callFunc("setBackendSearchResults", items)
+            end if
+        else if searchType = "series" then
+            if items.Count() > 0 then m.allSeriesCache = mergeUniqueItems(items, m.allSeriesCache, "series")
+            if m.seriesSearchScreen <> invalid and m.seriesSearchScreen.visible = true then
+                m.seriesSearchScreen.callFunc("setCatalogLoading", false)
+                m.seriesSearchScreen.callFunc("setBackendSearchResults", items)
+            end if
+        end if
+    else
+        PRINT "BACKEND_SEARCH_ERROR type="; searchType; " query="; query
+        useBackendSearchFallback(query, searchType)
+    end if
+end sub
+
+sub useBackendSearchFallback(query as String, searchType as String)
+    PRINT "BACKEND_SEARCH_FALLBACK type="; searchType; " query="; query
+    if searchType = "movies" then
+        if m.movieSearchScreen <> invalid then
+            m.movieSearchScreen.callFunc("setCatalogLoading", false)
+            m.movieSearchScreen.callFunc("useLocalSearchFallback", query)
+        end if
+        startGlobalSearchCache("movies")
+    else if searchType = "series" then
+        if m.seriesSearchScreen <> invalid then
+            m.seriesSearchScreen.callFunc("setCatalogLoading", false)
+            m.seriesSearchScreen.callFunc("useLocalSearchFallback", query)
+        end if
+        startGlobalSearchCache("series")
+    end if
 end sub
 
 

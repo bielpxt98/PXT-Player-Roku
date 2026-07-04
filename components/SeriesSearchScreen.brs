@@ -107,13 +107,36 @@ sub scheduleFilter()
         return
     end if
     m.filterDebounceTimer.control = "stop"
-    m.filterDebounceTimer.duration = 3.0
+    m.filterDebounceTimer.duration = 0.4
     m.filterDebounceTimer.control = "start"
 end sub
 
 sub onFilterDebounce()
+    if Len(m.query) >= 1 then
+        m.top.loadMoreRequested = m.query
+    else
+        applyFilter()
+    end if
+end sub
+
+sub setBackendSearchResults(items as Object)
+    m.results = limitArray(normalizeArray(items), m.resultLimit)
+    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
+    if m.results.Count() = 0 then
+        showMessage("Nenhuma série encontrada.")
+        if m.focusArea = "posters" then m.focusArea = "keyboard"
+    else
+        updateSearchLoadingMessage()
+        renderPosters()
+    end if
+    PRINT "SEARCH_RESULTS_UPDATED"
+    updateFocus()
+end sub
+
+sub useLocalSearchFallback(query as String)
+    m.query = query
+    m.queryLabel.text = "Buscar: " + m.query
     applyFilter()
-    if Len(m.query) >= 1 then m.top.loadMoreRequested = m.query
 end sub
 
 sub applyFilter()

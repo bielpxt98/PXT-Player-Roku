@@ -12,6 +12,8 @@ sub runBackendRequest()
         m.top.result = loginViaBackend()
     else if action = "bootstrap" then
         m.top.result = bootstrapViaBackend()
+    else if action = "search" then
+        m.top.result = searchViaBackend()
     else
         m.top.result = buildBackendFailure("Ação backend não suportada: " + action, false)
     end if
@@ -97,6 +99,78 @@ function bootstrapViaBackend() as Object
     errorMessage = safeBackendText(parsed.error)
     if errorMessage = "" then errorMessage = "Backend bootstrap falhou."
     return buildBackendBootstrapFailure(errorMessage)
+end function
+
+function searchViaBackend() as Object
+    searchType = safeBackendText(m.top.searchType)
+    if searchType = "" then searchType = "all"
+    limit = m.top.limit
+    if limit <= 0 then limit = 50
+
+    body = {
+        dns: safeBackendText(m.top.dns),
+        username: safeBackendText(m.top.username),
+        query: safeBackendText(m.top.query),
+        type: searchType,
+        limit: limit
+    }
+
+    response = requestBackend("/api/search", body, 6000)
+    if response.success <> true then
+        return buildBackendSearchFailure("Backend search falhou.", body.query, searchType)
+    end if
+
+    parsed = ParseJson(response.body)
+    if parsed = invalid then
+        return buildBackendSearchFailure("Backend search retornou resposta inválida.", body.query, searchType)
+    end if
+
+    if parsed.ok = true or parsed.success = true then
+        data = getBackendCatalogData(parsed)
+        results = getBackendSearchArray(data, searchType)
+        return {
+            success: true,
+            connected: true,
+            request: "backendSearch",
+            ok: true,
+            query: body.query,
+            searchType: searchType,
+            results: results,
+            movies: getBackendCatalogArray(data, ["movies", "vod", "movieStreams"]),
+            series: getBackendCatalogArray(data, ["series", "seriesStreams"]),
+            message: "Pesquisa pronta."
+        }
+    end if
+
+    errorMessage = safeBackendText(parsed.error)
+    if errorMessage = "" then errorMessage = "Backend search falhou."
+    return buildBackendSearchFailure(errorMessage, body.query, searchType)
+end function
+
+function getBackendSearchArray(data as Dynamic, searchType as String) as Object
+    results = getBackendCatalogArray(data, ["results", "items"])
+    if results.Count() > 0 then return results
+    if searchType = "movies" then return getBackendCatalogArray(data, ["movies", "vod", "movieStreams"])
+    if searchType = "series" then return getBackendCatalogArray(data, ["series", "seriesStreams"])
+    combined = []
+    movies = getBackendCatalogArray(data, ["movies", "vod", "movieStreams"])
+    series = getBackendCatalogArray(data, ["series", "seriesStreams"])
+    for each item in movies : combined.Push(item) : end for
+    for each item in series : combined.Push(item) : end for
+    return combined
+end function
+
+function buildBackendSearchFailure(message as String, query as String, searchType as String) as Object
+    return {
+        success: false,
+        connected: false,
+        request: "backendSearch",
+        ok: false,
+        query: query,
+        searchType: searchType,
+        results: [],
+        message: message
+    }
 end function
 
 function requestBackend(path as String, body as Object, timeoutMs as Integer) as Object
