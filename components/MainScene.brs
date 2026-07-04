@@ -113,8 +113,9 @@ sub Init()
     m.backendBootstrapStatus = createBackendBootstrapStatus("idle")
     m.backendSearchActiveType = ""
     m.backendSearchActiveQuery = ""
-    m.searchRequestId = 0
-    m.activeSearchRequestId = 0
+    m.backendSearchRequestId = 0
+    m.backendSearchLatestRequestId = 0
+    m.backendSearchLastKey = ""
     m.backendBootstrapAccountKey = ""
     m.backendCatalogAccountKey = ""
     m.backendCatalogCache = invalid
@@ -716,17 +717,17 @@ sub startBackendSearch(query as String, searchType as String)
     end if
     cleanQuery = safeText(query)
     if cleanQuery = "" then return
-    if cleanQuery = m.backendSearchActiveQuery and searchType = m.backendSearchActiveType then
-        PRINT "SEARCH_TEXT_UNCHANGED"
-        return
-    end if
+    searchKey = searchType + "|" + cleanQuery
+    if searchKey = m.backendSearchLastKey then return
+    m.backendSearchLastKey = searchKey
+    m.backendSearchRequestId = m.backendSearchRequestId + 1
+    m.backendSearchLatestRequestId = m.backendSearchRequestId
 
-    m.searchRequestId = m.searchRequestId + 1
-    m.activeSearchRequestId = m.searchRequestId
-    PRINT "SEARCH_REQUEST_START id="; m.activeSearchRequestId; " query="; cleanQuery
+    PRINT "SEARCH_REQUEST_START id="; m.backendSearchRequestId; " query="; cleanQuery
     PRINT "BACKEND_SEARCH_START type="; searchType; " query="; cleanQuery
     m.backendSearchActiveType = searchType
     m.backendSearchActiveQuery = cleanQuery
+    m.backendSearchActiveRequestId = m.backendSearchRequestId
     if searchType = "movies" and m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("setCatalogLoading", true)
     if searchType = "series" and m.seriesSearchScreen <> invalid then m.seriesSearchScreen.callFunc("setCatalogLoading", true)
 
@@ -738,7 +739,7 @@ sub startBackendSearch(query as String, searchType as String)
     m.backendSearchService.query = cleanQuery
     m.backendSearchService.searchType = searchType
     m.backendSearchService.limit = 50
-    m.backendSearchService.requestId = m.activeSearchRequestId
+    m.backendSearchService.requestId = m.backendSearchRequestId
     m.backendSearchService.control = "RUN"
 end sub
 
@@ -752,6 +753,14 @@ sub onBackendSearchResult()
     requestId = result.requestId
     if requestId = invalid then requestId = 0
     if requestId <> m.activeSearchRequestId then
+        PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
+        return
+    end if
+
+    requestId = 0
+    if result.requestId <> invalid then requestId = result.requestId
+    if requestId = 0 then requestId = m.backendSearchActiveRequestId
+    if requestId <> m.backendSearchLatestRequestId then
         PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
         return
     end if
@@ -2365,7 +2374,12 @@ sub onBackendBootstrapResult()
 
     if result.success = true and result.ok = true then
         m.backendBootstrapStatus = buildBackendBootstrapReadyStatus(result)
-        applyBackendCatalog(result)
+        PRINT "BOOTSTRAP_COUNTS_RECEIVED movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
+        if m.backendBootstrapStatus.movieCategories = 0 and m.backendBootstrapStatus.movies = 0 and m.backendBootstrapStatus.seriesCategories = 0 and m.backendBootstrapStatus.series = 0 and hasValidLocalCatalogData() then
+            PRINT "BACKEND_EMPTY_USING_CACHE"
+        else
+            applyBackendCatalog(result)
+        end if
         PRINT "BACKEND_REFRESH_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
         PRINT "BACKEND_BOOTSTRAP_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
     else
@@ -2379,10 +2393,10 @@ sub applyBackendCatalog(result as Object)
     if result = invalid or result.ok <> true then return
     if not hasAccount(m.account) then return
 
-    movieCategories = normalizeMovieCategories(result.movieCategories)
-    movies = normalizeMovies(result.movies)
-    seriesCategories = normalizeSeriesCategories(result.seriesCategories)
-    series = normalizeSeries(result.series)
+    movieCategories = normalizeMovieCategories(removeBackendCountOnlyItems(result.movieCategories))
+    movies = normalizeMovies(removeBackendCountOnlyItems(result.movies))
+    seriesCategories = normalizeSeriesCategories(removeBackendCountOnlyItems(result.seriesCategories))
+    series = normalizeSeries(removeBackendCountOnlyItems(result.series))
     if movieCategories.Count() = 0 and movies.Count() = 0 and seriesCategories.Count() = 0 and series.Count() = 0 then return
 
     m.backendCatalogAccountKey = buildBackendBootstrapAccountKey(m.account)
@@ -2498,8 +2512,18 @@ end function
 function safeCount(value as Dynamic) as Integer
     if value = invalid then return 0
     if Type(value) = "roInt" or Type(value) = "Integer" then return value
-    if Type(value) = "roArray" then return value.Count()
+    if Type(value) = "roArray" then
+        if value.Count() = 1 and value[0] <> invalid and value[0].__backendCountOnly = true then return value[0].count
+        return value.Count()
+    end if
     return 0
+end function
+
+function removeBackendCountOnlyItems(value as Dynamic) as Object
+    empty = []
+    if value = invalid or Type(value) <> "roArray" then return empty
+    if value.Count() = 1 and value[0] <> invalid and value[0].__backendCountOnly = true then return empty
+    return value
 end function
 
 sub cancelBlockingRequestForPlayback()

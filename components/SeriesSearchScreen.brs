@@ -15,7 +15,7 @@ sub Init()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
     m.keyNodes = [] : m.posterNodes = []
-    m.posterPlaceholderUri = "https://placehold.co/300x450/111827/FFFFFF?text=Serie" : m.posterUriCache = {} : m.catalogLoading = false
+    m.posterPlaceholderUri = "https://placehold.co/300x450/111827/FFFFFF?text=Serie" : m.posterUriCache = {} : m.catalogLoading = false : m.lastAppliedQuery = invalid
     m.posterLoadTimer = CreateObject("roSGNode", "Timer")
     m.posterLoadTimer.duration = 0.05
     m.posterLoadTimer.repeat = false
@@ -58,6 +58,7 @@ sub show()
     m.query = "" : m.pendingQuery = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     renderKeyboard()
+    m.lastAppliedQuery = invalid
     showInitialResults()
 end sub
 
@@ -82,30 +83,39 @@ sub showMessage(message as String)
 end sub
 
 sub showInitialResults()
-    m.results = []
-    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
+    newResults = []
+    oldFocusArea = m.focusArea : oldKeyRow = m.keyRow : oldKeyCol = m.keyCol : oldSelected = m.selectedResultIndex
     source = m.initialSeries
     if source = invalid or source.Count() = 0 then source = limitArray(m.allSeries, m.initialLimit)
     for each series in source
-        if m.results.Count() >= m.resultLimit then exit for
-        m.results.Push(series)
+        if newResults.Count() >= m.resultLimit then exit for
+        newResults.Push(series)
     end for
+    if areSearchResultsSame(m.results, newResults) then
+        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        PRINT "SEARCH_FOCUS_PRESERVED"
+        updateFocus()
+        return
+    end if
+    m.results = newResults
+    m.focusArea = oldFocusArea : m.keyRow = oldKeyRow : m.keyCol = oldKeyCol
+    if oldSelected >= m.results.Count() then oldSelected = m.results.Count() - 1
+    if oldSelected < 0 then oldSelected = 0
+    m.selectedResultIndex = oldSelected : m.posterIndex = oldSelected
+    syncResultOffset()
     if m.results.Count() = 0 then
         showMessage("Digite para pesquisar séries.")
     else
         m.messageLabel.text = ""
         renderPosters()
         PRINT "SEARCH_RESULTS_UPDATED"
+        PRINT "SEARCH_FOCUS_PRESERVED"
     end if
     updateFocus()
 end sub
 
 sub scheduleFilter()
-    if m.pendingQuery = m.query then
-        PRINT "SEARCH_TEXT_UNCHANGED"
-        return
-    end if
-    m.pendingQuery = m.query
+    if m.lastAppliedQuery <> invalid and m.lastAppliedQuery = m.query then return
     PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE"
     ' Mantém os resultados atuais visíveis enquanto a pesquisa nova roda em segundo plano.
@@ -129,8 +139,21 @@ sub onFilterDebounce()
 end sub
 
 sub setBackendSearchResults(items as Object)
-    m.results = limitArray(normalizeArray(items), m.resultLimit)
-    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
+    newResults = limitArray(normalizeArray(items), m.resultLimit)
+    if areSearchResultsSame(m.results, newResults) then
+        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        PRINT "SEARCH_FOCUS_PRESERVED"
+        updateSearchLoadingMessage()
+        updateFocus()
+        return
+    end if
+    oldFocusArea = m.focusArea : oldKeyRow = m.keyRow : oldKeyCol = m.keyCol : oldSelected = m.selectedResultIndex
+    m.results = newResults
+    m.lastAppliedQuery = m.query
+    if oldSelected >= m.results.Count() then oldSelected = m.results.Count() - 1
+    if oldSelected < 0 then oldSelected = 0
+    m.posterIndex = oldSelected : m.selectedResultIndex = oldSelected : m.resultOffset = 0
+    m.focusArea = oldFocusArea : m.keyRow = oldKeyRow : m.keyCol = oldKeyCol
     if m.results.Count() = 0 then
         showMessage("Nenhuma série encontrada.")
         if m.focusArea = "posters" then m.focusArea = "keyboard"
@@ -139,6 +162,7 @@ sub setBackendSearchResults(items as Object)
         renderPosters()
     end if
     PRINT "SEARCH_RESULTS_UPDATED"
+    PRINT "SEARCH_FOCUS_PRESERVED"
     updateFocus()
 end sub
 
@@ -149,8 +173,8 @@ sub useLocalSearchFallback(query as String)
 end sub
 
 sub applyFilter()
-    m.results = []
-    m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
+    newResults = []
+    oldFocusArea = m.focusArea : oldKeyRow = m.keyRow : oldKeyCol = m.keyCol : oldSelected = m.selectedResultIndex
     if m.allSeries.Count() = 0 then
         showMessage("Nenhuma série carregada ainda.")
         return
@@ -158,20 +182,33 @@ sub applyFilter()
     needle = normalizeText(m.query)
     if needle = "" then
         for each item in m.allSeries
-            if m.results.Count() >= m.resultLimit then exit for
-            m.results.Push(item)
+            if newResults.Count() >= m.resultLimit then exit for
+            newResults.Push(item)
         end for
     else
         ' Busca leve em 3 passadas, parando quando enche a tela.
         ' Evita montar listas temporárias grandes a cada letra.
         for rankTarget = 1 to 3
             for each item in m.allSeries
-                if m.results.Count() >= m.resultLimit then exit for
-                if prefixMatchRank(getSeriesName(item), needle) = rankTarget then m.results.Push(item)
+                if newResults.Count() >= m.resultLimit then exit for
+                if prefixMatchRank(getSeriesName(item), needle) = rankTarget then newResults.Push(item)
             end for
-            if m.results.Count() >= m.resultLimit then exit for
+            if newResults.Count() >= m.resultLimit then exit for
         end for
     end if
+    if areSearchResultsSame(m.results, newResults) then
+        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        PRINT "SEARCH_FOCUS_PRESERVED"
+        m.lastAppliedQuery = m.query
+        updateFocus()
+        return
+    end if
+    m.results = newResults
+    m.lastAppliedQuery = m.query
+    m.focusArea = oldFocusArea : m.keyRow = oldKeyRow : m.keyCol = oldKeyCol
+    if oldSelected >= m.results.Count() then oldSelected = m.results.Count() - 1
+    if oldSelected < 0 then oldSelected = 0
+    m.selectedResultIndex = oldSelected : m.posterIndex = oldSelected
     if m.results.Count() = 0 then
         showMessage("Nenhuma série encontrada.")
         PRINT "SEARCH_RESULTS_UPDATED"
@@ -394,22 +431,12 @@ end sub
 function handleRokuKeyboardKey(key as String) as Boolean
     if Left(key, 4) = "lit_" then
         PRINT "SEARCH_REMOTE_TEXT_INPUT"
-        if m.focusArea <> "keyboard" then
+        if m.top.visible <> true or m.focusArea <> "keyboard" then
             PRINT "SEARCH_REMOTE_TEXT_IGNORED"
-            return true
-        end if
-        remoteText = Mid(key, 5)
-        if remoteText = "" then
-            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
-            return true
-        end if
-        oldQuery = m.query
-        m.query = m.query + remoteText
-        if m.query = oldQuery then
-            PRINT "SEARCH_TEXT_UNCHANGED"
             return true
         end if
         PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+        m.query = m.query + Mid(key, 5)
         m.queryLabel.text = "Buscar: " + m.query
         lockInputBriefly()
         scheduleFilter()
@@ -489,6 +516,16 @@ function prefixMatchRank(title as Dynamic, needle as String) as Integer
         end if
     end for
     return 0
+end function
+
+function areSearchResultsSame(oldItems as Dynamic, newItems as Dynamic) as Boolean
+    if oldItems = invalid or newItems = invalid then return false
+    if Type(oldItems) <> "roArray" or Type(newItems) <> "roArray" then return false
+    if oldItems.Count() <> newItems.Count() then return false
+    for i = 0 to oldItems.Count() - 1
+        if getSeriesCacheKey(oldItems[i]) <> getSeriesCacheKey(newItems[i]) then return false
+    end for
+    return true
 end function
 
 sub setCatalogLoading(isLoading as Boolean)

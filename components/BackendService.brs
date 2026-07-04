@@ -88,10 +88,10 @@ function bootstrapViaBackend() as Object
             connected: true,
             request: "backendBootstrap",
             ok: true,
-            movieCategories: getBackendCatalogArray(data, ["movieCategories", "vodCategories", "categoriesMovies"]),
-            movies: getBackendCatalogArray(data, ["movies", "vod", "movieStreams"]),
-            seriesCategories: getBackendCatalogArray(data, ["seriesCategories", "categoriesSeries"]),
-            series: getBackendCatalogArray(data, ["series", "seriesStreams"]),
+            movieCategories: getBackendCatalogArrayWithCounts(parsed, data, "movieCategories", ["movieCategories", "vodCategories", "categoriesMovies"]),
+            movies: getBackendCatalogArrayWithCounts(parsed, data, "movies", ["movies", "vod", "movieStreams"]),
+            seriesCategories: getBackendCatalogArrayWithCounts(parsed, data, "seriesCategories", ["seriesCategories", "categoriesSeries"]),
+            series: getBackendCatalogArrayWithCounts(parsed, data, "series", ["series", "seriesStreams"]),
             message: "Bootstrap pronto."
         }
     end if
@@ -136,7 +136,7 @@ function searchViaBackend() as Object
             ok: true,
             query: body.query,
             searchType: searchType,
-            requestId: requestId,
+            requestId: m.top.requestId,
             results: results,
             movies: getBackendCatalogArray(data, ["movies", "vod", "movieStreams"]),
             series: getBackendCatalogArray(data, ["series", "seriesStreams"]),
@@ -170,7 +170,7 @@ function buildBackendSearchFailure(message as String, query as String, searchTyp
         ok: false,
         query: query,
         searchType: searchType,
-        requestId: requestId,
+i        requestId: m.top.requestId,
         results: [],
         message: message
     }
@@ -235,6 +235,18 @@ function buildBackendBootstrapFailure(message as String) as Object
         series: 0,
         message: message
     }
+end function
+
+function getBackendCatalogArrayWithCounts(parsed as Object, data as Dynamic, countKey as String, keys as Object) as Object
+    items = getBackendCatalogArray(data, keys)
+    if items.Count() > 0 then return items
+    count = getBackendCount(parsed, countKey)
+    if count > 0 then
+        counted = []
+        counted.Push({ __backendCountOnly: true, count: count })
+        return counted
+    end if
+    return items
 end function
 
 function getBackendCatalogData(parsed as Object) as Dynamic
