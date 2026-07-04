@@ -364,7 +364,8 @@ sub scheduleFilter()
     m.pendingQuery = m.query
     PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE"
-    m.messageLabel.text = "Carregando pesquisa..."
+    ' Mantém os resultados atuais visíveis enquanto a pesquisa nova roda em segundo plano.
+    m.messageLabel.text = "Atualizando pesquisa..."
     m.debounceTimer.control = "stop"
     m.debounceTimer.duration = 0.4
     m.debounceTimer.control = "start"
@@ -442,11 +443,19 @@ function handleRokuKeyboardKey(key as String) as Boolean
         return true
     end if
     if key = "backspace" or key = "delete" then
+        PRINT "SEARCH_REMOTE_TEXT_INPUT"
+        if m.focusArea <> "keyboard" then
+            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+            return true
+        end if
         if Len(m.query) > 0 then
             m.query = Left(m.query, Len(m.query) - 1)
             m.queryLabel.text = "Buscar: " + m.query
             lockInputBriefly()
             scheduleFilter()
+            PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+        else
+            PRINT "SEARCH_TEXT_UNCHANGED"
         end if
         return true
     end if

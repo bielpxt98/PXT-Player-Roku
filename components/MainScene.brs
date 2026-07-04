@@ -750,6 +750,12 @@ sub onBackendSearchResult()
     query = safeText(result.query)
     if searchType = "" then searchType = m.backendSearchActiveType
     if query = "" then query = m.backendSearchActiveQuery
+    requestId = result.requestId
+    if requestId = invalid then requestId = 0
+    if requestId <> m.activeSearchRequestId then
+        PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
+        return
+    end if
 
     requestId = 0
     if result.requestId <> invalid then requestId = result.requestId

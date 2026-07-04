@@ -106,6 +106,7 @@ function searchViaBackend() as Object
     if searchType = "" then searchType = "all"
     limit = m.top.limit
     if limit <= 0 then limit = 50
+    requestId = m.top.requestId
 
     body = {
         dns: safeBackendText(m.top.dns),
@@ -117,12 +118,12 @@ function searchViaBackend() as Object
 
     response = requestBackend("/api/search", body, 6000)
     if response.success <> true then
-        return buildBackendSearchFailure("Backend search falhou.", body.query, searchType)
+        return buildBackendSearchFailure("Backend search falhou.", body.query, searchType, requestId)
     end if
 
     parsed = ParseJson(response.body)
     if parsed = invalid then
-        return buildBackendSearchFailure("Backend search retornou resposta inválida.", body.query, searchType)
+        return buildBackendSearchFailure("Backend search retornou resposta inválida.", body.query, searchType, requestId)
     end if
 
     if parsed.ok = true or parsed.success = true then
@@ -145,7 +146,7 @@ function searchViaBackend() as Object
 
     errorMessage = safeBackendText(parsed.error)
     if errorMessage = "" then errorMessage = "Backend search falhou."
-    return buildBackendSearchFailure(errorMessage, body.query, searchType)
+    return buildBackendSearchFailure(errorMessage, body.query, searchType, requestId)
 end function
 
 function getBackendSearchArray(data as Dynamic, searchType as String) as Object
@@ -161,7 +162,7 @@ function getBackendSearchArray(data as Dynamic, searchType as String) as Object
     return combined
 end function
 
-function buildBackendSearchFailure(message as String, query as String, searchType as String) as Object
+function buildBackendSearchFailure(message as String, query as String, searchType as String, requestId as Integer) as Object
     return {
         success: false,
         connected: false,
@@ -169,7 +170,7 @@ function buildBackendSearchFailure(message as String, query as String, searchTyp
         ok: false,
         query: query,
         searchType: searchType,
-        requestId: m.top.requestId,
+i        requestId: m.top.requestId,
         results: [],
         message: message
     }

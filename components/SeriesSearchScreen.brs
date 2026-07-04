@@ -10,7 +10,7 @@ sub Init()
     m.hintLabel = m.top.FindNode("hintLabel")
     m.filterDebounceTimer = m.top.FindNode("filterDebounceTimer")
     if m.filterDebounceTimer <> invalid then m.filterDebounceTimer.ObserveField("fire", "onFilterDebounce")
-    m.allSeries = [] : m.initialSeries = [] : m.results = [] : m.query = ""
+    m.allSeries = [] : m.initialSeries = [] : m.results = [] : m.query = "" : m.pendingQuery = ""
     m.initialLimit = 60 : m.resultLimit = 40
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     m.rows = [ ["A","B","C","D","E","F","G","H","I","J","K","L","M"], ["N","O","P","Q","R","S","T","U","V","W","X","Y","Z"], ["0","1","2","3","4","5","6","7","8","9"], ["ESPAÇO","APAGAR","LIMPAR","FECHAR"] ]
@@ -55,7 +55,7 @@ sub show()
     configureLayout()
     PRINT "SEARCH_OPEN"
     m.top.visible = true : m.top.SetFocus(true)
-    m.query = "" : m.queryLabel.text = "Buscar: "
+    m.query = "" : m.pendingQuery = "" : m.queryLabel.text = "Buscar: "
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     renderKeyboard()
     m.lastAppliedQuery = invalid
@@ -118,7 +118,8 @@ sub scheduleFilter()
     if m.lastAppliedQuery <> invalid and m.lastAppliedQuery = m.query then return
     PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE"
-    m.messageLabel.text = "Carregando pesquisa..."
+    ' Mantém os resultados atuais visíveis enquanto a pesquisa nova roda em segundo plano.
+    m.messageLabel.text = "Atualizando pesquisa..."
     if m.filterDebounceTimer = invalid then
         applyFilter()
         return
@@ -129,6 +130,7 @@ sub scheduleFilter()
 end sub
 
 sub onFilterDebounce()
+    m.query = m.pendingQuery
     if Len(m.query) >= 1 then
         m.top.loadMoreRequested = m.query
     else
@@ -441,11 +443,19 @@ function handleRokuKeyboardKey(key as String) as Boolean
         return true
     end if
     if key = "backspace" or key = "delete" then
+        PRINT "SEARCH_REMOTE_TEXT_INPUT"
+        if m.focusArea <> "keyboard" then
+            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+            return true
+        end if
         if Len(m.query) > 0 then
             m.query = Left(m.query, Len(m.query) - 1)
             m.queryLabel.text = "Buscar: " + m.query
             lockInputBriefly()
             scheduleFilter()
+            PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+        else
+            PRINT "SEARCH_TEXT_UNCHANGED"
         end if
         return true
     end if
