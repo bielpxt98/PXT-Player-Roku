@@ -3,6 +3,8 @@
     <interface>
         <function name="show" />
         <function name="hide" />
+        <function name="getState" />
+        <function name="restoreState" />
         <function name="setSeries" />
         <function name="showMessage" />
         <function name="setInitialSeries" />

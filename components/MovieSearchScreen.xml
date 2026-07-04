@@ -3,6 +3,8 @@
     <interface>
         <function name="show" />
         <function name="hide" />
+        <function name="getState" />
+        <function name="restoreState" />
         <function name="setMovies" />
         <function name="showMessage" />
         <function name="setCatalogLoading" />
