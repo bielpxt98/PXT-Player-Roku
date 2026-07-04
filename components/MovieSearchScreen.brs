@@ -68,6 +68,30 @@ sub hide()
     m.top.visible = false
 end sub
 
+function getState() as Object
+    return { query: m.query, pendingQuery: m.pendingQuery, results: m.results, allMovies: m.allMovies, focusArea: m.focusArea, keyRow: m.keyRow, keyCol: m.keyCol, selectedResultIndex: m.selectedResultIndex, posterIndex: m.posterIndex, resultOffset: m.resultOffset, lastAppliedQuery: m.lastAppliedQuery }
+end function
+
+sub restoreState(state as Dynamic)
+    if state = invalid or Type(state) <> "roAssociativeArray" then return
+    if state.allMovies <> invalid and Type(state.allMovies) = "roArray" then m.allMovies = state.allMovies
+    if state.results <> invalid and Type(state.results) = "roArray" then m.results = state.results
+    if state.query <> invalid then m.query = state.query.ToStr()
+    if state.pendingQuery <> invalid then m.pendingQuery = state.pendingQuery.ToStr()
+    if state.focusArea <> invalid then m.focusArea = state.focusArea.ToStr()
+    if state.keyRow <> invalid then m.keyRow = Int(state.keyRow)
+    if state.keyCol <> invalid then m.keyCol = Int(state.keyCol)
+    if state.selectedResultIndex <> invalid then m.selectedResultIndex = Int(state.selectedResultIndex)
+    if state.posterIndex <> invalid then m.posterIndex = Int(state.posterIndex)
+    if state.resultOffset <> invalid then m.resultOffset = Int(state.resultOffset)
+    if state.lastAppliedQuery <> invalid then m.lastAppliedQuery = state.lastAppliedQuery.ToStr()
+    m.queryLabel.text = "Buscar: " + m.query
+    syncResultOffset()
+    refreshVisiblePosters()
+    updateFocus()
+    m.top.SetFocus(true)
+end sub
+
 sub setMovies(items as Object)
     m.allMovies = normalizeArray(items)
     if m.allMovies.Count() > 0 then PRINT "LOCAL_CACHE_HIT" else PRINT "LOCAL_CACHE_EMPTY"

@@ -134,6 +134,8 @@ sub Init()
     m.isReturningFromPlayer = false
     m.bootState = "booting"
     m.currentScreen = ""
+    m.movieSearchRestoreState = invalid
+    m.seriesSearchRestoreState = invalid
     if m.cachedMovies = invalid then m.cachedMovies = []
     if m.cachedSeries = invalid then m.cachedSeries = []
     if m.allMoviesCache = invalid then m.allMoviesCache = []
@@ -671,12 +673,19 @@ end sub
 sub onMovieSearchMovieSelected()
     movie = m.movieSearchScreen.movieSelected
     if movie = invalid then return
-    m.selectedMovie = movie
+    PRINT "DETAIL_OPEN_FROM_SEARCH"
+    m.movieSearchRestoreState = m.movieSearchScreen.callFunc("getState")
+    m.selectedMovie = normalizeMovieFromSearch(movie)
     m.openedFromSearch = true
     m.movieSearchScreen.callFunc("hide")
-    m.movieDetailScreen.callFunc("show", movie)
-    m.movieDetailScreen.callFunc("setDetails", movie)
-    m.movieDetailScreen.callFunc("setResumePosition", GetHistoryPosition("movie", movie))
+    m.movieDetailScreen.callFunc("show", m.selectedMovie)
+    m.movieDetailScreen.callFunc("setDetails", m.selectedMovie)
+    m.movieDetailScreen.callFunc("setResumePosition", GetHistoryPosition("movie", m.selectedMovie))
+    if getStreamId(m.selectedMovie) <> "" and hasAccount(m.account) and m.isDemoMode <> true then
+        m.movieDetailScreen.callFunc("setLoading", true)
+        startDetailTimeout("movie")
+        loadMovieInfo(m.selectedMovie)
+    end if
 end sub
 
 sub onSeriesSearchBack()
@@ -687,15 +696,51 @@ end sub
 sub onSeriesSearchSeriesSelected()
     series = m.seriesSearchScreen.seriesSelected
     if series = invalid then return
-    m.selectedSeries = series
+    PRINT "DETAIL_OPEN_FROM_SEARCH"
+    m.seriesSearchRestoreState = m.seriesSearchScreen.callFunc("getState")
+    m.selectedSeries = normalizeSeriesFromSearch(series)
     m.openedFromSearch = true
     m.seriesSearchScreen.callFunc("hide")
     setSeriesDetailsCredentials()
-    m.seriesDetailsScreen.callFunc("show", series)
-    m.seriesDetailsScreen.callFunc("setDetails", series)
-    m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(series))
-    loadSeriesInfo(series)
+    m.seriesDetailsScreen.callFunc("show", m.selectedSeries)
+    m.seriesDetailsScreen.callFunc("setDetails", m.selectedSeries)
+    m.seriesDetailsScreen.callFunc("setContinueEpisode", GetLastSeriesEpisode(m.selectedSeries))
+    loadSeriesInfo(m.selectedSeries)
 end sub
+
+function normalizeMovieFromSearch(movie as Dynamic) as Object
+    normalized = {}
+    if movie <> invalid and Type(movie) = "roAssociativeArray" then
+        for each k in movie
+            normalized[k] = movie[k]
+        end for
+    end if
+    id = getStreamId(normalized)
+    if id = "" and normalized.id <> invalid then id = normalized.id.ToStr()
+    if id <> "" then normalized.stream_id = id
+    if normalized.title <> invalid and normalized.name = invalid then normalized.name = normalized.title
+    if normalized.poster <> invalid and normalized.stream_icon = invalid then normalized.stream_icon = normalized.poster
+    if normalized.cover <> invalid and normalized.stream_icon = invalid then normalized.stream_icon = normalized.cover
+    if normalized.categoryId <> invalid and normalized.category_id = invalid then normalized.category_id = normalized.categoryId
+    return normalized
+end function
+
+function normalizeSeriesFromSearch(series as Dynamic) as Object
+    normalized = {}
+    if series <> invalid and Type(series) = "roAssociativeArray" then
+        for each k in series
+            normalized[k] = series[k]
+        end for
+    end if
+    id = getSeriesId(normalized)
+    if id = "" and normalized.id <> invalid then id = normalized.id.ToStr()
+    if id <> "" then normalized.series_id = id
+    if normalized.title <> invalid and normalized.name = invalid then normalized.name = normalized.title
+    if normalized.poster <> invalid and normalized.series_image = invalid then normalized.series_image = normalized.poster
+    if normalized.cover <> invalid and normalized.series_image = invalid then normalized.series_image = normalized.cover
+    if normalized.categoryId <> invalid and normalized.category_id = invalid then normalized.category_id = normalized.categoryId
+    return normalized
+end function
 
 sub onMovieSearchNeedsMore()
     query = ""
@@ -1584,6 +1629,21 @@ sub onMovieDetailBack()
     stopDetailTimeout("movie")
     if m.pendingRequest = "getMovieInfo" then cancelXtreamRequest()
     m.movieDetailScreen.callFunc("hide")
+    if m.openedFromSearch = true then
+        PRINT "DETAIL_RETURN_TO_SEARCH"
+        if m.movieSearchScreen <> invalid then
+            m.movieSearchScreen.callFunc("show")
+            m.movieSearchScreen.callFunc("restoreState", m.movieSearchRestoreState)
+            PRINT "DETAIL_SEARCH_CONTEXT_RESTORED"
+        end if
+        m.openedFromSearch = false
+        return
+    end if
+    if m.openedFromFavorites = true then
+        m.openedFromFavorites = false
+        onOpenFavoritesRequested()
+        return
+    end if
     m.movieListScreen.callFunc("show", m.selectedMovieCategory)
 end sub
 
@@ -3087,6 +3147,16 @@ end function
 
 sub onSeriesDetailsBack()
     m.seriesDetailsScreen.callFunc("hide")
+    if m.openedFromSearch = true then
+        PRINT "DETAIL_RETURN_TO_SEARCH"
+        if m.seriesSearchScreen <> invalid then
+            m.seriesSearchScreen.callFunc("show")
+            m.seriesSearchScreen.callFunc("restoreState", m.seriesSearchRestoreState)
+            PRINT "DETAIL_SEARCH_CONTEXT_RESTORED"
+        end if
+        m.openedFromSearch = false
+        return
+    end if
     m.simpleSeriesScreen.callFunc("show")
 end sub
 
@@ -3255,12 +3325,25 @@ sub onMovieInfoResult(result as Object)
     stopDetailTimeout("movie")
     if m.movieDetailScreen.visible <> true then return
     if result.success = true then
-        m.movieDetailScreen.callFunc("setDetails", result.data)
+        m.selectedMovie = mergeMovieDetails(m.selectedMovie, result.data)
+        m.movieDetailScreen.callFunc("setDetails", m.selectedMovie)
     else
         m.movieDetailScreen.callFunc("setLoading", false)
         m.movieDetailScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
     end if
 end sub
+
+function mergeMovieDetails(movie as Dynamic, details as Dynamic) as Object
+    merged = normalizeMovieFromSearch(movie)
+    info = details
+    if details <> invalid and Type(details) = "roAssociativeArray" and details.info <> invalid then info = details.info
+    if info <> invalid and Type(info) = "roAssociativeArray" then
+        for each k in info
+            merged[k] = info[k]
+        end for
+    end if
+    return normalizeMovieFromSearch(merged)
+end function
 
 function isMovieInfoResult(result as Dynamic) as Boolean
     if result = invalid or result.request = invalid then return false

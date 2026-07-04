@@ -72,6 +72,31 @@ sub setSeries(items as Object)
     if m.query = "" then showInitialResults() else applyFilter()
 end sub
 
+function getState() as Object
+    return { query: m.query, pendingQuery: m.pendingQuery, results: m.results, allSeries: m.allSeries, initialSeries: m.initialSeries, focusArea: m.focusArea, keyRow: m.keyRow, keyCol: m.keyCol, selectedResultIndex: m.selectedResultIndex, posterIndex: m.posterIndex, resultOffset: m.resultOffset, lastAppliedQuery: m.lastAppliedQuery }
+end function
+
+sub restoreState(state as Dynamic)
+    if state = invalid or Type(state) <> "roAssociativeArray" then return
+    if state.allSeries <> invalid and Type(state.allSeries) = "roArray" then m.allSeries = state.allSeries
+    if state.initialSeries <> invalid and Type(state.initialSeries) = "roArray" then m.initialSeries = state.initialSeries
+    if state.results <> invalid and Type(state.results) = "roArray" then m.results = state.results
+    if state.query <> invalid then m.query = state.query.ToStr()
+    if state.pendingQuery <> invalid then m.pendingQuery = state.pendingQuery.ToStr()
+    if state.focusArea <> invalid then m.focusArea = state.focusArea.ToStr()
+    if state.keyRow <> invalid then m.keyRow = Int(state.keyRow)
+    if state.keyCol <> invalid then m.keyCol = Int(state.keyCol)
+    if state.selectedResultIndex <> invalid then m.selectedResultIndex = Int(state.selectedResultIndex)
+    if state.posterIndex <> invalid then m.posterIndex = Int(state.posterIndex)
+    if state.resultOffset <> invalid then m.resultOffset = Int(state.resultOffset)
+    if state.lastAppliedQuery <> invalid then m.lastAppliedQuery = state.lastAppliedQuery.ToStr()
+    m.queryLabel.text = "Buscar: " + m.query
+    syncResultOffset()
+    refreshVisiblePosters()
+    updateFocus()
+    m.top.SetFocus(true)
+end sub
+
 sub setInitialSeries(items as Object)
     m.initialSeries = limitArray(normalizeArray(items), m.initialLimit)
     if m.query = "" then showInitialResults()
