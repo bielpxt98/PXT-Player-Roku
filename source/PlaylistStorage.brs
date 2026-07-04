@@ -9,9 +9,11 @@ function LoadSavedPlaylist() as Object
     PRINT "LOGIN_RESTORE_START"
     playlists = LoadSavedPlaylists()
     if playlists.Count() = 0 then
+        PRINT "ACCOUNT_STORAGE_READ empty"
         PRINT "LOGIN_RESTORE_FAILED"
         return invalid
     end if
+    PRINT "ACCOUNT_STORAGE_READ count="; playlists.Count()
 
     activeUsername = LoadActivePlaylistUsername()
     for each playlist in playlists
@@ -66,8 +68,12 @@ function LoadActivePlaylistUsername() as String
 end function
 
 sub SavePlaylist(playlist as Object)
-    if not isStoredPlaylistValid(playlist) then return
+    if not isStoredPlaylistValid(playlist) then
+        PRINT "ACCOUNT_STORAGE_SKIP_EMPTY_OVERWRITE"
+        return
+    end if
     PRINT "LOGIN_SAVE_OK"
+    PRINT "ACCOUNT_STORAGE_WRITE"
 
     playlists = LoadSavedPlaylists()
     updated = false
@@ -95,6 +101,7 @@ sub ClearSavedPlaylist()
 end sub
 
 sub DeleteSavedPlaylist()
+    PRINT "ACCOUNT_REMOVE_ONLY_MANUAL"
     section = CreateObject("roRegistrySection", PlaylistStorageSectionName())
     if section.Exists("dns") then section.Delete("dns")
     if section.Exists("username") then section.Delete("username")

@@ -234,8 +234,7 @@ sub startInitialFlow()
         setBootState("reconnecting")
         updateConnectionStatus(false, "Conectando...")
     else
-        if m.account <> invalid then PRINT "LOGIN_RESTORE_FAILED"
-        m.account = invalid
+        if m.account <> invalid then PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
         setBootState("error")
         updateConnectionStatus(false, "Nenhuma playlist conectada")
     end if
@@ -269,8 +268,7 @@ sub onAutoConnectTimerFire()
     if m.isConnecting = true then return
 
     if not hasAccount(m.account) then
-        m.account = invalid
-        PRINT "LOGIN_RESTORE_FAILED"
+        PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
         updateConnectionStatus(false, "Nenhuma playlist conectada")
         showPlaylistAccounts()
         return
@@ -1529,10 +1527,14 @@ sub onLoginSubmit()
         m.connectionMode = ""
         m.isDemoMode = false
         m.loginErrorActive = false
-        m.account = invalid
-        resetAccountLoadedData()
-        updateConnectionStatus(false, "Nenhuma playlist conectada")
-        showHome()
+        PRINT "ACCOUNT_STORAGE_SKIP_EMPTY_OVERWRITE"
+        if hasAccount(m.account) then
+            updateConnectionStatus(true, "Conectado")
+            showHome()
+        else
+            updateConnectionStatus(false, "Nenhuma playlist conectada")
+            showHome()
+        end if
         return
     end if
 
@@ -2395,7 +2397,11 @@ sub handleLoginConnectionResult(result as Object)
         startBackgroundCatalogCache()
         startInitialCategoryPreviewCache()
     else
-        SavePlaylistConnectionStatus("Desconectado")
+        if result <> invalid and result.backendUnavailable = true then
+            PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
+        else
+            SavePlaylistConnectionStatus("Desconectado")
+        end if
         m.pendingAccount = invalid
         if connectionMode = "auto" then
             m.loginErrorActive = false
@@ -2406,13 +2412,19 @@ sub handleLoginConnectionResult(result as Object)
                 refreshCurrentCatalogScreenAfterBoot()
             else
                 setBootState("error")
-                resetAccountLoadedData()
+                PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
+                loadLocalSearchIndexCache()
                 updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
                 if m.currentScreen = "" then showHome()
             end if
         else
             setBootState("error")
-            resetAccountLoadedData()
+            if result <> invalid and result.backendUnavailable = true then
+                PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
+                loadLocalSearchIndexCache()
+            else if not hasAccount(m.account) then
+                resetAccountLoadedData()
+            end if
             m.loginErrorActive = true
             updateConnectionStatus(false, "Não foi possível conectar. Verifique os dados.")
             m.connectionMode = ""
