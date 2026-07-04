@@ -67,7 +67,7 @@ end sub
 
 sub setSeries(items as Object)
     m.allSeries = normalizeArray(items)
-    PRINT "SEARCH_CACHE_HIT"
+    if m.allSeries.Count() > 0 then PRINT "LOCAL_CACHE_HIT" else PRINT "LOCAL_CACHE_EMPTY"
     if m.query = "" then showInitialResults() else applyFilter()
 end sub
 
@@ -101,6 +101,7 @@ sub showInitialResults()
 end sub
 
 sub scheduleFilter()
+    PRINT "SEARCH_TEXT_CHANGED"
     PRINT "SEARCH_DEBOUNCE"
     m.messageLabel.text = "Carregando pesquisa..."
     if m.filterDebounceTimer = invalid then
@@ -276,7 +277,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "back" then m.top.backRequested = true : return true
     if handleRokuKeyboardKey(key) then return true
     if key = "OK" then activate() : return true
-    if key = "up" or key = "down" or key = "left" or key = "right" then moveFocus(key) : updateFocus() : return true
+    if key = "up" or key = "down" or key = "left" or key = "right" then PRINT "SEARCH_IGNORED_FOCUS_MOVE" : moveFocus(key) : updateFocus() : return true
     return false
 end function
 

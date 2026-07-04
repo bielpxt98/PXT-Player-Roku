@@ -765,18 +765,14 @@ end sub
 
 sub useBackendSearchFallback(query as String, searchType as String)
     PRINT "BACKEND_SEARCH_FALLBACK type="; searchType; " query="; query
+    ' Do not run the old heavy local search fallback here. Keep the previous
+    ' results visible and only clear the loading indicator. Background cache
+    ' refresh may continue independently, but search itself stays tied to
+    ' /api/search for PR 11.1.
     if searchType = "movies" then
-        if m.movieSearchScreen <> invalid then
-            m.movieSearchScreen.callFunc("setCatalogLoading", false)
-            m.movieSearchScreen.callFunc("useLocalSearchFallback", query)
-        end if
-        startGlobalSearchCache("movies")
+        if m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("setCatalogLoading", false)
     else if searchType = "series" then
-        if m.seriesSearchScreen <> invalid then
-            m.seriesSearchScreen.callFunc("setCatalogLoading", false)
-            m.seriesSearchScreen.callFunc("useLocalSearchFallback", query)
-        end if
-        startGlobalSearchCache("series")
+        if m.seriesSearchScreen <> invalid then m.seriesSearchScreen.callFunc("setCatalogLoading", false)
     end if
 end sub
 
@@ -2334,6 +2330,7 @@ sub startBackendBootstrap(account as Object)
 
     m.backendBootstrapAccountKey = accountKey
     m.backendBootstrapStatus = createBackendBootstrapStatus("loading")
+    PRINT "BACKEND_REFRESH_START"
     PRINT "BACKEND_BOOTSTRAP_START"
 
     m.backendBootstrapService.control = "STOP"
@@ -2352,6 +2349,7 @@ sub onBackendBootstrapResult()
     if result.success = true and result.ok = true then
         m.backendBootstrapStatus = buildBackendBootstrapReadyStatus(result)
         applyBackendCatalog(result)
+        PRINT "BACKEND_REFRESH_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
         PRINT "BACKEND_BOOTSTRAP_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
     else
         m.backendBootstrapStatus = createBackendBootstrapStatus("error")
@@ -2565,6 +2563,11 @@ sub loadLocalSearchIndexCache()
             m.seriesCategoryIndex[cid].Push(item)
             if cid <> "" then m.seriesCategoryLoadState[cid] = "LOADED"
         end for
+    end if
+    if hasValidLocalCatalogData() then
+        PRINT "LOCAL_CACHE_HIT"
+    else
+        PRINT "LOCAL_CACHE_EMPTY"
     end if
 end sub
 
