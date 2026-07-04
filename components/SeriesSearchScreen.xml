@@ -3,6 +3,7 @@
     <interface>
         <function name="show" />
         <function name="hide" />
+        <function name="resetSearchStateOnExit" />
         <function name="getState" />
         <function name="restoreState" />
         <function name="setSeries" />
