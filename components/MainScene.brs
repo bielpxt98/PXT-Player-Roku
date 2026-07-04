@@ -293,7 +293,7 @@ sub startSplashBootstrap()
     m.splashMaximumTimer.control = "start"
 
     if hasAccount(m.account) then
-        m.bootstrapQueue = ["getLiveCategories", "getMovieCategories", "getSeriesCategories"]
+        m.bootstrapQueue = ["getLiveCategories", "getSeriesCategories", "getMovieCategories"]
         processNextBootstrapRequest()
     else
         m.bootstrapActive = false
@@ -2399,6 +2399,7 @@ sub applyBackendCatalog(result as Object)
     SaveSearchIndexCache(m.searchIndexCache)
 
     refreshCatalogScreensFromBackendCatalog()
+    startInitialCategoryPreviewCache()
 end sub
 
 function canUseBackendCatalog() as Boolean
@@ -2911,7 +2912,11 @@ sub showSeriesFromCacheOrLoad(category as Object)
         m.simpleSeriesScreen.callFunc("setSeries", cached)
         return
     end if
-    m.simpleSeriesScreen.callFunc("setLoading", true)
+    preview = getPreviewItems(m.seriesCategoryPreviewCache, categoryId)
+    if preview.Count() > 0 then
+        m.simpleSeriesScreen.callFunc("setSeries", preview)
+    end if
+    m.simpleSeriesScreen.callFunc("setLoading", preview.Count() = 0)
     loadSeries(category)
 end sub
 
@@ -3497,21 +3502,23 @@ sub startInitialCategoryPreviewCache()
     if not hasAccount(m.account) then return
     if m.previewUpdating = true then return
     m.previewQueue = []
-    if m.movieCategories <> invalid and Type(m.movieCategories) = "roArray" then
-        for each category in m.movieCategories
-            cid = getCategoryId(category)
-            previewItems = getPreviewItems(m.movieCategoryPreviewCache, cid)
-            if cid <> "" and previewItems.Count() = 0 then
-                m.previewQueue.Push({ kind: "moviePreview", action: "getMovies", categoryId: cid, category: category })
-            end if
-        end for
-    end if
     if m.seriesCategories <> invalid and Type(m.seriesCategories) = "roArray" then
+        PRINT "SERIES_PRELOAD_START"
         for each category in m.seriesCategories
             cid = getCategoryId(category)
             previewItems = getPreviewItems(m.seriesCategoryPreviewCache, cid)
             if cid <> "" and previewItems.Count() = 0 then
                 m.previewQueue.Push({ kind: "seriesPreview", action: "getSeries", categoryId: cid, category: category })
+            end if
+        end for
+    end if
+    if m.movieCategories <> invalid and Type(m.movieCategories) = "roArray" then
+        PRINT "MOVIES_PRELOAD_START"
+        for each category in m.movieCategories
+            cid = getCategoryId(category)
+            previewItems = getPreviewItems(m.movieCategoryPreviewCache, cid)
+            if cid <> "" and previewItems.Count() = 0 then
+                m.previewQueue.Push({ kind: "moviePreview", action: "getMovies", categoryId: cid, category: category })
             end if
         end for
     end if
@@ -3538,6 +3545,8 @@ sub processNextPreviewRequest()
         m.searchIndexCache.seriesCategories = m.seriesCategories
         m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
         SaveSearchIndexCache(m.searchIndexCache)
+        PRINT "SERIES_PRELOAD_READY"
+        PRINT "MOVIES_PRELOAD_READY"
         return
     end if
     job = m.previewQueue.Shift()
