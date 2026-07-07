@@ -3,6 +3,9 @@ sub Init()
     m.overlay = m.top.FindNode("overlay")
     m.title = m.top.FindNode("title")
     m.inputBackground = m.top.FindNode("inputBackground")
+    m.searchInput = m.top.FindNode("searchInput")
+    if m.searchInput <> invalid then m.searchInput.ObserveField("text", "onRemoteSearchTextChanged")
+    m.syncingSearchInput = false
     m.queryLabel = m.top.FindNode("queryLabel")
     m.messageLabel = m.top.FindNode("messageLabel")
     m.resultsGroup = m.top.FindNode("resultsGroup")
@@ -36,6 +39,7 @@ sub configureLayout()
     m.overlay.width = m.screenW : m.overlay.height = m.screenH
     m.title.width = m.screenW : m.title.height = 48 : m.title.translation = [0, 28] : m.title.font = "font:LargeBoldSystemFont"
     m.inputBackground.translation = [m.marginX, 92] : m.inputBackground.width = m.contentW : m.inputBackground.height = 48
+    if m.searchInput <> invalid then m.searchInput.translation = [m.marginX + 12, 94] : m.searchInput.width = 2 : m.searchInput.height = 2 : m.searchInput.visible = false
     m.queryLabel.translation = [m.marginX + 18, 99] : m.queryLabel.width = m.contentW - 36 : m.queryLabel.height = 36 : m.queryLabel.font = "font:MediumBoldSystemFont"
     m.resultsTop = 168 : m.keyboardTop = m.screenH - 224
     if m.screenH <= 720 then m.resultsTop = 142 : m.keyboardTop = m.screenH - 174
@@ -53,9 +57,10 @@ end sub
 
 sub show()
     configureLayout()
-    PRINT "SEARCH_OPEN"
+    ' PRINT "SEARCH_OPEN"
     m.top.visible = true : m.top.SetFocus(true)
     m.query = "" : m.pendingQuery = "" : m.lastSearchText = "" : m.queryLabel.text = "Buscar: "
+    clearRemoteSearchInput()
     m.focusArea = "keyboard" : m.keyRow = 0 : m.keyCol = 0 : m.posterIndex = 0 : m.selectedResultIndex = 0 : m.resultOffset = 0
     renderKeyboard()
     m.lastAppliedQuery = invalid
@@ -76,8 +81,8 @@ sub resetSearchStateOnExit()
     m.catalogLoading = false
     m.inputLocked = false
     m.messageLabel.text = ""
-    PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
-    PRINT "SEARCH_STATE_RESET_ON_EXIT"
+    ' PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
+    ' PRINT "SEARCH_STATE_RESET_ON_EXIT"
 end sub
 
 sub setSeries(items as Object)
@@ -106,6 +111,7 @@ sub restoreState(state as Dynamic)
     if state.lastAppliedQuery <> invalid then m.lastAppliedQuery = state.lastAppliedQuery.ToStr()
     if state.lastSearchText <> invalid then m.lastSearchText = state.lastSearchText.ToStr() else m.lastSearchText = m.query
     m.queryLabel.text = "Buscar: " + m.query
+    syncRemoteSearchInput(m.query)
     syncResultOffset()
     refreshVisiblePosters()
     updateFocus()
@@ -132,8 +138,8 @@ sub showInitialResults()
         newResults.Push(series)
     end for
     if areSearchResultsSame(m.results, newResults) then
-        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
-        PRINT "SEARCH_FOCUS_PRESERVED"
+        ' PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        ' PRINT "SEARCH_FOCUS_PRESERVED"
         updateFocus()
         return
     end if
@@ -148,32 +154,32 @@ sub showInitialResults()
     else
         m.messageLabel.text = ""
         renderPosters()
-        PRINT "SEARCH_RESULTS_UPDATED"
-        PRINT "SEARCH_FOCUS_PRESERVED"
+        ' PRINT "SEARCH_RESULTS_UPDATED"
+        ' PRINT "SEARCH_FOCUS_PRESERVED"
     end if
     updateFocus()
 end sub
 
 sub scheduleFilter()
     if m.focusArea <> "keyboard" then
-        PRINT "SEARCH_BLOCKED_CATEGORY_FOCUS"
+        ' PRINT "SEARCH_BLOCKED_CATEGORY_FOCUS"
         return
     end if
     if m.pendingQuery = m.query then
-        PRINT "SEARCH_BLOCKED_SAME_TEXT"
+        ' PRINT "SEARCH_BLOCKED_SAME_TEXT"
         return
     end if
     if m.lastSearchText = m.query then
-        PRINT "SEARCH_BLOCKED_SAME_TEXT"
+        ' PRINT "SEARCH_BLOCKED_SAME_TEXT"
         return
     end if
     m.lastSearchText = m.query
     m.pendingQuery = m.query
     m.searchRequestId = m.searchRequestId + 1
     m.latestAppliedRequestId = m.searchRequestId
-    PRINT "SEARCH_TEXT_CHANGED_ONLY_ON_INPUT"
-    PRINT "SEARCH_TEXT_CHANGED"
-    PRINT "SEARCH_DEBOUNCE id="; m.searchRequestId
+    ' PRINT "SEARCH_TEXT_CHANGED_ONLY_ON_INPUT"
+    ' PRINT "SEARCH_TEXT_CHANGED"
+    ' PRINT "SEARCH_DEBOUNCE id="; m.searchRequestId
     ' Mantém os resultados atuais visíveis enquanto a pesquisa nova roda em segundo plano.
     m.messageLabel.text = "Atualizando pesquisa..."
     if m.filterDebounceTimer = invalid then
@@ -187,7 +193,7 @@ end sub
 
 sub onFilterDebounce()
     if m.top.visible <> true then
-        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        ' PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
         return
     end if
     m.query = m.pendingQuery
@@ -200,13 +206,13 @@ end sub
 
 sub setBackendSearchResults(items as Object)
     if m.top.visible <> true then
-        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        ' PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
         return
     end if
     newResults = limitArray(normalizeArray(items), m.resultLimit)
     if areSearchResultsSame(m.results, newResults) then
-        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
-        PRINT "SEARCH_FOCUS_PRESERVED"
+        ' PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        ' PRINT "SEARCH_FOCUS_PRESERVED"
         updateSearchLoadingMessage()
         updateFocus()
         return
@@ -225,8 +231,8 @@ sub setBackendSearchResults(items as Object)
         updateSearchLoadingMessage()
         renderPosters()
     end if
-    PRINT "SEARCH_RESULTS_UPDATED"
-    PRINT "SEARCH_FOCUS_PRESERVED"
+    ' PRINT "SEARCH_RESULTS_UPDATED"
+    ' PRINT "SEARCH_FOCUS_PRESERVED"
     updateFocus()
 end sub
 
@@ -240,6 +246,11 @@ sub applyFilter()
     newResults = []
     oldFocusArea = m.focusArea : oldKeyRow = m.keyRow : oldKeyCol = m.keyCol : oldSelected = m.selectedResultIndex
     if m.allSeries.Count() = 0 then
+        if m.results <> invalid and m.results.Count() > 0 then
+            updateSearchLoadingMessage()
+            updateFocus()
+            return
+        end if
         showMessage("Nenhuma série carregada ainda.")
         return
     end if
@@ -261,8 +272,8 @@ sub applyFilter()
         end for
     end if
     if areSearchResultsSame(m.results, newResults) then
-        PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
-        PRINT "SEARCH_FOCUS_PRESERVED"
+        ' PRINT "SEARCH_UPDATE_SKIPPED_SAME_RESULTS"
+        ' PRINT "SEARCH_FOCUS_PRESERVED"
         m.lastAppliedQuery = m.query
         updateFocus()
         return
@@ -275,7 +286,7 @@ sub applyFilter()
     m.selectedResultIndex = oldSelected : m.posterIndex = oldSelected
     if m.results.Count() = 0 then
         showMessage("Nenhuma série encontrada.")
-        PRINT "SEARCH_RESULTS_UPDATED"
+        ' PRINT "SEARCH_RESULTS_UPDATED"
         if m.focusArea = "posters" then m.focusArea = "keyboard"
     else
         updateSearchLoadingMessage()
@@ -283,7 +294,7 @@ sub applyFilter()
         m.posterIndex = m.selectedResultIndex
         syncResultOffset()
         renderPosters()
-        PRINT "SEARCH_RESULTS_UPDATED"
+        ' PRINT "SEARCH_RESULTS_UPDATED"
     end if
     updateFocus()
 end sub
@@ -385,7 +396,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "back" then m.top.backRequested = true : return true
     if handleRokuKeyboardKey(key) then return true
     if isOkKey(key) then activate() : return true
-    if key = "up" or key = "down" or key = "left" or key = "right" then PRINT "SEARCH_IGNORED_FOCUS_MOVE" : moveFocus(key) : updateFocus() : return true
+    if key = "up" or key = "down" or key = "left" or key = "right" then moveFocus(key) : updateFocus() : return true
     return false
 end function
 
@@ -478,11 +489,51 @@ sub activate()
     end if
     if m.query <> oldQuery then
         m.queryLabel.text = "Buscar: " + m.query
+        syncRemoteSearchInput(m.query)
         lockInputBriefly()
         scheduleFilter()
     end if
 end sub
 
+
+sub clearRemoteSearchInput()
+    if m.searchInput = invalid then return
+    m.syncingSearchInput = true
+    m.searchInput.text = ""
+    m.syncingSearchInput = false
+end sub
+
+sub syncRemoteSearchInput(text as String)
+    if m.searchInput = invalid then return
+    if m.searchInput.text = text then return
+    m.syncingSearchInput = true
+    m.searchInput.text = text
+    m.syncingSearchInput = false
+end sub
+
+sub applyQueryText(newQuery as String)
+    if newQuery = invalid then newQuery = ""
+    m.query = newQuery
+    m.queryLabel.text = "Buscar: " + m.query
+    syncRemoteSearchInput(m.query)
+    lockInputBriefly()
+    scheduleFilter()
+end sub
+
+sub onRemoteSearchTextChanged()
+    if m.syncingSearchInput = true then return
+    if m.searchInput = invalid then return
+    if m.top.visible <> true then return
+    newQuery = m.searchInput.text
+    if newQuery = invalid then newQuery = ""
+    if newQuery = m.query then return
+    if m.focusArea <> "keyboard" then m.focusArea = "keyboard"
+    m.query = newQuery
+    m.queryLabel.text = "Buscar: " + m.query
+    lockInputBriefly()
+    scheduleFilter()
+    updateFocus()
+end sub
 
 sub lockInputBriefly()
     m.inputLocked = true
@@ -498,31 +549,49 @@ sub onInputUnlockTimerFire()
 end sub
 
 function handleRokuKeyboardKey(key as String) as Boolean
-    if Left(key, 4) = "lit_" then
-        PRINT "SEARCH_REMOTE_TEXT_INPUT"
+    if LCase(Left(key, 4)) = "lit_" then
+        ' PRINT "SEARCH_REMOTE_TEXT_INPUT"
         if m.top.visible <> true then
-            PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+            ' PRINT "SEARCH_REMOTE_TEXT_IGNORED"
             return true
         end if
         if m.focusArea <> "keyboard" then m.focusArea = "keyboard"
-        PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+        ' PRINT "SEARCH_REMOTE_TEXT_APPLIED"
         m.query = m.query + Mid(key, 5)
         m.queryLabel.text = "Buscar: " + m.query
+        syncRemoteSearchInput(m.query)
         lockInputBriefly()
         scheduleFilter()
         return true
     end if
-    if key = "backspace" or key = "delete" then
-        PRINT "SEARCH_REMOTE_TEXT_INPUT"
+    if Len(key) = 1 then
+        code = Asc(key)
+        if code >= 32 and code <= 126 then
+            ' PRINT "SEARCH_REMOTE_TEXT_INPUT"
+            if m.top.visible <> true then
+                ' PRINT "SEARCH_REMOTE_TEXT_IGNORED"
+                return true
+            end if
+            if m.focusArea <> "keyboard" then m.focusArea = "keyboard"
+            ' PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+            m.query = m.query + key
+            m.queryLabel.text = "Buscar: " + m.query
+            lockInputBriefly()
+            scheduleFilter()
+            return true
+        end if
+    end if
+    if LCase(key) = "backspace" or LCase(key) = "delete" then
+        ' PRINT "SEARCH_REMOTE_TEXT_INPUT"
         if m.focusArea <> "keyboard" then m.focusArea = "keyboard"
         if Len(m.query) > 0 then
             m.query = Left(m.query, Len(m.query) - 1)
             m.queryLabel.text = "Buscar: " + m.query
             lockInputBriefly()
             scheduleFilter()
-            PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+            ' PRINT "SEARCH_REMOTE_TEXT_APPLIED"
         else
-            PRINT "SEARCH_TEXT_UNCHANGED"
+            ' PRINT "SEARCH_TEXT_UNCHANGED"
         end if
         return true
     end if
@@ -602,7 +671,7 @@ end sub
 
 sub updateSearchLoadingMessage()
     if m.catalogLoading = true then
-        m.messageLabel.text = "Buscando mais resultados..."
+        m.messageLabel.text = ""
     else
         m.messageLabel.text = ""
     end if

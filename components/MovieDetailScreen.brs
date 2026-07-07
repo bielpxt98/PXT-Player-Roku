@@ -45,25 +45,25 @@ sub configureLayout()
     m.titleLabel.translation = [contentX, topY + 5]
     m.titleLabel.width = contentW
     m.titleLabel.font = "font:LargeBoldSystemFont"
-    m.ratingLabel.translation = [contentX, topY + 70]
+    m.ratingLabel.translation = [contentX, topY + 295]
     m.ratingLabel.width = contentW
-    m.ratingLabel.font = "font:MediumBoldSystemFont"
-    m.metaLabel.translation = [contentX, topY + 115]
+    m.ratingLabel.font = "font:MediumSystemFont"
+    m.metaLabel.translation = [contentX, topY + 95]
     m.metaLabel.width = contentW
     m.metaLabel.font = "font:MediumSystemFont"
-    m.directorLabel.translation = [contentX, topY + 180]
+    m.directorLabel.translation = [contentX, topY + 150]
     m.directorLabel.width = contentW
     m.directorLabel.font = "font:MediumSystemFont"
-    m.castLabel.translation = [contentX, topY + 225]
+    m.castLabel.translation = [contentX, topY + 195]
     m.castLabel.width = contentW
     m.castLabel.height = 70
     m.castLabel.font = "font:MediumSystemFont"
-    m.synopsisTitle.translation = [contentX, topY + 320]
+    m.synopsisTitle.translation = [contentX, topY + 335]
     m.synopsisTitle.width = contentW
     m.synopsisTitle.font = "font:MediumBoldSystemFont"
-    m.synopsisLabel.translation = [contentX, topY + 360]
+    m.synopsisLabel.translation = [contentX, topY + 375]
     m.synopsisLabel.width = contentW
-    m.synopsisLabel.height = 190
+    m.synopsisLabel.height = 170
     m.synopsisLabel.font = "font:MediumSystemFont"
     m.loadingLabel.translation = [contentX, topY + 285]
     m.loadingLabel.width = contentW
@@ -113,29 +113,59 @@ sub setDetails(details as Dynamic)
 end sub
 
 sub populate(item as Dynamic)
-    title = firstText(item, ["name", "title"])
+    title = cleanDisplayText(firstText(item, ["name", "title"]))
     year = getYear(firstText(item, ["releasedate", "releaseDate", "year"] ))
     if year <> "" then title = title + " (" + year + ")"
     m.titleLabel.text = title
     image = firstText(item, ["movie_image", "cover", "stream_icon", "cover_big", "backdrop_path"])
     m.poster.uri = image
-    rating = firstText(item, ["rating", "rating_5based"])
-    m.ratingLabel.text = ratingText(rating)
+    rating = firstText(item, ["rating", "rating_5based", "vote_average"])
+    m.ratingLabel.text = ratingLineText(rating)
     m.ratingLabel.visible = m.ratingLabel.text <> ""
-    meta = joinText([firstText(item, ["genre"]), durationText(firstText(item, ["duration", "episode_run_time"]))], " • ")
+    meta = joinText([cleanDisplayText(firstText(item, ["genre"])), durationText(firstText(item, ["duration", "episode_run_time"]))], " • ")
     m.metaLabel.text = meta
     m.metaLabel.visible = meta <> ""
-    director = firstText(item, ["director"])
+    director = cleanDisplayText(firstText(item, ["director"]))
     m.directorLabel.text = "Diretor: " + director
     m.directorLabel.visible = director <> ""
-    cast = firstText(item, ["cast"])
+    cast = cleanDisplayText(firstText(item, ["cast"]))
     m.castLabel.text = "Elenco: " + cast
     m.castLabel.visible = cast <> ""
-    desc = firstText(item, ["description", "plot"])
+    desc = cleanDisplayText(firstText(item, ["description", "plot"]))
     m.synopsisLabel.text = desc
     m.synopsisTitle.visible = desc <> ""
     m.synopsisLabel.visible = desc <> ""
 end sub
+
+function cleanDisplayText(value as String) as String
+    if value = invalid then return ""
+    text = value.ToStr()
+    allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑáàâãäéèêëíìîïóòôõöúùûüçñ.,;:!?/-_'()[]&+%°•" + Chr(34)
+    out = ""
+    for i = 1 to Len(text)
+        ch = Mid(text, i, 1)
+        if Instr(1, allowed, ch) > 0 then
+            out = out + ch
+        else if ch = Chr(10) or ch = Chr(13) or ch = Chr(9) then
+            out = out + " "
+        end if
+    end for
+    while Instr(1, out, "  ") > 0
+        out = out.Replace("  ", " ")
+    end while
+    return out.Trim()
+end function
+
+function ratingLineText(value as String) as String
+    if value = invalid or value = "" then return ""
+    n = Val(value)
+    if n <= 0 then return ""
+    original = n
+    if n > 10 then n = n / 10
+    if n <= 5 and original <= 5 then ten = n * 2 else ten = n
+    if ten > 10 then ten = 10
+    return "Classificação: " + Str(ten).Trim() + "/10"
+end function
 
 function mergeItem(base as Dynamic, details as Dynamic) as Object
     merged = {}

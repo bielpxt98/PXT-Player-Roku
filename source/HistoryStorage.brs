@@ -52,6 +52,10 @@ sub UpsertSeriesHistory(series as Dynamic, season as Dynamic, episode as Dynamic
     key = "episode:" + id
     if key = "episode:" then return
 
+    safePosition = historyInt(position)
+    existingPosition = GetHistoryPosition("episode", episode)
+    if safePosition = 0 and existingPosition > 0 then safePosition = existingPosition
+
     item = {
         type: "series",
         key: key,
@@ -62,7 +66,7 @@ sub UpsertSeriesHistory(series as Dynamic, season as Dynamic, episode as Dynamic
         seriesTitle: historyTitle(series, ""),
         seasonNumber: historySeasonNumber(season),
         episodeNumber: historyEpisodeNumber(episode),
-        position: historyInt(position),
+        position: safePosition,
         duration: historyInt(duration),
         updatedAt: historyNowIso(),
         series: minimalSeriesContent(series),

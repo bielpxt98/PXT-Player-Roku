@@ -52,11 +52,14 @@ sub setPlaylists(data as Object)
         for each playlist in playlists
             username = safeAccountScreenText(playlist.username)
             if username <> "" then
-                m.items.Push({ username: username, active: username = activeUsername, account: playlist, isNew: false })
+                m.items.Push({ username: username, active: username = activeUsername, account: playlist, isNew: false, isRemove: false })
             end if
         end for
     end if
-    m.items.Push({ username: "+  Nova Playlist", active: false, isNew: true })
+    m.items.Push({ username: "+  Nova Playlist", active: false, isNew: true, isRemove: false })
+    if activeUsername <> "" then
+        m.items.Push({ username: "Remover conta", active: false, isNew: false, isRemove: true })
+    end if
     m.selectedIndex = 0
     renderList()
     updateFocus()
@@ -85,7 +88,16 @@ sub renderList()
         icon.horizAlign = "center"
         icon.font = "font:MediumBoldSystemFont"
         icon.color = "#A7F3D0"
-        if item.active = true then icon.text = "✓" else icon.text = ""
+        if item.isRemove = true then
+            icon.text = "×"
+            icon.color = "#FCA5A5"
+        else if item.active = true then
+            icon.text = "✓"
+            icon.color = "#A7F3D0"
+        else
+            icon.text = ""
+            icon.color = "#A7F3D0"
+        end if
         label = CreateObject("roSGNode", "Label")
         label.id = "label"
         label.width = m.contentWidth - 92
@@ -94,7 +106,14 @@ sub renderList()
         label.vertAlign = "center"
         label.font = "font:MediumSystemFont"
         label.color = "#F8FAFC"
-        if item.active = true then label.text = item.username + " (active)" else label.text = item.username
+        if item.isRemove = true then
+            label.text = "Remover conta"
+            label.color = "#FCA5A5"
+        else if item.active = true then
+            label.text = item.username + " (ativa)"
+        else
+            label.text = item.username
+        end if
         row.AppendChild(bg)
         row.AppendChild(icon)
         row.AppendChild(label)
@@ -117,7 +136,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     else if key = "OK" then
         if m.items.Count() = 0 then return true
         item = m.items[m.selectedIndex]
-        if item.isNew = true then
+        if item.isRemove = true then
+            m.top.removeRequested = true
+        else if item.isNew = true then
             m.top.newPlaylistRequested = true
         else
             m.top.playlistSelected = item.account
@@ -152,7 +173,11 @@ sub updateFocusAt(index as Integer)
         refs.label.color = "#FFFFFF"
     else
         refs.bg.opacity = 0.0
-        refs.label.color = "#DDE6F3"
+        if m.items <> invalid and index < m.items.Count() and m.items[index].isRemove = true then
+            refs.label.color = "#FCA5A5"
+        else
+            refs.label.color = "#DDE6F3"
+        end if
     end if
 end sub
 

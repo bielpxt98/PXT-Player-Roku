@@ -38,5 +38,15 @@
             <Label id="loadingLabel" text="Conectando ao servidor..." color="#B8C3D6" horizAlign="center" translation="[50, 602]" visible="false" />
             <Label id="messageLabel" color="#FF6B6B" horizAlign="center" wrap="true" translation="[0, 532]" visible="false" />
         </Group>
+
+        <Group id="keyboardOverlay" visible="false">
+            <Rectangle id="keyboardDim" color="#000000" opacity="0.78" translation="[0, 0]" />
+            <Rectangle id="keyboardPanel" color="#071327" opacity="0.96" width="1020" height="620" translation="[130, 80]" />
+            <Label id="keyboardTitle" text="EDITAR CAMPO" color="#FFFFFF" horizAlign="center" width="1020" translation="[130, 112]" />
+            <Rectangle id="keyboardInputBg" color="#1B2A44" width="900" height="70" translation="[190, 175]" />
+            <TextEditBox id="keyboardInputText" hintText="" width="870" height="60" translation="[205, 183]" maxTextLength="200" clearOnDownKey="false" />
+            <Group id="keyboardKeys" translation="[190, 275]" />
+            <Label id="keyboardHelp" text="OK seleciona • VOLTAR cancela • Use o app Roku para digitar também" color="#B8C3D6" horizAlign="center" width="1020" translation="[130, 655]" />
+        </Group>
     </children>
 </component>

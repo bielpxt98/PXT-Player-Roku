@@ -69,9 +69,9 @@ sub configureLayout()
     m.controlsBackground.width = size.w
     m.controlsBackground.height = controlsHeight
     m.playPauseIcon.translation = [42, 18]
-    m.playPauseIcon.width = 52
+    m.playPauseIcon.width = 90
     m.playPauseIcon.height = 52
-    m.playPauseIcon.font = "font:LargeBoldSystemFont"
+    m.playPauseIcon.font = "font:SmallBoldSystemFont"
     m.currentTimeLabel.translation = [42, 74]
     m.currentTimeLabel.width = 76
     m.currentTimeLabel.font = "font:SmallSystemFont"
@@ -124,7 +124,7 @@ sub startPlayback(streamUrl as String, title as String, startPosition as Integer
     m.isPlaying = true
     startProgressUpdateTimer()
     showLoading("Carregando " + title + "...")
-    showControls()
+    hideControls()
 end sub
 
 sub setResumePosition(position as Dynamic)
@@ -204,8 +204,9 @@ sub onVideoStateChanged()
         m.loadingSpinner.control = "stop"
         m.errorGroup.visible = false
         startProgressUpdateTimer()
-        showControls()
+        hideControls()
     else if state = "buffering" or state = "loading" then
+        hideControls()
         showLoading("Carregando " + m.title + "...")
     else if state = "paused" then
         m.isPlaying = false
@@ -298,7 +299,8 @@ sub stopSeekHold()
     if m.seekHoldTimer <> invalid then m.seekHoldTimer.control = "stop"
     m.isHoldingSeek = false
     m.seekDirection = ""
-    m.pendingSeekPosition = invalid
+    ' Keep pendingSeekPosition until the video engine catches up, avoiding the
+    ' visual jump back to the old time after fast-forward/rewind is released.
 end sub
 
 sub onProgressUpdateTimerFire()
@@ -417,6 +419,7 @@ sub updateControls()
 end sub
 
 sub updateProgress()
+    settlePendingSeekPosition()
     position = getSeekBasePosition()
     duration = getPlaybackDuration()
     if m.currentTimeLabel <> invalid then m.currentTimeLabel.text = formatTime(position)
@@ -430,12 +433,21 @@ sub updateProgress()
     end if
 end sub
 
+sub settlePendingSeekPosition()
+    if m.pendingSeekPosition = invalid or m.video = invalid or m.video.position = invalid then return
+    actual = Int(m.video.position)
+    target = Int(m.pendingSeekPosition)
+    diff = actual - target
+    if diff < 0 then diff = diff * -1
+    if diff <= 3 then m.pendingSeekPosition = invalid
+end sub
+
 sub updatePlayPauseIcon()
     if m.playPauseIcon = invalid then return
     if m.isPlaying = true then
-        m.playPauseIcon.text = "Ⅱ"
+        m.playPauseIcon.text = "II"
     else
-        m.playPauseIcon.text = "▶"
+        m.playPauseIcon.text = ">"
     end if
 end sub
 

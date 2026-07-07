@@ -128,7 +128,7 @@ sub startLiveEdgePlayback(streamUrl as String, title as String)
     content.streamFormat = getStreamFormat(streamUrl)
     content.live = true
 
-    print "LIVE PLAYER URL: "; streamUrl
+    ' print "LIVE PLAYER URL: "; streamUrl
     clearVideoForLiveEdge()
     m.video.content = content
     m.video.control = "play"
@@ -140,7 +140,7 @@ end sub
 sub restartCurrentLiveStream(reason as String)
     if m.currentStreamUrl = "" or m.top.visible <> true or m.isClosing = true then return
     m.resyncAttempts = m.resyncAttempts + 1
-    print "LIVE PLAYER RESYNC ("; reason; ") attempt "; m.resyncAttempts
+    ' print "LIVE PLAYER RESYNC ("; reason; ") attempt "; m.resyncAttempts
     m.lastObservedPosition = -1
     m.stalledTicks = 0
     startLiveEdgePlayback(m.currentStreamUrl, m.channelName)
@@ -194,7 +194,7 @@ end sub
 sub onVideoStateChanged()
     if m.isClosing = true or m.video = invalid then return
     state = LCase(m.video.state)
-    print "LIVE PLAYER STATE: "; state
+    ' print "LIVE PLAYER STATE: "; state
     if state = "playing" then
         m.isLoading = false
         if m.loadingTimer <> invalid then m.loadingTimer.control = "stop"
@@ -220,11 +220,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if key = "back" then
         return handleBackKeySafely()
     else if key = "up" then
-        PRINT "LIVE_PLAYER_PREVIOUS_CHANNEL"
+        ' PRINT "LIVE_PLAYER_PREVIOUS_CHANNEL"
         m.top.channelChangeRequested = "previous"
         return true
     else if key = "down" then
-        PRINT "LIVE_PLAYER_NEXT_CHANNEL"
+        ' PRINT "LIVE_PLAYER_NEXT_CHANNEL"
         m.top.channelChangeRequested = "next"
         return true
     end if

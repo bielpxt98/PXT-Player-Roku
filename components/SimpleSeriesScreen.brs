@@ -200,6 +200,13 @@ sub hide()
     m.top.SetFocus(false)
 end sub
 
+sub focusSearchCategory()
+    m.activePanel = "categories"
+    m.selectedIndex = 0
+    m.firstVisibleCategoryIndex = 0
+    updateNavigationState()
+end sub
+
 sub setSeries(series as Object)
     m.isLoading = false
     if series = invalid or Type(series) <> "roArray" then

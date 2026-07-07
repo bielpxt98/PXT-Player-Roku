@@ -1,6 +1,6 @@
 ' Simple backend API communication service.
 ' Keep backend HTTP calls centralized here so future routes can reuse the same
-' request layer (/api/bootstrap, /api/search, /api/cache/status).
+' request layer (/bootstrap, /search, /cache/status).
 sub Init()
     m.top.functionName = "runBackendRequest"
 end sub
@@ -20,7 +20,7 @@ sub runBackendRequest()
 end sub
 
 function loginViaBackend() as Object
-    PRINT "Tentando login via backend"
+    ' PRINT "Tentando login via backend"
 
     body = {
         dns: safeBackendText(m.top.dns),
@@ -28,20 +28,20 @@ function loginViaBackend() as Object
         password: safeBackendText(m.top.password)
     }
 
-    response = requestBackend("/api/login", body, 6000)
+    response = requestBackendWithFallback(["/api/login", "/login"], body, 30000)
     if response.success <> true then
-        PRINT "Backend indisponível"
+        ' PRINT "Backend indisponível"
         return buildBackendFailure("Não foi possível conectar ao servidor.", true)
     end if
 
     parsed = ParseJson(response.body)
     if parsed = invalid then
-        PRINT "Backend indisponível"
+        ' PRINT "Backend indisponível"
         return buildBackendFailure("Não foi possível conectar ao servidor.", true)
     end if
 
     if parsed.ok = true then
-        PRINT "Login aprovado"
+        ' PRINT "Login aprovado"
         return {
             success: true,
             connected: true,
@@ -51,7 +51,7 @@ function loginViaBackend() as Object
         }
     end if
 
-    PRINT "Login recusado"
+    ' PRINT "Login recusado"
     errorMessage = safeBackendText(parsed.error)
     if errorMessage = "" then errorMessage = "Login inválido. Verifique DNS, usuário e senha."
     return {
@@ -71,7 +71,7 @@ function bootstrapViaBackend() as Object
         password: safeBackendText(m.top.password)
     }
 
-    response = requestBackend("/api/bootstrap", body, 30000)
+    response = requestBackendWithFallback(["/api/bootstrap", "/bootstrap"], body, 30000)
     if response.success <> true then
         return buildBackendBootstrapFailure("Backend bootstrap falhou.")
     end if
@@ -116,7 +116,7 @@ function searchViaBackend() as Object
         limit: limit
     }
 
-    response = requestBackend("/api/search", body, 6000)
+    response = requestBackendWithFallback(["/api/search", "/search"], body, 12000)
     if response.success <> true then
         return buildBackendSearchFailure("Backend search falhou.", body.query, searchType, requestId)
     end if
@@ -176,14 +176,30 @@ function buildBackendSearchFailure(message as String, query as String, searchTyp
     }
 end function
 
+function requestBackendWithFallback(paths as Object, body as Object, timeoutMs as Integer) as Object
+    lastResponse = invalid
+    for each path in paths
+        response = requestBackend(path, body, timeoutMs)
+        lastResponse = response
+        if response.success = true then return response
+        if response.statusCode <> 404 then return response
+        ' PRINT "BACKEND_ROUTE_FALLBACK_404 "; path
+    end for
+    if lastResponse <> invalid then return lastResponse
+    return buildBackendTransportFailure()
+end function
+
 function requestBackend(path as String, body as Object, timeoutMs as Integer) as Object
     baseUrl = normalizeBackendBaseUrl(GetBackendBaseUrl())
     if baseUrl = "" then return buildBackendTransportFailure()
 
     transfer = CreateObject("roUrlTransfer")
-    transfer.SetUrl(baseUrl + path)
+    fullUrl = baseUrl + path
+    ' PRINT "BACKEND_REQUEST_URL "; fullUrl
+    transfer.SetUrl(fullUrl)
     transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.InitClientCertificates()
+    ' PRINT "BACKEND_SSL_READY"
     transfer.AddHeader("Content-Type", "application/json")
     transfer.AddHeader("Accept", "application/json")
 
@@ -194,19 +210,32 @@ function requestBackend(path as String, body as Object, timeoutMs as Integer) as
     if payload = invalid then return buildBackendTransportFailure()
 
     if not transfer.AsyncPostFromString(payload) then
+        ' PRINT "BACKEND_TRANSFER_ERROR async_post_failed"
         return buildBackendTransportFailure()
     end if
 
     event = Wait(timeoutMs, port)
     if Type(event) <> "roUrlEvent" then
         transfer.AsyncCancel()
+        ' PRINT "BACKEND_TRANSFER_ERROR timeout"
         return buildBackendTransportFailure()
     end if
 
     statusCode = event.GetResponseCode()
     responseBody = event.GetString()
-    if statusCode < 200 or statusCode > 299 then return buildBackendTransportFailure()
-    if responseBody = invalid or responseBody = "" then return buildBackendTransportFailure()
+    ' PRINT "BACKEND_HTTP_STATUS "; statusCode
+    if statusCode < 200 or statusCode > 299 then
+        ' PRINT "BACKEND_ERROR_BODY "; safeBackendText(responseBody)
+        return {
+            success: false,
+            statusCode: statusCode,
+            body: safeBackendText(responseBody)
+        }
+    end if
+    if responseBody = invalid or responseBody = "" then
+        ' PRINT "BACKEND_TRANSFER_ERROR empty_body"
+        return buildBackendTransportFailure()
+    end if
 
     return {
         success: true,

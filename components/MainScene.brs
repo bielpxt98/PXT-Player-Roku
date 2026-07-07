@@ -32,6 +32,11 @@ sub Init()
     m.detailTimeoutTimer = m.top.FindNode("detailTimeoutTimer")
     m.autoConnectTimer = m.top.FindNode("autoConnectTimer")
     m.searchIndexTimer = m.top.FindNode("searchIndexTimer")
+    m.searchIndexSaveTimer = CreateObject("roSGNode", "Timer")
+    m.searchIndexSaveTimer.duration = 1.5
+    m.searchIndexSaveTimer.repeat = false
+    m.searchIndexSaveTimer.ObserveField("fire", "onSearchIndexSaveTimerFire")
+    m.searchIndexPendingSave = invalid
     m.splashMinimumTimer = m.top.FindNode("splashMinimumTimer")
     m.splashMaximumTimer = m.top.FindNode("splashMaximumTimer")
     m.pendingDetailRequest = ""
@@ -104,6 +109,7 @@ sub Init()
     m.seriesCategoryIndex = {}
     m.movieCategoryLoadState = {}
     m.seriesCategoryLoadState = {}
+    m.liveCategoryLoadState = {}
     m.searchMode = "all"
     m.searchBackTarget = "home"
     m.splashMinimumElapsed = false
@@ -135,6 +141,7 @@ sub Init()
     m.isReturningFromPlayer = false
     m.bootState = "booting"
     m.currentScreen = ""
+    m.homeReturnFocusIndex = invalid
     m.movieSearchRestoreState = invalid
     m.seriesSearchRestoreState = invalid
     if m.cachedMovies = invalid then m.cachedMovies = []
@@ -172,6 +179,7 @@ sub Init()
     m.playlistAccountsScreen.ObserveField("backRequested", "onPlaylistAccountsBack")
     m.playlistAccountsScreen.ObserveField("playlistSelected", "onPlaylistAccountSelected")
     m.playlistAccountsScreen.ObserveField("newPlaylistRequested", "onNewPlaylistRequested")
+    m.playlistAccountsScreen.ObserveField("removeRequested", "onAccountRemoveRequested")
     m.loginScreen.ObserveField("submit", "onLoginSubmit")
     m.loginScreen.ObserveField("backRequested", "onLoginBack")
     m.loginScreen.ObserveField("demoRequested", "onDemoRequested")
@@ -268,7 +276,7 @@ sub onAutoConnectTimerFire()
     if m.isConnecting = true then return
 
     if not hasAccount(m.account) then
-        PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
+        ' PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
         updateConnectionStatus(false, "Nenhuma playlist conectada")
         showPlaylistAccounts()
         return
@@ -502,6 +510,10 @@ sub showHome()
     m.seriesDetailsScreen.callFunc("hide")
     m.homeScreen.callFunc("show")
     m.currentScreen = "home"
+    if m.homeReturnFocusIndex <> invalid then
+        m.homeScreen.callFunc("setFocusIndex", m.homeReturnFocusIndex)
+        m.homeReturnFocusIndex = invalid
+    end if
     if m.bootState = "ready" then startBackgroundCatalogCache()
 end sub
 
@@ -566,10 +578,11 @@ sub onSearchBack()
         m.searchScreen.callFunc("hide")
     else if m.searchBackTarget = "movies" then
         m.movieListScreen.callFunc("show", m.selectedMovieCategory)
-        m.movieListScreen.callFunc("focusCategories")
+        m.movieListScreen.callFunc("focusSearchCategory")
         m.searchScreen.callFunc("hide")
     else if m.searchBackTarget = "series" then
         m.simpleSeriesScreen.callFunc("show")
+        m.simpleSeriesScreen.callFunc("focusSearchCategory")
         m.searchScreen.callFunc("hide")
     else
         showHome()
@@ -594,14 +607,17 @@ sub onMovieSearchRequested()
     movieSearchData = getMoviesForSearch()
     m.movieSearchScreen.callFunc("setMovies", movieSearchData)
     if movieSearchData = invalid then
-        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+        ' PRINT "BACKEND_SEARCH_CACHE_EMPTY"
     else if movieSearchData.Count() = 0 then
-        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+        ' PRINT "BACKEND_SEARCH_CACHE_EMPTY"
     end if
     if hasAccount(m.account) then
-        if m.movieGlobalCatalogLoaded <> true then
+        if movieSearchData = invalid or movieSearchData.Count() = 0 then
             m.movieSearchScreen.callFunc("setCatalogLoading", true)
-            startGlobalSearchCache("movies")
+            startBackendSearch("", "movies")
+        else if m.movieGlobalCatalogLoaded <> true then
+            m.movieSearchScreen.callFunc("setCatalogLoading", true)
+            startBackendSearch("", "movies")
         else
             m.movieSearchScreen.callFunc("setCatalogLoading", false)
         end if
@@ -623,16 +639,17 @@ sub onSeriesSearchRequested()
     seriesSearchData = getSeriesForSearch()
     m.seriesSearchScreen.callFunc("setSeries", seriesSearchData)
     if seriesSearchData = invalid then
-        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+        ' PRINT "BACKEND_SEARCH_CACHE_EMPTY"
     else if seriesSearchData.Count() = 0 then
-        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+        ' PRINT "BACKEND_SEARCH_CACHE_EMPTY"
     end if
     if hasAccount(m.account) then
-        if hasUnloadedSeriesCategories() then
-            ' Se ainda não há nada em memória, faz só uma tentativa global.
-            ' Nunca varre categorias nem reinicia busca ao apertar letras.
+        if seriesSearchData = invalid or seriesSearchData.Count() = 0 then
             m.seriesSearchScreen.callFunc("setCatalogLoading", true)
-            startGlobalSearchCache("series")
+            startBackendSearch("", "series")
+        else if hasUnloadedSeriesCategories() then
+            m.seriesSearchScreen.callFunc("setCatalogLoading", true)
+            startBackendSearch("", "series")
         else
             m.seriesSearchScreen.callFunc("setCatalogLoading", false)
         end if
@@ -655,7 +672,7 @@ sub onMovieSearchBack()
         m.movieListScreen.callFunc("show", m.selectedMovieCategory)
         if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then m.movieListScreen.callFunc("setCategories", m.movieCategories)
         if m.movies <> invalid and m.movies.Count() > 0 then m.movieListScreen.callFunc("setMovies", m.movies)
-        m.movieListScreen.callFunc("focusCategories")
+        m.movieListScreen.callFunc("focusSearchCategory")
     else
         m.movieListScreen.callFunc("show", invalid)
         if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
@@ -666,7 +683,7 @@ sub onMovieSearchBack()
         else
             m.movieListScreen.callFunc("showMessage", "Nenhuma categoria de filmes foi encontrada.")
         end if
-        m.movieListScreen.callFunc("focusCategories")
+        m.movieListScreen.callFunc("focusSearchCategory")
     end if
 
     m.currentScreen = "movies"
@@ -675,7 +692,7 @@ end sub
 sub onMovieSearchMovieSelected()
     movie = m.movieSearchScreen.movieSelected
     if movie = invalid then return
-    PRINT "DETAIL_OPEN_FROM_SEARCH"
+    ' PRINT "DETAIL_OPEN_FROM_SEARCH"
     m.movieSearchRestoreState = m.movieSearchScreen.callFunc("getState")
     m.selectedMovie = normalizeMovieFromSearch(movie)
     m.openedFromSearch = true
@@ -695,12 +712,13 @@ sub onSeriesSearchBack()
     resetBackendSearchStateOnExit("series")
     m.seriesSearchScreen.callFunc("hide")
     m.simpleSeriesScreen.callFunc("show")
+    m.simpleSeriesScreen.callFunc("focusSearchCategory")
 end sub
 
 sub onSeriesSearchSeriesSelected()
     series = m.seriesSearchScreen.seriesSelected
     if series = invalid then return
-    PRINT "DETAIL_OPEN_FROM_SEARCH"
+    ' PRINT "DETAIL_OPEN_FROM_SEARCH"
     m.seriesSearchRestoreState = m.seriesSearchScreen.callFunc("getState")
     m.selectedSeries = normalizeSeriesFromSearch(series)
     m.openedFromSearch = true
@@ -761,27 +779,30 @@ end sub
 
 sub startBackendSearch(query as String, searchType as String)
     if not isSearchScreenActive(searchType) then
-        PRINT "SEARCH_BLOCKED_CATEGORY_FOCUS"
+        ' PRINT "SEARCH_BLOCKED_CATEGORY_FOCUS"
         return
     end if
     if m.backendSearchService = invalid or not hasAccount(m.account) then
-        PRINT "BACKEND_SEARCH_CACHE_EMPTY"
+        ' PRINT "BACKEND_SEARCH_CACHE_EMPTY"
         useBackendSearchFallback(query, searchType)
         return
     end if
     cleanQuery = safeText(query)
-    if cleanQuery = "" then return
-    searchKey = searchType + "|" + cleanQuery
+    searchKeyQuery = cleanQuery
+    if searchKeyQuery = "" then searchKeyQuery = "__initial__"
+    searchKey = searchType + "|" + searchKeyQuery
     if searchKey = m.backendSearchLastKey then
-        PRINT "SEARCH_BLOCKED_SAME_TEXT"
+        ' PRINT "SEARCH_BLOCKED_SAME_TEXT"
         return
     end if
     m.backendSearchLastKey = searchKey
     m.backendSearchRequestId = m.backendSearchRequestId + 1
     m.backendSearchLatestRequestId = m.backendSearchRequestId
 
-    PRINT "SEARCH_REQUEST_START id="; m.backendSearchRequestId; " query="; cleanQuery
-    PRINT "BACKEND_SEARCH_START type="; searchType; " query="; cleanQuery
+    backendQuery = cleanQuery
+    if backendQuery = "" then backendQuery = "A"
+    ' PRINT "SEARCH_REQUEST_START id="; m.backendSearchRequestId; " query="; cleanQuery
+    ' PRINT "BACKEND_SEARCH_START type="; searchType; " query="; cleanQuery
     m.backendSearchActiveType = searchType
     m.backendSearchActiveQuery = cleanQuery
     m.backendSearchActiveRequestId = m.backendSearchRequestId
@@ -793,7 +814,7 @@ sub startBackendSearch(query as String, searchType as String)
     m.backendSearchService.dns = m.account.dns
     m.backendSearchService.username = m.account.username
     m.backendSearchService.password = m.account.password
-    m.backendSearchService.query = cleanQuery
+    m.backendSearchService.query = backendQuery
     m.backendSearchService.searchType = searchType
     m.backendSearchService.limit = 50
     m.backendSearchService.requestId = m.backendSearchRequestId
@@ -804,27 +825,26 @@ sub onBackendSearchResult()
     result = m.backendSearchService.result
     if result = invalid or result.request <> "backendSearch" then return
     searchType = safeText(result.searchType)
-    query = safeText(result.query)
+    query = m.backendSearchActiveQuery
     if searchType = "" then searchType = m.backendSearchActiveType
-    if query = "" then query = m.backendSearchActiveQuery
     requestId = result.requestId
     if requestId = invalid then requestId = 0
     if requestId = 0 then requestId = m.backendSearchActiveRequestId
 
     if not isSearchScreenActive(searchType) then
-        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        ' PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
         return
     end if
     if requestId <> m.backendSearchLatestRequestId then
-        PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
+        ' PRINT "SEARCH_REQUEST_IGNORED_STALE id="; requestId; " query="; query
         return
     end if
 
     if result.success = true and result.ok = true then
         items = result.results
         if items = invalid or Type(items) <> "roArray" then items = []
-        PRINT "SEARCH_REQUEST_APPLY id="; requestId; " query="; query
-        PRINT "BACKEND_SEARCH_READY type="; searchType; " query="; query; " count="; items.Count()
+        ' PRINT "SEARCH_REQUEST_APPLY id="; requestId; " query="; query
+        ' PRINT "BACKEND_SEARCH_READY type="; searchType; " query="; query; " count="; items.Count()
         if searchType = "movies" then
             if items.Count() > 0 then
                 m.allMoviesCache = mergeUniqueItems(items, m.allMoviesCache, "movies")
@@ -833,8 +853,9 @@ sub onBackendSearchResult()
                 saveLocalSearchIndexCache()
             end if
             if m.movieSearchScreen <> invalid and m.movieSearchScreen.visible = true then
+                if items.Count() > 0 then m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
                 m.movieSearchScreen.callFunc("setCatalogLoading", false)
-                m.movieSearchScreen.callFunc("setBackendSearchResults", items)
+                if items.Count() > 0 or query <> "" then m.movieSearchScreen.callFunc("setBackendSearchResults", items)
             end if
         else if searchType = "series" then
             if items.Count() > 0 then
@@ -844,12 +865,13 @@ sub onBackendSearchResult()
                 saveLocalSearchIndexCache()
             end if
             if m.seriesSearchScreen <> invalid and m.seriesSearchScreen.visible = true then
+                if items.Count() > 0 then m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
                 m.seriesSearchScreen.callFunc("setCatalogLoading", false)
-                m.seriesSearchScreen.callFunc("setBackendSearchResults", items)
+                if items.Count() > 0 or query <> "" then m.seriesSearchScreen.callFunc("setBackendSearchResults", items)
             end if
         end if
     else
-        PRINT "BACKEND_SEARCH_ERROR type="; searchType; " query="; query
+        ' PRINT "BACKEND_SEARCH_ERROR type="; searchType; " query="; query
         useBackendSearchFallback(query, searchType)
     end if
 end sub
@@ -861,6 +883,8 @@ function isSearchScreenActive(searchType as String) as Boolean
 end function
 
 sub resetBackendSearchStateOnExit(searchType as String)
+    ' Avoid repeated heavy resets/log spam when focus navigation sends duplicate exits.
+    if m.backendSearchActiveType = "" and m.backendSearchLastKey = "" then return
     m.backendSearchRequestId = m.backendSearchRequestId + 1
     m.backendSearchLatestRequestId = m.backendSearchRequestId
     m.backendSearchActiveRequestId = m.backendSearchRequestId
@@ -872,12 +896,11 @@ sub resetBackendSearchStateOnExit(searchType as String)
     if m.backendSearchService <> invalid then m.backendSearchService.control = "STOP"
     if searchType = "movies" and m.movieSearchScreen <> invalid then m.movieSearchScreen.callFunc("setCatalogLoading", false)
     if searchType = "series" and m.seriesSearchScreen <> invalid then m.seriesSearchScreen.callFunc("setCatalogLoading", false)
-    PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
-    PRINT "SEARCH_STATE_RESET_ON_EXIT"
+    ' search exit state reset without noisy logs
 end sub
 
 sub useBackendSearchFallback(query as String, searchType as String)
-    PRINT "BACKEND_SEARCH_FALLBACK type="; searchType; " query="; query
+    ' PRINT "BACKEND_SEARCH_FALLBACK type="; searchType; " query="; query
     ' Do not run the old heavy local search fallback here. Keep the previous
     ' results visible and only clear the loading indicator. Background cache
     ' refresh may continue independently, but search itself stays tied to
@@ -1162,7 +1185,7 @@ sub finishSearchIndexTypeIfDone(indexType as String)
     end if
     m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
     saveLocalSearchIndexCache()
-    PRINT "SEARCH_FINISHED"
+    ' PRINT "SEARCH_FINISHED"
 end sub
 
 function prioritizedSearchCategories(categories as Dynamic) as Object
@@ -1281,6 +1304,8 @@ end sub
 
 sub loadSearchMovies()
     if not beginXtreamRequest("getMovies") then return
+    if m.movieCategoryLoadState = invalid then m.movieCategoryLoadState = {}
+    if categoryId <> "" then m.movieCategoryLoadState[categoryId] = "LOADING"
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
     m.xtreamService.cacheEnabled = true
@@ -1424,6 +1449,7 @@ sub onPlaylistAccountSelected()
 end sub
 
 sub onOpenLiveCategoriesRequested()
+    m.homeReturnFocusIndex = 0
     cancelSearchIndexRefresh()
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
@@ -1471,6 +1497,7 @@ end sub
 
 
 sub onOpenMovieCategoriesRequested()
+    m.homeReturnFocusIndex = 1
     m.homeScreen.callFunc("hide")
     m.loginScreen.callFunc("hide")
     m.playlistAccountsScreen.callFunc("hide")
@@ -1498,16 +1525,16 @@ sub onOpenMovieCategoriesRequested()
     else if m.isDemoMode = true then
         m.movieListScreen.callFunc("setCategories", m.movieCategories)
         m.movieListScreen.callFunc("showMessage", "Escolha uma categoria demo para carregar os filmes.")
-        m.movieListScreen.callFunc("focusCategories")
+        m.movieListScreen.callFunc("focusSearchCategory")
     else if not hasAccount(m.account) then
         m.movieListScreen.callFunc("showMessage", "Conecte uma lista Xtream para carregar as categorias de filmes.")
-        m.movieListScreen.callFunc("focusCategories")
+        m.movieListScreen.callFunc("focusSearchCategory")
     else if m.movieCategoriesLoading then
         m.movieListScreen.callFunc("setLoading", true)
     else if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
         m.movieListScreen.callFunc("setCategories", m.movieCategories)
         m.movieListScreen.callFunc("showMessage", "Escolha uma categoria para carregar os filmes.")
-        m.movieListScreen.callFunc("focusCategories")
+        m.movieListScreen.callFunc("focusSearchCategory")
     else
         m.movieListScreen.callFunc("setLoading", true)
         loadMovieCategories(m.account)
@@ -1527,7 +1554,7 @@ sub onLoginSubmit()
         m.connectionMode = ""
         m.isDemoMode = false
         m.loginErrorActive = false
-        PRINT "ACCOUNT_STORAGE_SKIP_EMPTY_OVERWRITE"
+        ' PRINT "ACCOUNT_STORAGE_SKIP_EMPTY_OVERWRITE"
         if hasAccount(m.account) then
             updateConnectionStatus(true, "Conectado")
             showHome()
@@ -1569,7 +1596,11 @@ sub onAccountRemoveRequested()
     SavePlaylistConnectionStatus("Desconectado")
     resetAccountLoadedData()
     updateConnectionStatus(false, "Nenhuma playlist conectada")
-    showLogin()
+    if m.currentScreen = "playlistAccounts" then
+        showPlaylistAccounts()
+    else
+        showLogin()
+    end if
 end sub
 
 sub onDemoRequested()
@@ -1619,19 +1650,23 @@ sub onLoginBack()
 end sub
 
 sub onLiveCategoriesBack()
+    m.homeReturnFocusIndex = 0
     showHome()
 end sub
 
 sub onLiveChannelsBack()
+    m.homeReturnFocusIndex = 0
     showHome()
 end sub
 
 
 sub onMovieCategoriesBack()
+    m.homeReturnFocusIndex = 1
     showHome()
 end sub
 
 sub onMovieListBack()
+    m.homeReturnFocusIndex = 1
     showHome()
 end sub
 
@@ -1702,11 +1737,11 @@ sub onMovieDetailBack()
     if m.pendingRequest = "getMovieInfo" then cancelXtreamRequest()
     m.movieDetailScreen.callFunc("hide")
     if m.openedFromSearch = true then
-        PRINT "DETAIL_RETURN_TO_SEARCH"
+        ' PRINT "DETAIL_RETURN_TO_SEARCH"
         if m.movieSearchScreen <> invalid then
             m.movieSearchScreen.callFunc("show")
             m.movieSearchScreen.callFunc("restoreState", m.movieSearchRestoreState)
-            PRINT "DETAIL_SEARCH_CONTEXT_RESTORED"
+            ' detail search context restored
         end if
         m.openedFromSearch = false
         return
@@ -1971,7 +2006,7 @@ sub buildLiveStreamUrl(channel as Object)
     directUrl = getLiveDirectUrl(channel)
     if directUrl = "" and m.isDemoMode = true then directUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
     if directUrl <> "" then
-        print "LIVE PLAYER URL: "; directUrl
+        ' print "LIVE PLAYER URL: "; directUrl
         m.livePlayerScreen.callFunc("play", directUrl)
         return
     end if
@@ -2059,18 +2094,15 @@ sub loadMovies(category as Object)
     if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[categoryId] <> invalid then cached = m.movieCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedMovies, categoryId)
     if cached.Count() > 0 then
         m.movies = cached
-        m.moviesLoading = false
-        m.movieListScreen.callFunc("setLoading", false)
         m.movieListScreen.callFunc("setMovies", m.movies)
-        return
+        if getCategoryLoadState(m.movieCategoryLoadState, categoryId) = "LOADED" then
+            m.moviesLoading = false
+            m.movieListScreen.callFunc("setLoading", false)
+            return
+        end if
     end if
-    if canUseBackendCatalog() then
-        m.movies = filterItemsByCategory(m.cachedMovies, categoryId)
-        m.moviesLoading = false
-        m.movieListScreen.callFunc("setLoading", false)
-        m.movieListScreen.callFunc("setMovies", m.movies)
-        return
-    end if
+    ' Mesmo com backend pronto, uma categoria pode estar só com prévia/cache parcial.
+    ' Continue buscando a categoria real na Xtream para mostrar todos os itens.
     if m.isDemoMode = true then
         m.movies = cached
         m.moviesLoading = false
@@ -2078,6 +2110,7 @@ sub loadMovies(category as Object)
         m.movieListScreen.callFunc("setMovies", m.movies)
         return
     end if
+    if m.isLoadingRequest = true then cancelXtreamRequest()
     if not beginXtreamRequest("getMovies") then return
     if not hasAccount(m.account) then
         m.moviesLoading = false
@@ -2087,6 +2120,8 @@ sub loadMovies(category as Object)
         return
     end if
 
+    if m.movieCategoryLoadState = invalid then m.movieCategoryLoadState = {}
+    if categoryId <> "" then m.movieCategoryLoadState[categoryId] = "LOADING"
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getMovies"
     m.xtreamService.cacheEnabled = true
@@ -2109,7 +2144,7 @@ sub loadMovieCategories(account as Object)
         m.homeScreen.callFunc("setMovieCategoriesLoading", false)
         return
     end if
-    PRINT "CATEGORIES_FALLBACK_XTREAM movies"
+    ' PRINT "CATEGORIES_FALLBACK_XTREAM movies"
     if not beginXtreamRequest("getMovieCategories") then return
     m.movieCategoriesLoading = true
     if m.movieCategoriesScreen.visible = true then
@@ -2127,13 +2162,15 @@ sub loadMovieCategories(account as Object)
 end sub
 
 sub loadLiveChannels(category as Object)
+    categoryId = getCategoryId(category)
     if m.isDemoMode = true then
-        m.liveChannels = filterItemsByCategory(m.cachedLiveChannels, getCategoryId(category))
+        m.liveChannels = filterItemsByCategory(m.cachedLiveChannels, categoryId)
         m.liveChannelsLoading = false
         m.liveChannelsScreen.callFunc("setLoading", false)
         m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
         return
     end if
+    if m.isLoadingRequest = true then cancelXtreamRequest()
     if not beginXtreamRequest("getLiveStreams") then return
     if not hasAccount(m.account) then
         m.liveChannelsLoading = false
@@ -2143,10 +2180,12 @@ sub loadLiveChannels(category as Object)
         return
     end if
 
+    if m.liveCategoryLoadState = invalid then m.liveCategoryLoadState = {}
+    if categoryId <> "" then m.liveCategoryLoadState[categoryId] = "LOADING"
     m.xtreamService.control = "STOP"
     m.xtreamService.action = "getLiveStreams"
     m.xtreamService.cacheEnabled = true
-    m.xtreamService.categoryId = ""
+    m.xtreamService.categoryId = categoryId
     m.xtreamService.dns = m.account.dns
     m.xtreamService.username = m.account.username
     m.xtreamService.password = m.account.password
@@ -2258,10 +2297,12 @@ sub showMoviesFromCacheOrLoad(category as Object)
     if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[categoryId] <> invalid then cached = m.movieCategoryIndex[categoryId]
     if cached.Count() > 0 then
         m.movies = cached
-        m.moviesLoading = false
-        m.movieListScreen.callFunc("setLoading", false)
         m.movieListScreen.callFunc("setMovies", m.movies)
-        return
+        if getCategoryLoadState(m.movieCategoryLoadState, categoryId) = "LOADED" then
+            m.moviesLoading = false
+            m.movieListScreen.callFunc("setLoading", false)
+            return
+        end if
     end if
     preview = getPreviewItems(m.movieCategoryPreviewCache, categoryId)
     if preview.Count() > 0 then
@@ -2275,16 +2316,19 @@ end sub
 
 
 sub showLiveChannelsFromCacheOrLoad(category as Object)
-    cached = filterItemsByCategory(m.cachedLiveChannels, getCategoryId(category))
-    if cached.Count() > 0 or (m.cachedLiveChannels <> invalid and m.cachedLiveChannels.Count() > 0) then
+    categoryId = getCategoryId(category)
+    cached = filterItemsByCategory(m.cachedLiveChannels, categoryId)
+    if cached.Count() > 0 then
         m.liveChannels = cached
-        m.liveChannelsLoading = false
-        m.liveChannelsScreen.callFunc("setLoading", false)
         m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
-        return
+        if getCategoryLoadState(m.liveCategoryLoadState, categoryId) = "LOADED" then
+            m.liveChannelsLoading = false
+            m.liveChannelsScreen.callFunc("setLoading", false)
+            return
+        end if
     end if
     m.liveChannelsLoading = true
-    m.liveChannelsScreen.callFunc("setLoading", true)
+    m.liveChannelsScreen.callFunc("setLoading", cached.Count() = 0)
     loadLiveChannels(category)
 end sub
 
@@ -2311,6 +2355,30 @@ function replaceCachedCategoryItems(cache as Dynamic, freshItems as Object, cate
         end for
     end if
     return merged
+end function
+
+
+function stampItemsCategoryId(items as Dynamic, categoryId as String) as Object
+    result = []
+    if items = invalid or Type(items) <> "roArray" then return result
+    for each item in items
+        if item <> invalid and Type(item) = "roAssociativeArray" then
+            if categoryId <> "" then
+                if item.category_id = invalid then
+                    item.category_id = categoryId
+                else if item.category_id.ToStr() = "" then
+                    item.category_id = categoryId
+                end if
+                if item.categoryId = invalid then
+                    item.categoryId = categoryId
+                else if item.categoryId.ToStr() = "" then
+                    item.categoryId = categoryId
+                end if
+            end if
+            result.Push(item)
+        end if
+    end for
+    return result
 end function
 
 function getItemCategoryId(item as Dynamic) as String
@@ -2380,7 +2448,7 @@ sub handleLoginConnectionResult(result as Object)
         m.account = m.pendingAccount
         m.loginFormAccount = invalid
         SavePlaylist(m.account)
-        PRINT "ACCOUNT_LOGIN_SUCCESS_SAVE"
+        ' PRINT "ACCOUNT_LOGIN_SUCCESS_SAVE"
         m.savedPlaylists = LoadSavedPlaylists()
         SavePlaylistConnectionStatus("Conectado")
         setBootState("ready")
@@ -2398,7 +2466,7 @@ sub handleLoginConnectionResult(result as Object)
         startInitialCategoryPreviewCache()
     else
         if result <> invalid and result.backendUnavailable = true then
-            PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
+            ' PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
         else
             SavePlaylistConnectionStatus("Desconectado")
         end if
@@ -2412,7 +2480,7 @@ sub handleLoginConnectionResult(result as Object)
                 refreshCurrentCatalogScreenAfterBoot()
             else
                 setBootState("error")
-                PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
+                ' PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
                 loadLocalSearchIndexCache()
                 updateConnectionStatus(false, "Não foi possível reconectar. Abra CONTA para corrigir.")
                 if m.currentScreen = "" then showHome()
@@ -2420,7 +2488,7 @@ sub handleLoginConnectionResult(result as Object)
         else
             setBootState("error")
             if result <> invalid and result.backendUnavailable = true then
-                PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
+                ' PRINT "ACCOUNT_RESTORE_FAILED_KEEP_EXISTING"
                 loadLocalSearchIndexCache()
             else if not hasAccount(m.account) then
                 resetAccountLoadedData()
@@ -2458,6 +2526,7 @@ sub resetAccountLoadedData()
     m.allLiveCache = []
     m.liveCategoriesLoading = false
     m.liveChannelsLoading = false
+    m.liveCategoryLoadState = {}
     m.movieCategories = []
     m.movies = []
     m.cachedMovies = []
@@ -2477,7 +2546,8 @@ end sub
 
 sub startLoginTimeout()
     m.loginTimeoutTimer.control = "stop"
-    m.loginTimeoutTimer.duration = 6
+    ' Render free/cold start + Xtream validation can take more than 6 seconds.
+    m.loginTimeoutTimer.duration = 35
     m.loginTimeoutTimer.control = "start"
 end sub
 
@@ -2515,7 +2585,7 @@ end sub
 sub onLoginTimeout()
     if m.pendingAccount = invalid then return
     cancelLoginRequest()
-    PRINT "Backend indisponível"
+    ' PRINT "Backend indisponível"
     onXtreamConnectionResultForLogin({
         success: false,
         connected: false,
@@ -2555,8 +2625,8 @@ sub startBackendBootstrap(account as Object)
 
     m.backendBootstrapAccountKey = accountKey
     m.backendBootstrapStatus = createBackendBootstrapStatus("loading")
-    PRINT "BACKEND_REFRESH_START"
-    PRINT "BACKEND_BOOTSTRAP_START"
+    ' PRINT "BACKEND_REFRESH_START"
+    ' PRINT "BACKEND_BOOTSTRAP_START"
 
     m.backendBootstrapService.control = "STOP"
     m.backendBootstrapService.action = "bootstrap"
@@ -2573,17 +2643,17 @@ sub onBackendBootstrapResult()
 
     if result.success = true and result.ok = true then
         m.backendBootstrapStatus = buildBackendBootstrapReadyStatus(result)
-        PRINT "BOOTSTRAP_COUNTS_RECEIVED movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
+        ' PRINT "BOOTSTRAP_COUNTS_RECEIVED movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
         if m.backendBootstrapStatus.movieCategories = 0 and m.backendBootstrapStatus.movies = 0 and m.backendBootstrapStatus.seriesCategories = 0 and m.backendBootstrapStatus.series = 0 and hasValidLocalCatalogData() then
-            PRINT "BACKEND_EMPTY_USING_CACHE"
+            ' PRINT "BACKEND_EMPTY_USING_CACHE"
         else
             applyBackendCatalog(result)
         end if
-        PRINT "BACKEND_REFRESH_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
-        PRINT "BACKEND_BOOTSTRAP_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
+        ' PRINT "BACKEND_REFRESH_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
+        ' PRINT "BACKEND_BOOTSTRAP_READY movieCategories="; m.backendBootstrapStatus.movieCategories; " movies="; m.backendBootstrapStatus.movies; " seriesCategories="; m.backendBootstrapStatus.seriesCategories; " series="; m.backendBootstrapStatus.series
     else
         m.backendBootstrapStatus = createBackendBootstrapStatus("error")
-        PRINT "BACKEND_BOOTSTRAP_ERROR"
+        ' PRINT "BACKEND_BOOTSTRAP_ERROR"
         if result.message <> invalid then PRINT "Backend bootstrap falhou: "; result.message
     end if
 end sub
@@ -2607,12 +2677,12 @@ sub applyBackendCatalog(result as Object)
     }
 
     if movieCategories.Count() > 0 then
-        PRINT "CATEGORIES_FROM_BACKEND movies"
+        ' PRINT "CATEGORIES_FROM_BACKEND movies"
         m.movieCategories = movieCategories
     else if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
-        PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
+        ' PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
     else
-        PRINT "CATEGORIES_EMPTY movies"
+        ' PRINT "CATEGORIES_EMPTY movies"
     end if
     if movies.Count() > 0 then
         m.cachedMovies = movies
@@ -2620,12 +2690,12 @@ sub applyBackendCatalog(result as Object)
         m.movieGlobalCatalogLoaded = true
     end if
     if seriesCategories.Count() > 0 then
-        PRINT "CATEGORIES_FROM_BACKEND series"
+        ' PRINT "CATEGORIES_FROM_BACKEND series"
         m.seriesCategories = seriesCategories
     else if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
-        PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
+        ' PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
     else
-        PRINT "CATEGORIES_EMPTY series"
+        ' PRINT "CATEGORIES_EMPTY series"
     end if
     if series.Count() > 0 then
         m.cachedSeries = series
@@ -2640,8 +2710,8 @@ sub applyBackendCatalog(result as Object)
     m.searchIndexCache.series = m.allSeriesCache
     saveLocalSearchIndexCache()
 
-    PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
-    PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
+    ' PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
+    ' PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
 
     refreshCatalogScreensFromBackendCatalog()
     startInitialCategoryPreviewCache()
@@ -2663,7 +2733,7 @@ sub rebuildBackendCatalogIndexes()
             if cid <> "" then
                 if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
                 m.movieCategoryIndex[cid].Push(item)
-                m.movieCategoryLoadState[cid] = "LOADED"
+                m.movieCategoryLoadState[cid] = "PARTIAL"
             end if
         end for
     end if
@@ -2676,7 +2746,7 @@ sub rebuildBackendCatalogIndexes()
             if cid <> "" then
                 if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
                 m.seriesCategoryIndex[cid].Push(item)
-                m.seriesCategoryLoadState[cid] = "LOADED"
+                m.seriesCategoryLoadState[cid] = "PARTIAL"
             end if
         end for
     end if
@@ -2771,6 +2841,9 @@ sub continueBootstrapIfNeeded()
 end sub
 
 sub loadLocalSearchIndexCache()
+    ' Flush any debounced save still pending for the previous account before
+    ' switching, so we don't lose the last write or apply it to the wrong key.
+    flushPendingSearchIndexSave()
     m.searchIndexCache = LoadSearchIndexCache(m.account)
     m.movieSearchIndex = m.searchIndexCache.movieSearchIndex
     m.seriesSearchIndex = m.searchIndexCache.seriesSearchIndex
@@ -2789,9 +2862,9 @@ sub loadLocalSearchIndexCache()
     end if
     if m.searchIndexCache.movieCategories.Count() > 0 then
         m.movieCategories = m.searchIndexCache.movieCategories
-        PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
-        PRINT "MOVIE_CATEGORIES_CACHE_RESTORED"
-        PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
+        ' PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
+        ' PRINT "MOVIE_CATEGORIES_CACHE_RESTORED"
+        ' PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
     end if
     if m.searchIndexCache.movies.Count() > 0 then
         m.cachedMovies = m.searchIndexCache.movies
@@ -2799,9 +2872,9 @@ sub loadLocalSearchIndexCache()
     end if
     if m.searchIndexCache.seriesCategories.Count() > 0 then
         m.seriesCategories = m.searchIndexCache.seriesCategories
-        PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
-        PRINT "SERIES_CATEGORIES_CACHE_RESTORED"
-        PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
+        ' PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
+        ' PRINT "SERIES_CATEGORIES_CACHE_RESTORED"
+        ' PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
     end if
     if m.searchIndexCache.series.Count() > 0 then
         m.cachedSeries = m.searchIndexCache.series
@@ -2818,7 +2891,7 @@ sub loadLocalSearchIndexCache()
             cid = getItemCategoryId(item)
             if m.movieCategoryIndex[cid] = invalid then m.movieCategoryIndex[cid] = []
             m.movieCategoryIndex[cid].Push(item)
-            if cid <> "" then m.movieCategoryLoadState[cid] = "LOADED"
+            if cid <> "" then m.movieCategoryLoadState[cid] = "PARTIAL"
         end for
     end if
     m.seriesCategoryIndex = {}
@@ -2828,25 +2901,53 @@ sub loadLocalSearchIndexCache()
             cid = getItemCategoryId(item)
             if m.seriesCategoryIndex[cid] = invalid then m.seriesCategoryIndex[cid] = []
             m.seriesCategoryIndex[cid].Push(item)
-            if cid <> "" then m.seriesCategoryLoadState[cid] = "LOADED"
+            if cid <> "" then m.seriesCategoryLoadState[cid] = "PARTIAL"
         end for
     end if
     if hasValidLocalCatalogData() then
-        PRINT "LOCAL_CACHE_HIT"
-        PRINT "USER_CACHE_RESTORE_OK"
+        ' PRINT "LOCAL_CACHE_HIT"
+        ' PRINT "USER_CACHE_RESTORE_OK"
         if (m.cachedMovies <> invalid and m.cachedMovies.Count() > 0) or (m.cachedSeries <> invalid and m.cachedSeries.Count() > 0) then PRINT "SEARCH_INITIAL_CACHE_RESTORED"
     else
-        PRINT "LOCAL_CACHE_EMPTY"
-        PRINT "USER_CACHE_EMPTY"
+        ' PRINT "LOCAL_CACHE_EMPTY"
+        ' PRINT "USER_CACHE_EMPTY"
     end if
 end sub
 
 sub saveLocalSearchIndexCache()
+    ' IMPORTANT: this used to write the full chunked registry cache
+    ' synchronously every time it was called. It gets called once per
+    ' category as results stream in (e.g. 26 series categories = 26 back to
+    ' back full JSON encode/parse + chunked registry writes on the render
+    ' thread), which was tripping the BrightScript runtime timeout (&h23)
+    ' and freezing/crashing the app - most noticeably right after opening
+    ' search, before the user even typed a letter.
+    ' Now we just mark the cache dirty and debounce the real write so a
+    ' whole burst of updates results in a single save.
     if m.searchIndexCache = invalid then return
     if hasAccount(m.account) then m.searchIndexCache.accountKey = buildBackendBootstrapAccountKey(m.account)
     if m.localHistoryCache <> invalid and m.localHistoryCache.movies <> invalid then m.searchIndexCache.lastWatchedMovies = m.localHistoryCache.movies
     m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
-    SaveSearchIndexCache(m.searchIndexCache, m.account)
+    m.searchIndexPendingSave = { cache: m.searchIndexCache, account: m.account }
+    if m.searchIndexSaveTimer <> invalid then
+        m.searchIndexSaveTimer.control = "stop"
+        m.searchIndexSaveTimer.control = "start"
+    else
+        flushPendingSearchIndexSave()
+    end if
+end sub
+
+sub onSearchIndexSaveTimerFire()
+    flushPendingSearchIndexSave()
+end sub
+
+sub flushPendingSearchIndexSave()
+    if m.searchIndexSaveTimer <> invalid then m.searchIndexSaveTimer.control = "stop"
+    if m.searchIndexPendingSave = invalid then return
+    pending = m.searchIndexPendingSave
+    m.searchIndexPendingSave = invalid
+    if pending.cache = invalid then return
+    SaveSearchIndexCache(pending.cache, pending.account)
 end sub
 
 sub startBackgroundCatalogCache()
@@ -2907,7 +3008,7 @@ sub processNextSearchIndexRequest()
             return
         end if
     end if
-    PRINT "SEARCH_CATEGORY_LOADING"
+    ' PRINT "SEARCH_CATEGORY_LOADING"
     m.searchIndexKind = job.kind
     m.searchIndexCategoryId = job.categoryId
     m.searchIndexActiveType = job.indexType
@@ -2965,7 +3066,7 @@ function handleSearchIndexResult(result as Object) as Boolean
                 m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch())
                 m.movieSearchScreen.callFunc("setCatalogLoading", hasUnloadedMovieCategories())
             end if
-            PRINT "SEARCH_CATEGORY_LOADED"
+            ' PRINT "SEARCH_CATEGORY_LOADED"
         else if kind = "seriesCategories" then
             m.seriesCategories = normalizeSeriesCategories(result.data)
             m.searchIndexCache.seriesCategories = m.seriesCategories
@@ -2991,7 +3092,7 @@ function handleSearchIndexResult(result as Object) as Boolean
                 m.seriesSearchScreen.callFunc("setSeries", getSeriesForSearch())
                 m.seriesSearchScreen.callFunc("setCatalogLoading", hasUnloadedSeriesCategories())
             end if
-            PRINT "SEARCH_CATEGORY_LOADED"
+            ' PRINT "SEARCH_CATEGORY_LOADED"
         end if
         saveLocalSearchIndexCache()
     else
@@ -3019,6 +3120,7 @@ sub replaceSearchIndexCategory(kind as String, categoryId as String, entries as 
 end sub
 
 sub onOpenSeriesRequested()
+    m.homeReturnFocusIndex = 2
     hideAllScreensExcept(m.simpleSeriesScreen)
     m.currentScreen = "series"
     m.simpleSeriesScreen.callFunc("setCategories", m.seriesCategories)
@@ -3074,7 +3176,7 @@ sub loadSeriesCategoriesForCurrentScreen()
         end if
         return
     end if
-    PRINT "CATEGORIES_FALLBACK_XTREAM series"
+    ' PRINT "CATEGORIES_FALLBACK_XTREAM series"
     if beginXtreamRequest("getSeriesCategories") then
         m.seriesCategoriesLoading = true
         m.xtreamService.control = "STOP"
@@ -3095,11 +3197,11 @@ sub onSeriesCategoriesResult(result as Object)
         if freshCategories.Count() > 0 then
             m.seriesCategories = freshCategories
         else if m.seriesCategories <> invalid and m.seriesCategories.Count() > 0 then
-            PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
+            ' PRINT "CATEGORIES_FROM_LOCAL_CACHE series"
         else
             m.seriesCategories = freshCategories
         end if
-        PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
+        ' PRINT "SERIES_CATEGORIES_LOADED count="; m.seriesCategories.Count()
         if m.seriesCategories.Count() = 0 then PRINT "CATEGORIES_EMPTY series"
         m.searchIndexCache.seriesCategories = m.seriesCategories
         saveLocalSearchIndexCache()
@@ -3114,7 +3216,7 @@ sub onSeriesResult(result as Object)
     resultCategoryId = getSeriesResultCategoryId(result)
     if result.success = true then
         clearAccountReconnectError()
-        fresh = normalizeSeries(result.data)
+        fresh = stampItemsCategoryId(normalizeSeries(result.data), resultCategoryId)
         if resultCategoryId = "" then
             m.allSeriesCache = mergeUniqueItems(m.allSeriesCache, fresh, "series")
             m.cachedSeries = m.allSeriesCache
@@ -3139,7 +3241,7 @@ sub onSeriesResult(result as Object)
             if resultCategoryId <> "" then
                 if resultCategoryId = m.selectedSeriesCategoryId then
                     m.simpleSeriesScreen.callFunc("setLoading", false)
-                    m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(fresh, 60))
+                    m.simpleSeriesScreen.callFunc("setSeries", fresh)
                 end if
             else
                 m.simpleSeriesScreen.callFunc("setSeries", limitArrayForUiBatch(m.cachedSeries, 60))
@@ -3209,9 +3311,11 @@ sub showSeriesFromCacheOrLoad(category as Object)
     cached = []
     if m.seriesCategoryIndex <> invalid and m.seriesCategoryIndex[categoryId] <> invalid then cached = m.seriesCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedSeries, categoryId)
     if cached.Count() > 0 then
-        m.simpleSeriesScreen.callFunc("setLoading", false)
         m.simpleSeriesScreen.callFunc("setSeries", cached)
-        return
+        if getCategoryLoadState(m.seriesCategoryLoadState, categoryId) = "LOADED" then
+            m.simpleSeriesScreen.callFunc("setLoading", false)
+            return
+        end if
     end if
     preview = getPreviewItems(m.seriesCategoryPreviewCache, categoryId)
     if preview.Count() > 0 then
@@ -3226,22 +3330,24 @@ sub loadSeries(category as Object)
     cached = []
     if m.seriesCategoryIndex <> invalid and m.seriesCategoryIndex[categoryId] <> invalid then cached = m.seriesCategoryIndex[categoryId] else cached = filterItemsByCategory(m.cachedSeries, categoryId)
     if cached.Count() > 0 then
-        m.simpleSeriesScreen.callFunc("setLoading", false)
         m.simpleSeriesScreen.callFunc("setSeries", cached)
-        return
+        if getCategoryLoadState(m.seriesCategoryLoadState, categoryId) = "LOADED" then
+            m.simpleSeriesScreen.callFunc("setLoading", false)
+            return
+        end if
     end if
     if m.isDemoMode = true then
         m.simpleSeriesScreen.callFunc("setLoading", false)
         m.simpleSeriesScreen.callFunc("setSeries", cached)
         return
     end if
-    if canUseBackendCatalog() then
-        m.simpleSeriesScreen.callFunc("setLoading", false)
-        m.simpleSeriesScreen.callFunc("setSeries", filterItemsByCategory(m.cachedSeries, categoryId))
-        return
-    end if
-    if not hasAccount(m.account) or m.isLoadingRequest = true then return
+    ' Mesmo com backend pronto, uma categoria pode estar só com prévia/cache parcial.
+    ' Continue buscando a categoria real na Xtream para mostrar todos os itens.
+    if not hasAccount(m.account) then return
+    if m.isLoadingRequest = true then cancelXtreamRequest()
     if beginXtreamRequest("getSeries") then
+        if m.seriesCategoryLoadState = invalid then m.seriesCategoryLoadState = {}
+        if categoryId <> "" then m.seriesCategoryLoadState[categoryId] = "LOADING"
         m.xtreamService.control = "STOP"
         m.xtreamService.action = "getSeries"
         m.xtreamService.cacheEnabled = true
@@ -3256,6 +3362,7 @@ end sub
 sub onSimpleSeriesBack()
     m.simpleSeriesScreen.callFunc("hide")
     m.seriesDetailsScreen.callFunc("hide")
+    m.homeReturnFocusIndex = 2
     showHome()
 end sub
 
@@ -3345,11 +3452,11 @@ end function
 sub onSeriesDetailsBack()
     m.seriesDetailsScreen.callFunc("hide")
     if m.openedFromSearch = true then
-        PRINT "DETAIL_RETURN_TO_SEARCH"
+        ' PRINT "DETAIL_RETURN_TO_SEARCH"
         if m.seriesSearchScreen <> invalid then
             m.seriesSearchScreen.callFunc("show")
             m.seriesSearchScreen.callFunc("restoreState", m.seriesSearchRestoreState)
-            PRINT "DETAIL_SEARCH_CONTEXT_RESTORED"
+            ' detail search context restored
         end if
         m.openedFromSearch = false
         return
@@ -3370,7 +3477,7 @@ sub onSeriesEpisodeSelected()
         m.seriesDetailsScreen.callFunc("showMessage", "Stream sem URL válida")
         return
     end if
-    print "MAIN_SCENE openSeriesPlayer chamado selectedEpisode="; title; " episode.url/streamUrl="; streamUrl
+    ' print "MAIN_SCENE openSeriesPlayer chamado selectedEpisode="; title; " episode.url/streamUrl="; streamUrl
     m.selectedEpisode = episode
     episodeToPlay = episode
     episodeToPlay.title = title
@@ -3430,10 +3537,19 @@ sub onLiveChannelsResult(result as Object)
 
     if result.success = true then
         clearAccountReconnectError()
-        m.cachedLiveChannels = normalizeLiveChannels(result.data)
+        freshLiveChannels = stampItemsCategoryId(normalizeLiveChannels(result.data), resultCategoryId)
+        if resultCategoryId <> "" then
+            m.liveChannels = freshLiveChannels
+            m.cachedLiveChannels = replaceCachedCategoryItems(m.cachedLiveChannels, freshLiveChannels, resultCategoryId)
+            if m.liveCategoryLoadState = invalid then m.liveCategoryLoadState = {}
+            m.liveCategoryLoadState[resultCategoryId] = "LOADED"
+        else
+            m.cachedLiveChannels = freshLiveChannels
+            m.liveChannels = filterItemsByCategory(m.cachedLiveChannels, m.selectedLiveCategoryId)
+        end if
         m.searchIndexCache.liveChannels = m.cachedLiveChannels
         saveLocalSearchIndexCache()
-        m.liveChannels = filterItemsByCategory(m.cachedLiveChannels, m.selectedLiveCategoryId)
+        if m.liveChannels.Count() = 0 and freshLiveChannels.Count() > 0 then m.liveChannels = freshLiveChannels
         if m.liveChannelsScreen.visible = true then m.liveChannelsScreen.callFunc("setChannels", m.liveChannels)
     else if m.liveChannelsScreen.visible = true then
         m.liveChannelsScreen.callFunc("showMessage", "Não foi possível carregar. Pressione Voltar e tente novamente.")
@@ -3453,11 +3569,11 @@ sub onMovieCategoriesResult(result as Object)
         if freshCategories.Count() > 0 then
             m.movieCategories = freshCategories
         else if m.movieCategories <> invalid and m.movieCategories.Count() > 0 then
-            PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
+            ' PRINT "CATEGORIES_FROM_LOCAL_CACHE movies"
         else
             m.movieCategories = freshCategories
         end if
-        PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
+        ' PRINT "MOVIE_CATEGORIES_LOADED count="; m.movieCategories.Count()
         if m.movieCategories.Count() = 0 then PRINT "CATEGORIES_EMPTY movies"
         m.searchIndexCache.movieCategories = m.movieCategories
         saveLocalSearchIndexCache()
@@ -3482,7 +3598,7 @@ sub onMoviesResult(result as Object)
 
     if result.success = true then
         clearAccountReconnectError()
-        fresh = normalizeMovies(result.data)
+        fresh = stampItemsCategoryId(normalizeMovies(result.data), resultCategoryId)
         if resultCategoryId = "" then
             m.allMoviesCache = mergeUniqueItems(m.allMoviesCache, buildSearchPreviewByCategory(fresh, 10, 1200, "movies"), "movies")
         else
@@ -3495,7 +3611,13 @@ sub onMoviesResult(result as Object)
         m.searchIndexCache.movieSearchIndex = []
         saveLocalSearchIndexCache()
         if resultCategoryId <> "" then addItemsToMovieCategoryIndex(fresh)
-        if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[m.selectedMovieCategoryId] <> invalid then m.movies = m.movieCategoryIndex[m.selectedMovieCategoryId] else m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
+        if resultCategoryId <> "" and resultCategoryId = m.selectedMovieCategoryId then
+            m.movies = fresh
+        else if m.movieCategoryIndex <> invalid and m.movieCategoryIndex[m.selectedMovieCategoryId] <> invalid then
+            m.movies = m.movieCategoryIndex[m.selectedMovieCategoryId]
+        else
+            m.movies = filterItemsByCategory(m.cachedMovies, m.selectedMovieCategoryId)
+        end if
         if m.movieListScreen.visible = true then m.movieListScreen.callFunc("setMovies", m.movies)
         if m.movieSearchScreen.visible = true then m.movieSearchScreen.callFunc("setMovies", getMoviesForSearch()) : m.movieSearchScreen.callFunc("setCatalogLoading", hasUnloadedMovieCategories())
     else if m.movieListScreen.visible = true then
@@ -3510,7 +3632,7 @@ sub onLiveStreamUrlResult(result as Object)
     if result.data.streamId <> invalid and result.data.streamId.ToStr() <> getStreamId(m.selectedLiveChannel) then return
 
     if result.success = true and result.data.url <> invalid then
-        print "LIVE PLAYER URL: "; result.data.url
+        ' print "LIVE PLAYER URL: "; result.data.url
         m.livePlayerScreen.callFunc("play", result.data.url)
     else
         m.livePlayerScreen.callFunc("showError", "Não foi possível preparar a reprodução deste canal.")
@@ -3836,7 +3958,7 @@ sub startInitialCategoryPreviewCache()
     if m.previewUpdating = true then return
     m.previewQueue = []
     if m.seriesCategories <> invalid and Type(m.seriesCategories) = "roArray" then
-        PRINT "SERIES_PRELOAD_START"
+        ' PRINT "SERIES_PRELOAD_START"
         for each category in m.seriesCategories
             cid = getCategoryId(category)
             previewItems = getPreviewItems(m.seriesCategoryPreviewCache, cid)
@@ -3846,7 +3968,7 @@ sub startInitialCategoryPreviewCache()
         end for
     end if
     if m.movieCategories <> invalid and Type(m.movieCategories) = "roArray" then
-        PRINT "MOVIES_PRELOAD_START"
+        ' PRINT "MOVIES_PRELOAD_START"
         for each category in m.movieCategories
             cid = getCategoryId(category)
             previewItems = getPreviewItems(m.movieCategoryPreviewCache, cid)
@@ -3878,8 +4000,8 @@ sub processNextPreviewRequest()
         m.searchIndexCache.seriesCategories = m.seriesCategories
         m.searchIndexCache.updatedAt = CreateObject("roDateTime").AsSeconds().ToStr()
         saveLocalSearchIndexCache()
-        PRINT "SERIES_PRELOAD_READY"
-        PRINT "MOVIES_PRELOAD_READY"
+        ' PRINT "SERIES_PRELOAD_READY"
+        ' PRINT "MOVIES_PRELOAD_READY"
         return
     end if
     job = m.previewQueue.Shift()

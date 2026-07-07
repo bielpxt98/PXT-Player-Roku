@@ -76,6 +76,15 @@ sub focusCategories()
     updateFocus()
 end sub
 
+sub focusSearchCategory()
+    m.activePane = "categories"
+    m.selectedCategoryIndex = 0
+    m.firstVisibleCategoryIndex = 0
+    updateCategoryWindow()
+    renderCategories()
+    updateFocus()
+end sub
+
 sub hide()
     m.top.visible = false
 end sub

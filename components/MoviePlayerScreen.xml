@@ -22,7 +22,7 @@
         </Group>
         <Group id="controlsGroup" visible="false">
             <Rectangle id="controlsBackground" color="#000000" opacity="0.62" />
-            <Label id="playPauseIcon" text="Ⅱ" color="#FFFFFF" horizAlign="center" vertAlign="center" />
+            <Label id="playPauseIcon" text="II" color="#FFFFFF" horizAlign="center" vertAlign="center" />
             <Label id="currentTimeLabel" text="00:00" color="#FFFFFF" horizAlign="left" />
             <Rectangle id="progressBackground" color="#5B6472" opacity="0.85" />
             <Rectangle id="progressFill" color="#FFFFFF" opacity="1" />

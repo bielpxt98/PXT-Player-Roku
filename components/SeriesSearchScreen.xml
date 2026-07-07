@@ -21,6 +21,7 @@
         <Rectangle id="overlay" color="#02040A" opacity="0.92" translation="[0, 0]" />
         <Label id="title" text="PESQUISAR" color="#FFFFFF" horizAlign="center" />
         <Rectangle id="inputBackground" color="#0B1220" opacity="0.95" />
+        <TextEditBox id="searchInput" hintText="Digite no app Roku Remote" text="" clearOnDownKey="false" />
         <Label id="queryLabel" text="Buscar: " color="#FFFFFF" />
         <Label id="messageLabel" text="" color="#FFCC66" horizAlign="center" />
         <Group id="resultsGroup" />

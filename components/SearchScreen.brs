@@ -81,8 +81,8 @@ end sub
 sub resetSearchStateOnExit()
     if m.searchDebounceTimer <> invalid then m.searchDebounceTimer.control = "stop"
     m.pendingSearchText = ""
-    PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
-    PRINT "SEARCH_STATE_RESET_ON_EXIT"
+    ' PRINT "SEARCH_SCREEN_EXIT_CANCEL_PENDING"
+    ' PRINT "SEARCH_STATE_RESET_ON_EXIT"
 end sub
 
 sub setLoading(isLoading as Boolean)
@@ -155,16 +155,16 @@ end sub
 sub onSearchTextChanged()
     newText = m.searchInput.text
     if newText = m.pendingSearchText or newText = m.lastSearchText then
-        PRINT "SEARCH_BLOCKED_SAME_TEXT"
+        ' PRINT "SEARCH_BLOCKED_SAME_TEXT"
         return
     end if
     m.pendingSearchText = newText
     m.lastSearchText = newText
     m.searchText = newText
     m.queryMirror.text = "Buscar: " + newText
-    PRINT "SEARCH_TEXT_CHANGED_ONLY_ON_INPUT"
-    PRINT "SEARCH_TEXT_CHANGED"
-    PRINT "SEARCH_DEBOUNCE"
+    ' PRINT "SEARCH_TEXT_CHANGED_ONLY_ON_INPUT"
+    ' PRINT "SEARCH_TEXT_CHANGED"
+    ' PRINT "SEARCH_DEBOUNCE"
     m.searchDebounceTimer.control = "stop"
     m.searchDebounceTimer.duration = 0.4
     m.searchDebounceTimer.control = "start"
@@ -172,7 +172,7 @@ end sub
 
 sub onSearchDebounceFire()
     if m.top.visible <> true then
-        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        ' PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
         return
     end if
     applyFilter()
@@ -180,7 +180,7 @@ end sub
 
 sub applyFilter()
     if m.top.visible <> true then
-        PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
+        ' PRINT "SEARCH_RESPONSE_IGNORED_SCREEN_INACTIVE"
         return
     end if
     query = normalizeSearchQuery(m.searchInput.text)
@@ -528,31 +528,31 @@ end function
 
 function handleRokuKeyboardKey(key as String) as Boolean
     remoteText = ""
-    if Left(key, 4) = "lit_" then
+    if LCase(Left(key, 4)) = "lit_" then
         remoteText = Mid(key, 5)
     else if isPlainRemoteCharacter(key) then
         remoteText = key
     end if
 
     if remoteText <> "" then
-        PRINT "SEARCH_REMOTE_CHAR_RECEIVED"
+        ' PRINT "SEARCH_REMOTE_CHAR_RECEIVED"
         if not isSearchFieldActive() then
-            PRINT "SEARCH_REMOTE_TEXT_BLOCKED_NO_ACTIVE_FIELD"
+            ' PRINT "SEARCH_REMOTE_TEXT_BLOCKED_NO_ACTIVE_FIELD"
             return true
         end if
         return applyRemoteSearchText(remoteText)
     end if
 
-    if key = "backspace" or key = "delete" then
+    if LCase(key) = "backspace" or LCase(key) = "delete" then
         if not isSearchFieldActive() then
-            PRINT "SEARCH_REMOTE_TEXT_BLOCKED_NO_ACTIVE_FIELD"
+            ' PRINT "SEARCH_REMOTE_TEXT_BLOCKED_NO_ACTIVE_FIELD"
             return true
         end if
         t = m.searchInput.text
         if Len(t) > 0 then
             m.searchInput.text = Left(t, Len(t) - 1)
             m.searchText = m.searchInput.text
-            PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+            ' PRINT "SEARCH_REMOTE_TEXT_APPLIED"
         end if
         updateSearchFocus()
         return true
@@ -577,7 +577,7 @@ function applyRemoteSearchText(remoteText as String) as Boolean
     if newText = oldText then return true
     m.searchInput.text = newText
     m.searchText = newText
-    PRINT "SEARCH_REMOTE_TEXT_APPLIED"
+    ' PRINT "SEARCH_REMOTE_TEXT_APPLIED"
     updateSearchFocus()
     return true
 end function

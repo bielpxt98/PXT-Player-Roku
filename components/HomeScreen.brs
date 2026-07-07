@@ -64,7 +64,18 @@ end sub
 
 sub show()
     m.top.visible = true
-    m.focusIndex = 0
+    if m.focusIndex = invalid then m.focusIndex = 0
+    if m.focusArea = invalid or m.focusArea = "" then m.focusArea = "cards"
+    updateFocus()
+end sub
+
+
+sub setFocusIndex(index as Dynamic)
+    if index = invalid then return
+    idx = Int(index)
+    if idx < 0 then idx = 0
+    if idx >= m.buttons.Count() then idx = m.buttons.Count() - 1
+    m.focusIndex = idx
     m.focusArea = "cards"
     updateFocus()
 end sub

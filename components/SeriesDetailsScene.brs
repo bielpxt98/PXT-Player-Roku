@@ -999,7 +999,7 @@ sub emitEpisodeSelected(episode as Dynamic, index as Integer)
         showMessage("Episódio sem link disponível.")
         return
     end if
-    print "SERIES_PLAYER_URL="; maskSeriesUrl(streamUrl)
+    ' print "SERIES_PLAYER_URL="; maskSeriesUrl(streamUrl)
     title = getEpisodeTitle(episode, index)
     selected = {}
     if episode <> invalid and Type(episode) = "roAssociativeArray" then
